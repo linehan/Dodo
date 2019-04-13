@@ -1,0 +1,80 @@
+<?php
+/* TODO: declare( strict_types = 1 ); in all code files */
+
+/******************************************************************************
+ * TOP-LEVEL INTERFACE
+ *
+ * As far as I can tell, the point of this top-level interface is to
+ * allow us to provide a seamless package for the
+ *
+ *      - HTML parser,
+ *      - window,
+ *      - DOM implementation,
+ *
+ * so that the whole thing is nice and seamless.
+ ******************************************************************************/
+
+/*
+ * Things that get included up here
+ *
+ *      DOMImplementation TODO: Change this name it's colliding
+ *      HTMLParser
+ *      Window
+ */
+$DOMImplementation = require("./DOMImplementation");
+$HTMLParser        = require("./HTMLParser");
+$Window            = require("./Window");
+
+
+/*
+
+        You just realized that the best place to start porting
+        is here, at the initial external interface, where you
+        can make separate sockets for the HTMLParser and the
+        selector engine to plug into once you get ahold of that
+        code.
+
+        Now, you can see what is provided at the top level, and
+        finish up building the test harness for the tests. You're
+        almost there.
+*/
+
+
+static class domiph {
+        public function createDOMImplementation()
+        {
+                return new DOMImplementation(NULL);
+        }
+
+        public function createDocument($html, $force)
+        {
+                /*
+                 * Previous API couldn't let you pass '' as a document,
+                 * and that yields a slightly different document than
+                 * createHTMLDocument('') does. The new 'force' parameter
+                 * lets your pass '' if you want to.
+                 */
+                if ($html || $force) {
+                        var $parser = new HTMLParser();
+                        $parser->parse($html || "", true);
+                        return $parser->document();
+                }
+
+                return new DOMImplementation(NULL)->createHTMLDocument("");
+        }
+
+        public function createWindow($html, $address)
+        {
+                $document = $exports->createDocument($html);
+
+                if ($address !== $undefined) {
+                        $document->_address = $address;
+                }
+
+                return new Window($document);
+        }
+};
+
+exports.impl = require('./impl');
+
+?>
