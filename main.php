@@ -21,9 +21,12 @@
  *      HTMLParser
  *      Window
  */
-use \domo\interfaces\DOMImplementation
-use \domo\interfaces\Window
-use \domo\parsers\HTMLParser
+use \domo\interfaces\DOMImplementation;
+use \domo\interfaces\Window;
+use \domo\parsers\HTMLParser;
+
+require_once("interfaces/DOMImplementation.php");
+require_once("interfaces/Window.php");
 
 /*
 
@@ -53,12 +56,14 @@ function createDocument($html, $force)
          * lets your pass '' if you want to.
          */
         if ($html || $force) {
-                var $parser = new HTMLParser();
+                $parser = new HTMLParser();
                 $parser->parse($html || "", true);
                 return $parser->document();
         }
 
-        return new DOMImplementation(NULL)->createHTMLDocument("");
+        /* Should this just be a static method?? */
+        $impl = new DOMImplementation(NULL);
+        return $impl->createHTMLDocument("");
 }
 
 function createWindow($html, $address)
@@ -71,30 +76,6 @@ function createWindow($html, $address)
 
         return new Window($document);
 }
-
-                include utils
-                export CSSStyleDeclaration
-                       CharacterData
-                       Comment
-                       DOMException
-                       DOMImplementation
-                       DOMTokenList
-                       Document
-                       DocumentFragment
-                       DocumentType
-                       Element
-                       HTMLParser
-                       NamedNodeMap
-                       Node
-                       NodeList
-                       NodeFilter
-                       ProcessingInstruction
-                       Text
-                       Window
-
-               utils.merge(exports, events);
-               utils.merge(exports, htmlelts.elements);
-               utils.merge(exports, svg.elements);
 
 /*
 

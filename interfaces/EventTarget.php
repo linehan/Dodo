@@ -1,7 +1,9 @@
 <?php
-use \DOM\Event
-use \DOM\MouseEvent
-use \DOM\util
+
+namespace domo\interfaces;
+
+use domo\interfaces\Event;
+use domo\interfaces\MouseEvent;
 
 /*
  * PORT NOTES
@@ -133,7 +135,7 @@ abstract class EventTarget {
                 }
 
                 /* PORT: TODO: Nested function alert */
-                function invoke(target, event)
+                function invoke($target, $event)
                 {
                         $type = $event->type;
                         $phase = $event->eventPhase;
@@ -198,7 +200,7 @@ abstract class EventTarget {
                          * This means we will have to figure out how to pass by
                          * reference in certain places. Sigh, okay!
                          */
-                        $list = list.slice();
+                        //$list = list.slice();
 
                         for ($i=0, $n=count($list); $i<$n; $i++) {
                                 if ($event->_immediatePropagationStopped) {
@@ -279,7 +281,7 @@ abstract class EventTarget {
                 if ($trusted && !$event->defaultPrevented && $event instanceof MouseEvent) {
                         switch ($event->type) {
                         case 'mousedown':
-                                $this._armed = array(
+                                $this->_armed = array(
                                         "x" => $event->clientX,
                                         "y" => $event->clientY,
                                         "t" => $event->timeStamp
@@ -309,7 +311,7 @@ abstract class EventTarget {
                         $event->type === 'mouseup' &&
                         $event->isTrusted &&
                         $event->button === 0 &&
-                        $event->timeStamp - $this._armed->t < 1000 &&
+                        $event->timeStamp - $this->_armed->t < 1000 &&
                         abs($event->clientX - $this->_armed->x) < 10 &&
                         /*
                          * PORT:NOTE: In Domino upstream, this reads
@@ -358,7 +360,7 @@ abstract class EventTarget {
                 if ($activated) {
                         if ($result) {
                                 // This is where hyperlinks get followed, for example.
-                                if ($activated->_post_click_activation_steps)
+                                if ($activated->_post_click_activation_steps) {
                                         $activated->_post_click_activation_steps($click);
                                 } else {
                                         if ($activated->_cancelled_activation_steps) {

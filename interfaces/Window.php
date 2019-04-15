@@ -1,16 +1,16 @@
 <?php
 
-use \domo\interfaces\DOMImplementation
-use \domo\interfaces\EventTarget
-use \domo\interfaces\Location
-use \domo\sloppy
-use \domo\utils
+use \domo\interfaces\DOMImplementation;
+use \domo\interfaces\EventTarget;
+use \domo\interfaces\Location;
+use \domo\sloppy;
+use \domo\utils;
 
 require_once("interfaces/DOMImplementation.php");
 require_once("interfaces/EventTarget.php");
-require_once("interfaces/Location.php");
-require_once("sloppy.php");
-require_once("utils.php");
+require_once("interfaces/whatwg/Location.php");
+//require_once("sloppy.php");
+//require_once("utils.php");
 
 class History {
         public function back() { return utils\nyi(); }
@@ -47,11 +47,16 @@ class Console {
 
 class Window extends EventTarget
 {
+        public $console = NULL;
+        public $history = NULL;
+        public $navigator = NULL;
+
         public
         function __construct(Document $doc=NULL)
         {
                 if ($doc == NULL) {
-                        $doc = new DOMImplementation(NULL)->createHTMLDocument("");
+                        $impl = new DOMImplementation(NULL);
+                        $doc = $impl->createHTMLDocument("");
                 }
 
                 $this->document = $doc;
@@ -62,7 +67,11 @@ class Window extends EventTarget
                         $this->document->_address = "about:blank";
                 }
 
+                /* Instantiate sub-objects */
                 $this->location = new Location($this, $this->document->_address);
+                $this->console = new Console(); /* not implemented */
+                $this->history = new History(); /* not implemented */
+                $this->navigator = new NavigatorID();
 
                 /* Self-referential properties; moved from prototype in port */
                 $this->window = $this;
@@ -73,11 +82,10 @@ class Window extends EventTarget
                 $this->parent = $this;
                 $this->top = $this;
 
-
                 /* We don't support any other windows for now */
                 $this->length = 0;              // no frames
-                $this->frameElement = NULL      // not part of a frame
-                $this->opener = NULL            // not opened by another window
+                $this->frameElement = NULL;     // not part of a frame
+                $this->opener = NULL;           // not opened by another window
         }
 
         public function _run($code, $file)
@@ -95,9 +103,6 @@ class Window extends EventTarget
                 */
         }
 
-        public $console = new Console(); /* Not yet implemented */
-        public $history = new History() /* Not yet implemented */
-        public $navigator = new NavigatorID(); /* TODO: kind of weird */
 
         /*
          * The onload event handler.

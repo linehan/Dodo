@@ -1,19 +1,19 @@
 <?php
 declare( strict_types = 1 );
 
-namespace \domo\interfaces
+namespace domo\interfaces;
 
-use \domo\interfaces\Document
-use \domo\interfaces\DocumentType
-use \domo\parsers\HTMLParser
-use \domo\parsers\xmlnames
-use \domo\utilities
+use \domo\interfaces\Document;
+use \domo\interfaces\DocumentType;
+use \domo\parsers\HTMLParser;
+use \domo\parsers\xmlnames;
+use \domo\utilities;
 
-require_once("interfaces/Document.php");
-require_once("interfaces/DocumentType.php");
-require_once("parsers/HTMLParser.php");
-require_once("parsers/xmlnames.php");
-require_once("utils.php");
+//require_once("interfaces/Document.php");
+//require_once("interfaces/DocumentType.php");
+//require_once("parsers/HTMLParser.php");
+//require_once("parsers/xmlnames.php");
+//require_once("utils.php");
 
 /*
  * Feature/version pairs that DOMImplementation->hasFeature()
@@ -171,5 +171,5 @@ class DOMImplementation
                 \util\nyi();
         }
 
-        public $mozHTMLParser = HTMLParser,
+        public $mozHTMLParser = HTMLParser;
 }
