@@ -1,5 +1,14 @@
-CONVENTIONS:
+PORT CHANGES:
+--------------
+* NavigationID, History, Console, and Location all merged into Window.php
 
+* Window, Event, MouseEvent, UIEvent, and EventTarget should all be
+  turned into stubs, or supported only in "interactive/browsing mode".
+
+
+
+CONVENTIONS:
+--------------
 * Use namespaces to encapsulate
         * '\DOM' for the whole library, change later to be more distinct
 

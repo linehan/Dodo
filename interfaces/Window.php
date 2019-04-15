@@ -1,49 +1,31 @@
 <?php
+/* TODO PORT:
+ * The Window is not a particularly relevant interface for our
+ * use case of building and manipulating a document quickly.
+ * We will, afaik, not need any of the interfaces provided here,
+ * since we are operating in a somewhat "headless" mode.
+ *
+ * Consider eliminating this, or stubbing it.
+ */
 
-use \domo\interfaces\DOMImplementation;
-use \domo\interfaces\EventTarget;
-use \domo\interfaces\Location;
-use \domo\sloppy;
-use \domo\utils;
+use domo\interfaces\DOMImplementation;
+use domo\interfaces\EventTarget;
+
+use domo\interfaces\browser\Location;
+use domo\interfaces\browser\History;
+use domo\interfaces\browser\Console;
+use domo\interfaces\browser\NavigatorID;
+
+use domo\utils;
 
 require_once("interfaces/DOMImplementation.php");
 require_once("interfaces/EventTarget.php");
-require_once("interfaces/whatwg/Location.php");
-//require_once("sloppy.php");
-//require_once("utils.php");
 
-class History {
-        public function back() { return utils\nyi(); }
-        public function forward() { return utils\nyi(); }
-        public function go() { return utils\nyi(); }
-        public function pushState() { return utils\nyi(); }
-        public function replaceState() { return utils\nyi(); }
-}
+require_once("interfaces/browser/Console.php");
+require_once("interfaces/browser/History.php");
+require_once("interfaces/browser/Location.php");
+require_once("interfaces/browser/NavigatorID.php");
 
-class Console {
-        public function assert() { return utils\nyi(); }
-        public function clear() { return utils\nyi(); }
-        public function count() { return utils\nyi(); }
-        public function countReset() { return utils\nyi(); }
-        public function debug() { return utils\nyi(); }
-        public function dir() { return utils\nyi(); }
-        public function dirxml() { return utils\nyi(); }
-        public function error() { return utils\nyi(); }
-        public function group() { return utils\nyi(); }
-        public function groupCollapsed() { return utils\nyi(); }
-        public function groupEnd() { return utils\nyi(); }
-        public function info() { return utils\nyi(); }
-        public function log() { return utils\nyi(); }
-        public function profile() { return utils\nyi(); }
-        public function profileEnd() { return utils\nyi(); }
-        public function table() { return utils\nyi(); }
-        public function time() { return utils\nyi(); }
-        public function timeEnd() { return utils\nyi(); }
-        public function timeLog() { return utils\nyi(); }
-        public function timeStamp() { return utils\nyi(); }
-        public function trace() { return utils\nyi(); }
-        public function warn() { return utils\nyi(); }
-}
 
 class Window extends EventTarget
 {
