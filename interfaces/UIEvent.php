@@ -3,6 +3,7 @@ use \DOM\Event
 
 class UIEvent extends Event {
 
+        public
         function __construct()
         {
                 parent::__construct();
@@ -11,6 +12,7 @@ class UIEvent extends Event {
                 $this->detail = 0;
         }
 
+        public
         function initUIEvent($type, $bubbles, $cancelable, $view, $detail)
         {
                 $this->initEvent($type, $bubbles, $cancelable);

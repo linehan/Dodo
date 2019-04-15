@@ -21,10 +21,9 @@
  *      HTMLParser
  *      Window
  */
-$DOMImplementation = require("./DOMImplementation");
-$HTMLParser        = require("./HTMLParser");
-$Window            = require("./Window");
-
+use \domo\interfaces\DOMImplementation
+use \domo\interfaces\Window
+use \domo\parsers\HTMLParser
 
 /*
 
@@ -40,41 +39,96 @@ $Window            = require("./Window");
 */
 
 
-static class domiph {
-        public function createDOMImplementation()
-        {
-                return new DOMImplementation(NULL);
+function createDOMImplementation()
+{
+        return new DOMImplementation(NULL);
+}
+
+function createDocument($html, $force)
+{
+        /*
+         * Previous API couldn't let you pass '' as a document,
+         * and that yields a slightly different document than
+         * createHTMLDocument('') does. The new 'force' parameter
+         * lets your pass '' if you want to.
+         */
+        if ($html || $force) {
+                var $parser = new HTMLParser();
+                $parser->parse($html || "", true);
+                return $parser->document();
         }
 
-        public function createDocument($html, $force)
-        {
-                /*
-                 * Previous API couldn't let you pass '' as a document,
-                 * and that yields a slightly different document than
-                 * createHTMLDocument('') does. The new 'force' parameter
-                 * lets your pass '' if you want to.
-                 */
-                if ($html || $force) {
-                        var $parser = new HTMLParser();
-                        $parser->parse($html || "", true);
-                        return $parser->document();
-                }
+        return new DOMImplementation(NULL)->createHTMLDocument("");
+}
 
-                return new DOMImplementation(NULL)->createHTMLDocument("");
+function createWindow($html, $address)
+{
+        $document = $exports->createDocument($html);
+
+        if ($address !== $undefined) {
+                $document->_address = $address;
         }
 
-        public function createWindow($html, $address)
-        {
-                $document = $exports->createDocument($html);
+        return new Window($document);
+}
 
-                if ($address !== $undefined) {
-                        $document->_address = $address;
-                }
+                include utils
+                export CSSStyleDeclaration
+                       CharacterData
+                       Comment
+                       DOMException
+                       DOMImplementation
+                       DOMTokenList
+                       Document
+                       DocumentFragment
+                       DocumentType
+                       Element
+                       HTMLParser
+                       NamedNodeMap
+                       Node
+                       NodeList
+                       NodeFilter
+                       ProcessingInstruction
+                       Text
+                       Window
 
-                return new Window($document);
-        }
-};
+               utils.merge(exports, events);
+               utils.merge(exports, htmlelts.elements);
+               utils.merge(exports, svg.elements);
 
-exports.impl = require('./impl');
+/*
+
+   In Node speak, attach all of the following to this module's exports
+   under the .impl:
+                include utils
+                export CSSStyleDeclaration
+                       CharacterData
+                       Comment
+                       DOMException
+                       DOMImplementation
+                       DOMTokenList
+                       Document
+                       DocumentFragment
+                       DocumentType
+                       Element
+                       HTMLParser
+                       NamedNodeMap
+                       Node
+                       NodeList
+                       NodeFilter
+                       ProcessingInstruction
+                       Text
+                       Window
+
+               utils.merge(exports, events);
+               utils.merge(exports, htmlelts.elements);
+               utils.merge(exports, svg.elements);
+
+  That's a lot! Will have to figure out how to map exports to PHP-land.
+
+  Will need to let Composer or whatever import these here, I guess?
+
+   exports.impl = require('./impl');
+*/
 
 ?>

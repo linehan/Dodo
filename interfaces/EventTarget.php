@@ -15,7 +15,8 @@ use \DOM\util
  * This is a simple page but has a bit of weird dispatching code
  */
 
-class EventTarget {
+/* PORT: ABSTRACT CLASS because we cannot instantiate these */
+abstract class EventTarget {
         /*
          * XXX
          * See WebIDL §4.8 for details on object event handlers
