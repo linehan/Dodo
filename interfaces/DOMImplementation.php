@@ -1,13 +1,35 @@
 <?php
+/******************************************************************************
+ * DOMImplementation.php
+ * `````````````````````
+ * The DOMImplementation interface represents an object providing methods
+ * which are not dependent on any particular document. Such an object is
+ * available in the Document->implementation property.
+ *
+ * PORT NOTES:
+ *
+ * Removes:
+ *       public function mozSetOutputMutationHandler($doc, $handler)
+ *       public function mozGetInputMutationHandler($doc)
+ *       public $mozHTMLParser = HTMLParser;
+ *
+ * Renames:
+ * Changes:
+ *      - supportedFeatures array was moved to a static variable inside of
+ *        DOMImplementation->hasFeature(), and renamed to $supported.
+ *
+ ******************************************************************************/
 declare( strict_types = 1 );
 
 namespace domo\interfaces;
 
-use \domo\interfaces\Document;
-use \domo\interfaces\DocumentType;
-use \domo\parsers\HTMLParser;
-use \domo\parsers\xmlnames;
-use \domo\utilities;
+use domo\interfaces\Document;
+use domo\interfaces\DocumentType;
+
+use domo\parsers\HTMLParser;
+use domo\parsers\xmlnames;
+
+use domo\utilities;
 
 //require_once("interfaces/Document.php");
 //require_once("interfaces/DocumentType.php");
@@ -15,36 +37,6 @@ use \domo\utilities;
 //require_once("parsers/xmlnames.php");
 //require_once("utils.php");
 
-/*
- * Feature/version pairs that DOMImplementation->hasFeature()
- * returns true for. It returns false for anything else.
- */
-$supportedFeatures = array(
-        /* DOM Core [sic?] */
-        "xml" => array(
-                "" => true,
-                "1.0" => true,
-                "2.0" => true
-        ),
-        /* DOM Core */
-        "core" => array(
-                "" => true,
-                "2.0" => true
-        ),
-        /* HTML */
-        "html" => array(
-                "" => true,
-                "1.0" => true,
-                "2.0" => true
-        ),
-        /* HTML [sic?] */
-        "xhtml" => array(
-                "" => true,
-                "1.0" => true,
-                "2.0" => true
-        )
-        /* TODO: is SVG not on here? Don't we support it? */
-);
 
 
 /*
@@ -54,7 +46,7 @@ $supportedFeatures = array(
 class DOMImplementation
 {
         public
-        function __construct(/* TODO: What is this? */$contextObject)
+        function __construct(/* TODO: What is this? A Window? */$contextObject)
         {
                 $this->contextObject = $contextObject;
         }
@@ -72,10 +64,21 @@ class DOMImplementation
         public
         function hasFeature(string $feature="", string $version="") : boolean
         {
-                if (!isset($supportedFeatures[$feature])) {
+                /*
+                 * Feature/version pairs that DOMImplementation->hasFeature()
+                 * returns true for. It returns false for anything else.
+                 */
+                static $supported = array(
+                        "xml" => array( "" => true, "1.0" => true, "2.0" => true ),  /* DOM Core [sic?] */
+                        "core" => array( "" => true, "2.0" => true ),                /* DOM Core */
+                        "html" => array( "" => true, "1.0" => true, "2.0" => true ), /* HTML */
+                        "xhtml" => array( "" => true, "1.0" => true, "2.0" => true ) /* HTML [sic?] */
+                );
+
+                if (!isset($supported[$feature])) {
                         return false;
                 } else {
-                        if (!isset($supportedFeatures[$feature][$version])) {
+                        if (!isset($supported[$feature][$version])) {
                                 return false;
                         }
                 }
@@ -157,19 +160,4 @@ class DOMImplementation
                 return $d;
         }
 
-        /* PORT TODO: What is all this mozilla stuff? Do we still need it? */
-
-        public
-        function mozSetOutputMutationHandler($doc, $handler)
-        {
-                $doc->mutationHandler = $handler;
-        }
-
-        public
-        function mozGetInputMutationHandler($doc)
-        {
-                \util\nyi();
-        }
-
-        public $mozHTMLParser = HTMLParser;
 }
