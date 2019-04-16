@@ -1,3 +1,24 @@
+POTENTIAL UPSTREAM BUGS:
+----------------------
+        createProcessingInstruction (Document.js):
+                if (!xml.isValidName(target) || data.indexOf("?>") !== -1) {
+                        utils.InvalidCharacterError()
+                }
+
+                Should it be !== -1, or === -1? I think it's === -1, yes?
+
+        ---
+
+        _isClick (EventTarget.js):
+                Math.abs(event.clientY - this._armed.Y) < 10;
+
+                Should be 'this._armed.y', not 'this._armed.Y'
+
+        ---
+
+
+
+
 PORT CHANGES:
 --------------
 * NavigationID, History, Console, and Location all merged into Window.php
@@ -6,6 +27,12 @@ PORT CHANGES:
   turned into stubs, or supported only in "interactive/browsing mode".
 
 * Do we need to support Events and MutationObserver stuff?
+
+* CANDIDATES FOR REMOVAL:
+*       * event stuff
+*       * nodeiterator
+*       * treewalker
+*       * mutation
 
 
 
@@ -260,6 +287,8 @@ ChildNode
 ------------------------------------------------------------------------------
 Comment
 ------------------------------------------------------------------------------
+ContainerNode                   x (merged into Node)
+------------------------------------------------------------------------------
 config
 ------------------------------------------------------------------------------
 CSSStyleDeclaration
@@ -314,7 +343,7 @@ NamedNodeMap
 ------------------------------------------------------------------------------
 NavigatorID                     x
 ------------------------------------------------------------------------------
-Node
+Node                            x
 ------------------------------------------------------------------------------
 NodeFilter
 ------------------------------------------------------------------------------
@@ -324,7 +353,7 @@ NodeList.es5                    n/a
 ------------------------------------------------------------------------------
 NodeList.es6                    x
 ------------------------------------------------------------------------------
-NodeList
+NodeList                        x
 ------------------------------------------------------------------------------
 NodeTraversal
 ------------------------------------------------------------------------------

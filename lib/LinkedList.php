@@ -40,7 +40,7 @@
  *      + Why is it not called prevSibling? I imagine it's due to the DOM spec
  */
 
-namespace DOM\LinkedList
+namespace domo\LinkedList
 
 
 /**
@@ -57,9 +57,9 @@ namespace DOM\LinkedList
  */
 function valid($a)
 {
-        \DOM\util\assertion($a, "list is falsy")
-        \DOM\util\assertion($a->_previousSibling, "previous is falsy")
-        \DOM\util\assertion($a->_nextSibling, "next is falsy")
+        domo\util\assertion($a, "list is falsy")
+        domo\util\assertion($a->_previousSibling, "previous is falsy")
+        domo\util\assertion($a->_nextSibling, "next is falsy")
         /* TODO: Check that list is actually circular */
         return true;
 }
@@ -76,7 +76,7 @@ function valid($a)
  */
 function insertBefore($a, $b)
 {
-        \DOM\util\assertion(valid($a) && valid($b));
+        domo\util\assertion(valid($a) && valid($b));
 
         $a_first = $a, $a_last = $a->_previousSibling;
         $b_first = $b, $b_last = $b->_previousSibling;
@@ -86,7 +86,7 @@ function insertBefore($a, $b)
         $b_last->_nextSibling = $a_first;
         $b_first->_previousSibling = $a_last;
 
-        \DOM\util\assertion(valid($a) && valid($b))
+        domo\util\assertion(valid($a) && valid($b))
 }
 
 /**
@@ -100,7 +100,7 @@ function insertBefore($a, $b)
  */
 function remove($a)
 {
-        \DOM\util\assertion(valid($a));
+        domo\util\assertion(valid($a));
         $prev = $a->_previousSibling;
 
         if ($prev === $a) {

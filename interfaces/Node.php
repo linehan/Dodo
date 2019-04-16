@@ -16,9 +16,28 @@
  *      Node.rooted             => Node->rooted()
  *      Node.outerHTML          => Node->outerHTML()
  *      Node.doc                => Node->doc()
+ *      Node.previousSibling    => Node->previousSibling()
+ *      Node.nextSibling        => Node->nextSibling()
  *
  *      TODO: The array splicing that happens needs to be cleaned up
  *      TODO: The "private" methods can be made private and static in PHP
+ *
+ *      Merged ContainerNode with Node to better match spec
+ *      Moved _ensureChildNodes() into childNode() as a memoization branch
+ *      and re-write do-while loop as for loop to match other traversals.
+ *
+ * NOT CHANGED:
+ *      Node.parentNode         => Node->parentNode
+ *      this one is kept as an attribute. Is this wise?
+ *
+ * TODO
+ *      Find a way to signal that methods and properties are part of
+ *      our extension, and not the DOM. E.g. removeChildren(), doc(),
+ *      and so on.
+ *
+ *      Perhaps name them x_removeChildren(), or have them be in some
+ *      kind of sub-object, like $node->domo->removeChildren() or something.
+ *
  *****************************************************************************/
 //use domo\EventTarget
 use domo\LinkedList
@@ -28,6 +47,7 @@ use domo\utils
 require_once("EventTarget.php");
 require_once("LinkedList.php");
 require_once("NodeUtils.php");
+require_once("NodeList.php");
 require_once("utils.php");
 
 /*
@@ -47,86 +67,6 @@ require_once("utils.php");
  * The name "node" refers to the fact that these are the objects which
  * participate in the document tree (as nodes, in the graph theoretic sense).
  */
-interface NodeInterface {
-
-        /*********************************************************************
-         * DOM PROPERTIES
-         *********************************************************************/
-
-        //public $baseURI;      // TODO: not implemented
-        //public $childNodes;   // TODO: not implemented (list stuff?)
-        public $firstChild;
-        //public $isConnected;  // TODO: not implemented
-        public $lastChild;
-        public $nextSibling;
-        public $nodeName;
-        public $nodeType;
-        public $nodeValue;
-        public $ownerDocument;
-        //public $parentNode;   // TODO: not implemented?
-        public $parentElement;
-        public $previousSibling
-        public $textContent;
-        //public $namespaceURI; // TODO: Obsolete in DOM spec
-        //public $localName;    // TODO: Obsolete in DOM spec
-
-        /*********************************************************************
-         * DOM METHODS
-         *********************************************************************/
-
-        public function appendChild(Node $node);
-        public function cloneNode(boolean $deep);
-        public function compareDocumentPosition(Node $node);
-        public function contains(Node $node);
-        // public function getRootNode(); /* TODO: Not implemented */
-        public function hasChildNodes();
-        public function insertBefore();
-        public function isDefaultNamespace($namespace);
-        public function isEqualNode(Node $node);
-        public function isSameNode(Node $node);
-        public function lookupPrefix($namespace);
-        public function lookupNamespaceURI($prefix);
-        public function normalize();
-        public function removeChild(Node $node);
-        public function replaceChild(Node $node);
-
-        /*********************************************************************
-         * DOMINO METHODS (extensions, not part of the DOM)
-         *********************************************************************/
-
-        public function index();
-        public function isAncestor(Node $node);
-        public function ensureSameDoc(Node $node);
-        public function removeChildren();
-        public function lastModTime();
-        public function modify();
-        public function doc();
-        public function rooted();
-        public function serialize();
-        public function outerHTML();
-}
-
-
-const ELEMENT_NODE = 1;
-const ATTRIBUTE_NODE = 2;
-const TEXT_NODE = 3;
-const CDATA_SECTION_NODE = 4;
-const ENTITY_REFERENCE_NODE = 5;
-const ENTITY_NODE = 6;
-const PROCESSING_INSTRUCTION_NODE = 7;
-const COMMENT_NODE = 8;
-const DOCUMENT_NODE = 9;
-const DOCUMENT_TYPE_NODE = 10;
-const DOCUMENT_FRAGMENT_NODE = 11;
-const NOTATION_NODE = 12;
-
-const DOCUMENT_POSITION_DISCONNECTED = 0x01;
-const DOCUMENT_POSITION_PRECEDING = 0x02;
-const DOCUMENT_POSITION_FOLLOWING = 0x04;
-const DOCUMENT_POSITION_CONTAINS = 0x08;
-const DOCUMENT_POSITION_CONTAINED_BY = 0x10;
-const DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC = 0x20;
-
 
 /*
  * All Nodes have a nodeType and an ownerDocument.
@@ -138,10 +78,49 @@ const DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC = 0x20;
  */
 abstract class Node /* extends EventTarget // try factoring events out? */ {
 
-        /*
-           Abstract functions that need to be implemented
-           by the child classes
+        /**
+         * Node types
+         * ``````````
+         * Integers enumerating the various specialized node types
          */
+        const ELEMENT_NODE = 1;
+        const ATTRIBUTE_NODE = 2;
+        const TEXT_NODE = 3;
+        const CDATA_SECTION_NODE = 4;
+        const ENTITY_REFERENCE_NODE = 5;
+        const ENTITY_NODE = 6;
+        const PROCESSING_INSTRUCTION_NODE = 7;
+        const COMMENT_NODE = 8;
+        const DOCUMENT_NODE = 9;
+        const DOCUMENT_TYPE_NODE = 10;
+        const DOCUMENT_FRAGMENT_NODE = 11;
+        const NOTATION_NODE = 12;
+
+        /**
+         * DOCUMENT_POSITION_*
+         * ```````````````````
+         * Bitmasks indicating position of a node x relative to a node y.
+         * Returned from x->compareDocumentPosition(y)
+         */
+
+        /* x and y are not part of the same tree */
+        const DOCUMENT_POSITION_DISCONNECTED = 1;
+        /* y precedes x */
+        const DOCUMENT_POSITION_PRECEDING = 2;
+        /* y follows x */
+        const DOCUMENT_POSITION_FOLLOWING = 4;
+        /* y is an ancestor of x */
+        const DOCUMENT_POSITION_CONTAINS = 8;
+        /* y is a descendant of x */
+        const DOCUMENT_POSITION_CONTAINED_BY = 16;
+        /* whatever you need it to be */
+        const DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC = 32;
+
+        /*
+         * Abstract functions that need to be implemented
+         * by the child classes
+         */
+
         abstract public function textContent(string $value=NULL);       /* Should override for DocumentFragment/Element/Attr/Text/ProcessingInstruction/Comment */
         abstract public function hasChildNodes();                       /* Should override for ContainerNode or non-leaf node? */
         abstract public function firstChild();                          /* Should override for ContainerNode or non-leaf node? */
@@ -149,107 +128,298 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
         abstract public function clone();                               /* Called by cloneNode() */
         abstract public function isEqual();                             /* Called by isEqualNode() */
 
+        /**
+         * NOTE: NODE REFERENCES
+         * ---------------------
+         * Because parentNode, nextSibling, and previousSibling are
+         * read-only attributes in the spec, we implement them as
+         * getter methods in PHP, with the actual node references
+         * stored in protected properties _parentNode, _nextSibling,
+         * and _previousSibling, respectively.
+         *
+         * Nodes implement a circular linked list of siblings using
+         * nextSibling() and previousSibling(), so with only a ref.
+         * to one child (e.g. firstChild), we can traverse all the
+         * children by calling these methods on each in turn.
+         *
+         * The list is circular to ensure all child nodes can be
+         * visited regardless of what node we start from.
+         *
+         * TODO PORT NOTE: We are not actually ensuring this.
+         * nextSibling() and previousSibling() assume that you begin
+         * from firstChild if you want a traversal.
+         *
+         * TODO PORT NOTE: Also, these cannot be protected, they
+         * must be public, because LinkedList accesses them.
+         */
+
+        /* Parent node (NULL if no parent) */
+        public $_parentNode;
+        /* Index in childNodes (NULL if no parent) */
+        public $_index
+        /* Next sibling in childNodes ($this if none) */
+        public $_nextSibling;
+        /* Prev sibling in childNodes ($this if none) */
+        public $_previousSibling;
+        /* First child Node (NULL if no children) */
+        public $_firstChild;
+        /* Child nodes array (NULL if no children) */
+        public $_childNodes;
+
         public function __construct()
         {
-                /*
-                 * TODO PORT NOTE: When a node is inserted into the tree,
-                 * it will get a parentNode.
-                 */
-                /*
-                 * To be honest, this should be called _parentElement,
-                 * or something else in line with the other properties.
-                 * There is a parentElement() method, and this is confusing.
-                 */
-                $this->parentNode = NULL;
-
-                /*
-                 * TODO PORT NOTE: These references implement the circular
-                 * linked list that comprises one way to access the childNodes
-                 * array.
-                 */
+                $this->_parentNode = NULL;
+                $this->_index = NULL;
                 $this->_nextSibling = $this;
                 $this->_previousSibling = $this;
-                $this->_index = NULL;
+                $this->_firstChild = NULL;
+                $this->_childNodes = NULL;
         }
 
         public function baseURI()
         {
                 /*
-                 * TODO: the baseURI attribute is defined by DOM Core, but
-                 * a correct implementation of it requires HTML features,
-                 * so we'll come back to this later.
+                 * TODO
+                 * This is not implemented by Domino, so it is not
+                 * implemented in this port.
+                 *
+                 * Apparently, implementing it correctly requires
+                 * HTML features, so the domino developers held off.
                  */
-                /* No-op */
         }
 
-        public function parentElement()
+        /**
+         * parentNode()
+         * ````````````
+         * Get a node's parent Node, if it has one.
+         * Returns: Parent Node, or NULL
+         */
+        public function parentNode()
         {
-                if ($this->parentNode != NULL && $this->parentNode->nodeType === ELEMENT_NODE) {
-                        return $this->parentNode;
+                if ($this->_parentNode) {
+                        return $this->_parentNode;
                 }
                 return NULL;
         }
 
         /**
-         * Return the node immediately preceeding $this, in its parent's
-         * childNodes list, or NULL if $this is the first node in that list.
+         * parentElement()
+         * ```````````````
+         * Get a node's parent Element, if it has one.
+         * Return: Parent Element node, or NULL
+         */
+        public function parentElement()
+        {
+                $p = $this->parentNode();
+
+                if ($p != NULL && $p->nodeType === ELEMENT_NODE) {
+                        return $p;
+                }
+
+                return NULL;
+        }
+
+        /**
+         * previousSibling()
+         * `````````````````
+         * Get node preceding this one in parentNode's childNodes list
+         * Return: Node, or NULL if no previous sibling exists
          */
         public function previousSibling()
         {
-                /*
-                 * If there is no parentNode, then we have no siblings.
-                 */
-                if (!$this->parentNode) {
+                $p = $this->parentNode();
+
+                if ($p === NULL || $this === $p->firstChild()) {
                         return NULL;
                 }
 
-                /*
-                 * If this node is the first node in the childNode list of
-                 * its parent, then return null.
-                 */
-                if ($this === $this->parentNode->firstChild) {
-                        return NULL;
-                }
-
-                /*
-                 * Otherwise give them the previous sibling node.
-                 */
                 return $this->_previousSibling;
         }
 
+        /**
+         * nextSibling()
+         * `````````````
+         * Get node succeeding this one in parentNode's childNodes list
+         * Return: Node, or NULL if no succeeding sibling exists
+         */
         public function nextSibling()
         {
-                /*
-                 * If there is no parentNode, then we have no siblings.
-                 */
-                if (!$this->parentNode) {
-                        return NULL;
-                }
+                $p = $this->parentNode();
 
-                /*
-                 * If the next node would be the first node in the childNode
-                 * list of its parent, then return null.
-                 */
-                if ($this->_nextSibling === $this->parentNode->firstChild) {
+                if ($p === NULL || $this->_nextSibling === $p->firstChild()) {
                         return NULL;
                 }
 
                 return $this->_nextSibling;
         }
 
-        /* @type is one of the node-type consts above
-         * returns an integer
+        /* TODO PORT NOTE: The first time this accessor is used, it will
+         * switch the node into the array-like access branch by generating
+         * the _childNodes NodeList and removing the _firstChild property.
+         *
+         * This is all internal however, since it will just switch e.g.
+         * firstChild(), lastChild(), and hasChildNodes() to fetch
+         * elements from the NodeList rather than references to the
+         * the properties _firstChild.
+         *
+         * It has performance implications though, so it's good to be
+         * aware of it and how it is working
          */
-        /* TODO: Called exclusively within _ensureInsertValid */
-        public function _countChildrenOfType(int $type) : int
+        public function childNodes()
         {
-                $sum = 0;
-                for ($kid=$this->firstChild; $kid!==NULL; $kid=$kid->nextSibling) {
-                        if ($kid->nodeType === $type) {
-                                $sum++;
+                /* Memoized fast path */
+                if ($this->_childNodes !== NULL) {
+                        return $this->_childNodes;
+                }
+
+                /* Build child nodes array by traversing the linked list */
+                $childNodes = new NodeList();
+
+                for ($n=$this->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
+                        $childNodes[] = $n;
+                }
+
+                /*
+                 * SIDE EFFECT:
+                 * Switch from circular linked list branch to array-like
+                 * branch.
+                 *
+                 * (Which branch we are on is detected by looking for which
+                 * of these two members is NULL, see methods below.)
+                 */
+                $this->_childNodes = $childNodes;
+                $this->_firstChild = NULL;
+
+                return $this->_childNodes;
+        }
+
+        public function hasChildNodes()
+        {
+                /* BRANCH: NodeList (array-like) */
+                if ($this->_childNodes !== NULL) {
+                        return !empty($this->_childNodes);
+                }
+                /* BRANCH: circular linked list */
+                return $this->_firstChild !== NULL;
+        }
+
+
+        public function firstChild()
+        {
+                /* BRANCH: NodeList (array-like) */
+                if ($this->_childNodes !== NULL) {
+                        if (!empty($this->_childNodes)) {
+                                return $this->_childNodes[0];
+                        } else {
+                                return NULL;
                         }
                 }
-                return $sum;
+
+                /* BRANCH: circular linked list */
+                return $this->_firstChild;
+        }
+
+        public function lastChild()
+        {
+                /* BRANCH: NodeList (array-like) */
+                if ($this->_childNodes !== NULL) {
+                        if (!empty($this->_childNodes)) {
+                                return end($this->childNodes);
+                        } else {
+                                return NULL;
+                        }
+                }
+
+                /* BRANCH: circular linked list */
+                if ($this->_firstChild === NULL) {
+                        return NULL;
+                } else {
+                        return $this->_firstChild->_previousSibling;
+                }
+        }
+
+        public function removeChild(ChildNode $node)
+        {
+                if (!$node->nodeType) {
+                        throw new TypeError("not a node");
+                }
+                if ($node->parentNode() !== $this) {
+                        utils\NotFoundError();
+                }
+                $node->remove();
+
+                return $node;
+        }
+
+
+        public function insertBefore($node, $child)
+        {
+                $parent = $this;
+
+                /* 1. Ensure pre-insertion validity */
+                $parent->_ensureInsertValid($node, $child, true);
+                /* 2. Let reference child be child. */
+                $refChild = $child;
+                /* 3. If reference child is node, set it to node's next sibling */
+                if ($refChild === $node) {
+                        $refChild = $node->nextSibling();
+                }
+                /* 4. Adopt node into parent's node document. */
+                $parent->doc()->adoptNode($node);
+                /* 5. Insert node into parent before reference child. */
+                $node->_insertOrReplace($parent, $refChild, false);
+                /* 6. Return node */
+                return $node;
+        }
+
+        public function appendChild($child)
+        {
+                /* This invokes _appendChild after doing validity checks. */
+                /* PORT NOTE TODO: It does no such thing */
+                return $this->insertBefore($child, NULL);
+        }
+
+        protected function _appendChild($child)
+        {
+                $child->_insertOrReplace($this, NULL, false);
+        }
+
+        /* To replace a `child` with `node` within a `parent` (this) */
+        public function replaceChild($node, $child)
+        {
+                $parent = $this;
+                /* Ensure validity (slight differences from pre-insertion check) */
+                $parent->_ensureInsertValid($node, $child, false);
+                /* Adopt node into parent's node document. */
+                if ($node->doc() !== $parent->doc()) {
+                        /*
+                         * XXX adoptNode has side-effect of removing node from
+                         * its parent and generating a mutation event, thus
+                         * causing the _insertOrReplace to generate two deletes
+                         * and an insert instead of a 'move' event.  It looks
+                         * like the new MutationObserver stuff avoids this
+                         * problem, but for now let's only adopt (ie, remove
+                         * `node` from its parent) here if we need to.
+                         */
+                        $parent->doc()->adoptNode($node);
+                }
+                /* Do the replace. */
+                $node->_insertOrReplace($parent, $child, true);
+                return $child;
+        }
+
+        /* TODO: Called exclusively within _ensureInsertValid */
+        protected function _countChildrenOfType(int $type) : int
+        {
+                $count = 0;
+
+                for ($n=$this->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
+                        if ($n->nodeType === $type) {
+                                $count++;
+                        }
+                }
+
+                return $count;
         }
 
         /*
@@ -260,7 +430,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
          * Will throw an exception if an invalid condition is detected,
          * otherwise will do nothing.
          */
-        public function _ensureInsertValid($node, $child, boolean $isPreinsert)
+        protected function _ensureInsertValid($node, $child, boolean $isPreinsert)
         {
                 /* TODO PORT: What */
                 /* $parent = $this; */
@@ -297,7 +467,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
                  * null' and throws a TypeError here if child is null.)
                  */
                 if ($child !== NULL || !$isPreinsert) {
-                        if ($child->parentNode !== $this) {
+                        if ($child->parentNode() !== $this) {
                                 utils\NotFoundError();
                         }
                 }
@@ -362,7 +532,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
                                                 if ($isPreinsert && $child->nodeType === DOCUMENT_TYPE_NODE) {
                                                         utils\HierarchyRequestError();
                                                 }
-                                                for ($kid=$child->nextSibling; $kid !== NULL; $kid = $kid->nextSibling) {
+                                                for ($kid=$child->nextSibling(); $kid !== NULL; $kid = $kid->nextSibling()) {
                                                         if ($kid->nodeType === DOCUMENT_TYPE_NODE) {
                                                                 utils\HierarchyRequestError();
                                                         }
@@ -405,7 +575,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
                                         if ($isPreinsert && $child->nodeType === DOCUMENT_TYPE_NODE) {
                                                 utils\HierarchyRequestError();
                                         }
-                                        for ($kid = $child->nextSibling; $kid !== NULL; $kid = $kid->nextSibling) {
+                                        for ($kid = $child->nextSibling(); $kid !== NULL; $kid = $kid->nextSibling()) {
                                                 if ($kid->nodeType === DOCUMENT_TYPE_NODE) {
                                                         utils\HierarchyRequestError();
                                                 }
@@ -443,7 +613,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
                                         }
                                 } else {
                                         /* child is always non-null for [replaceWith] case */
-                                        for ($kid = $this->firstChild; $kid !== NULL; $kid = $kid->nextSibling) {
+                                        for ($kid = $this->firstChild(); $kid !== NULL; $kid = $kid->nextSibling()) {
                                                 if ($kid === $child) {
                                                         break;
                                                 }
@@ -479,78 +649,6 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
                  * If you made it here without throwing any exceptions,
                  * then you're valid!
                  */
-        }
-
-        public function insertBefore($node, $child)
-        {
-                $parent = $this;
-
-                /* 1. Ensure pre-insertion validity */
-                $parent->_ensureInsertValid($node, $child, true);
-                /* 2. Let reference child be child. */
-                $refChild = $child;
-                /* 3. If reference child is node, set it to node's next sibling */
-                if ($refChild === $node) {
-                        $refChild = $node->nextSibling;
-                }
-                /* 4. Adopt node into parent's node document. */
-                $parent->doc()->adoptNode($node);
-                /* 5. Insert node into parent before reference child. */
-                $node->_insertOrReplace($parent, $refChild, false);
-                /* 6. Return node */
-                return $node;
-        }
-
-        public function appendChild($child)
-        {
-                /* This invokes _appendChild after doing validity checks. */
-                /* PORT NOTE TODO: It does no such thing */
-                return $this->insertBefore($child, NULL);
-        }
-
-        public function _appendChild($child)
-        {
-                $child->_insertOrReplace($this, NULL, false);
-        }
-
-        public function removeChild($child)
-        {
-                $parent = $this;
-
-                /* TODO: PORT: That's it huh? */
-                if (!$child->nodeType) {
-                        throw new TypeError("not a node");
-                }
-                if ($child->parentNode !== $parent) {
-                        utils\NotFoundError();
-                }
-                $child->remove();
-
-                return $child;
-        }
-
-        /* To replace a `child` with `node` within a `parent` (this) */
-        public function replaceChild($node, $child)
-        {
-                $parent = $this;
-                /* Ensure validity (slight differences from pre-insertion check) */
-                $parent->_ensureInsertValid($node, $child, false);
-                /* Adopt node into parent's node document. */
-                if ($node->doc() !== $parent->doc()) {
-                        /*
-                         * XXX adoptNode has side-effect of removing node from
-                         * its parent and generating a mutation event, thus
-                         * causing the _insertOrReplace to generate two deletes
-                         * and an insert instead of a 'move' event.  It looks
-                         * like the new MutationObserver stuff avoids this
-                         * problem, but for now let's only adopt (ie, remove
-                         * `node` from its parent) here if we need to.
-                         */
-                        $parent->doc()->adoptNode($node);
-                }
-                /* Do the replace. */
-                $node->_insertOrReplace($parent, $child, true);
-                return $child;
         }
 
         // See: http://ejohn.org/blog/comparing-document-position/
@@ -596,10 +694,10 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
                 $these = array();
                 $those = array();
 
-                for ($n = $this; $n !== NULL; $n = $n->parentNode) {
+                for ($n = $this; $n !== NULL; $n = $n->_parentNode) {
                         $these[] = $n;
                 }
-                for ($n = $that; $n !== NULL; $n = $n->parentNode) {
+                for ($n = $that; $n !== NULL; $n = $n->_parentNode) {
                         $those[] = $n;
                 }
 
@@ -666,9 +764,9 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
                 }
 
                 /* Now check children for number and equality */
-                for ($c1 = $this->firstChild, $c2 = $node->firstChild;
+                for ($c1 = $this->firstChild(), $c2 = $node->firstChild();
                 $c1 && $c2;
-                $c1 = $c1->nextSibling, $c2 = $c2->nextSibling) {
+                $c1 = $c1->nextSibling(), $c2 = $c2->nextSibling()) {
                         if (!$c1->isEqualNode($c2)) {
                                 return false;
                         }
@@ -689,7 +787,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
 
                 /* Handle the recursive case if necessary */
                 if ($deep) {
-                        for ($kid = $this->firstChild; $kid !== NULL; $kid = $kid->nextSibling) {
+                        for ($kid = $this->firstChild(); $kid !== NULL; $kid = $kid->nextSibling()) {
                                 $clone->_appendChild($kid->cloneNode(true));
                         }
                 }
@@ -723,8 +821,8 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
                         }
                         break;
                 default:
-                        if ($this->parentElement) {
-                                return $this->parentElement->lookupPrefix($ns);
+                        if ($this->parentElement()) {
+                                return $this->parentElement()->lookupPrefix($ns);
                         }
                         break;
                 }
@@ -757,8 +855,8 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
                         }
                        break;
                 default:
-                        if ($this->parentElement) {
-                                return $this->parentElement->lookupNamespaceURI($prefix);
+                        if ($this->parentElement()) {
+                                return $this->parentElement()->lookupNamespaceURI($prefix);
                         }
                         break;
                 }
@@ -785,7 +883,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
          */
         public function index()
         {
-                $parent = $this->parentNode;
+                $parent = $this->parentNode();
 
                 if ($this === $parent->firstChild) {
                         return 0; // fast case
@@ -829,7 +927,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
                 }
 
                 /* Otherwise check by traversing the parentNode chain */
-                for ($e = $that; $e; $e = $e->parentNode) {
+                for ($e = $that; $e; $e = $e->parentNode()) {
                         if ($e === $this) {
                                 return true;
                         }
@@ -856,7 +954,40 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
                 }
         }
 
-        abstract public function removeChildren();
+        /*
+         * Remove all of this node's children.
+         * This provides a minor optimization over iterative calls
+         * to removeChild(), since it calls modify() only once.
+         */
+        public function removeChildren()
+        {
+                if ($this->rooted()) {
+                        $root = $this->ownerDocument;
+                } else {
+                        $root = NULL;
+                }
+
+                /* Go through all the children and remove me as their parent */
+                for ($n=$this->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
+                        if ($root !== NULL) {
+                                /* If we're rooted, mutate */
+                                $root->mutateRemove($n);
+                        }
+                        $n->_parentNode = NULL;
+                }
+
+                /* Remove the child node memory or references on this node */
+                if ($this->_childNodes !== NULL) {
+                        /* BRANCH: NodeList (array-like) */
+                        $this->_childNodes = new NodeList();
+                } else {
+                        /* BRANCH: circular linked list */
+                        $this->_firstChild = NULL;
+                }
+
+                /* Update last modified type once only (minor optimization) */
+                $this->modify();
+        }
 
         /*
          * Insert this node as a child of parent before the specified child,
@@ -889,7 +1020,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
                          * If we are already a child of the specified parent,
                          * then the index may have to be adjusted.
                          */
-                        if ($child->parentNode === $parent) {
+                        if ($child->parentNode() === $parent) {
                                 $child_index = $child->index;
                                 /*
                                  * If the child is before the spot it is to be
@@ -907,7 +1038,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
                         if ($before->rooted()) {
                                 $before->doc()->mutateRemove($before);
                         }
-                        $before->parentNode = null;
+                        $before->_parentNode = null;
                 }
 
                 if ($before !== NULL) {
@@ -930,7 +1061,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
                         for ($kid = $child->firstChild; $kid !== NULL; $kid = $next) {
                                 $next = $kid->nextSibling;
                                 $spliceArgs[] = $kid;
-                                $kid->parentNode = $parent;
+                                $kid->_parentNode = $parent;
                         }
 
                         $len = count(spliceArgs);
@@ -1007,13 +1138,13 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
                                  */
                                 $child->_remove();
                         } else {
-                                if ($child->parentNode) {
+                                if ($child->_parentNode) {
                                         $child->remove();
                                 }
                         }
 
                         /* Insert it as a child of its new parent */
-                        $child->parentNode = $parent;
+                        $child->_parentNode = $parent;
 
                         if ($isReplace) {
                                 LinkedList\replace($n, $child);
@@ -1085,7 +1216,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
                 if ($this->doc()->modclock) {
                         $time = ++$this->doc()->modclock;
 
-                        for ($n = $this; $n; $n = $n->parentElement) {
+                        for ($n = $this; $n; $n = $n->parentElement()) {
                                 if ($n->_lastModTime) {
                                         $n->_lastModTime = $time;
                                 }

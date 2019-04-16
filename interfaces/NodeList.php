@@ -2,14 +2,14 @@
 
 class NodeList extends ArrayObject
 {
-        function __construct($input = NULL)
+        function __construct(array $input = NULL)
         {
-                parent::__construct($input);
+                parent::__construct(array $input);
         }
 
-        function item(i)
+        function item($i)
         {
-                return (self[i] || NULL);
+                return ($this[$i] || NULL);
         }
 }
 
