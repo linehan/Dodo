@@ -69,10 +69,10 @@ class DOMImplementation
                  * returns true for. It returns false for anything else.
                  */
                 static $supported = array(
-                        "xml" => array( "" => true, "1.0" => true, "2.0" => true ),  /* DOM Core [sic?] */
-                        "core" => array( "" => true, "2.0" => true ),                /* DOM Core */
-                        "html" => array( "" => true, "1.0" => true, "2.0" => true ), /* HTML */
-                        "xhtml" => array( "" => true, "1.0" => true, "2.0" => true ) /* HTML [sic?] */
+                        "xml"   => array( "" => true, "1.0" => true, "2.0" => true ),
+                        "core"  => array( "" => true, "2.0" => true ),
+                        "html"  => array( "" => true, "1.0" => true, "2.0" => true ),
+                        "xhtml" => array( "" => true, "1.0" => true, "2.0" => true )
                 );
 
                 if (!isset($supported[$feature])) {
@@ -103,6 +103,8 @@ class DOMImplementation
                  * to create an HTML document with this function, even if
                  * the namespace and doctype are properly set. See thread:
                  * http://lists.w3.org/Archives/Public/www-dom/2011AprJun/0132.html
+                 *
+                 * TODO PORT: Okay....so...
                  */
                 $d = new Document(false, null);
                 $e;
@@ -155,7 +157,8 @@ class DOMImplementation
 
                 $html->appendChild($d->createElement("body"));
 
-                $d->modclock = 1; // Start tracking modifications
+                /* Start tracking modifications */
+                $d->modclock = 1;
 
                 return $d;
         }

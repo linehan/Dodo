@@ -9,6 +9,16 @@
  *
  *
  * PORT NOTES
+ * CHANGED:
+ *      Attributes had to become functions because PHP does not
+ *      support getters and setters for property access.
+ *      Node.baseURI            => Node->baseURI()
+ *      Node.rooted             => Node->rooted()
+ *      Node.outerHTML          => Node->outerHTML()
+ *      Node.doc                => Node->doc()
+ *
+ *      TODO: The array splicing that happens needs to be cleaned up
+ *      TODO: The "private" methods can be made private and static in PHP
  *****************************************************************************/
 //use domo\EventTarget
 use domo\LinkedList
@@ -128,40 +138,48 @@ const DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC = 0x20;
  */
 abstract class Node /* extends EventTarget // try factoring events out? */ {
 
-        const ELEMENT_NODE = 1;
-        const ATTRIBUTE_NODE = 2;
-        const TEXT_NODE = 3;
-        const CDATA_SECTION_NODE = 4;
-        const ENTITY_REFERENCE_NODE = 5;
-        const ENTITY_NODE = 6;
-        const PROCESSING_INSTRUCTION_NODE = 7;
-        const COMMENT_NODE = 8;
-        const DOCUMENT_NODE = 9;
-        const DOCUMENT_TYPE_NODE = 10;
-        const DOCUMENT_FRAGMENT_NODE = 11;
-        const NOTATION_NODE = 12;
-
-        const DOCUMENT_POSITION_DISCONNECTED = 0x01;
-        const DOCUMENT_POSITION_PRECEDING = 0x02;
-        const DOCUMENT_POSITION_FOLLOWING = 0x04;
-        const DOCUMENT_POSITION_CONTAINS = 0x08;
-        const DOCUMENT_POSITION_CONTAINED_BY = 0x10;
-        const DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC = 0x20;
-
         /*
-         * TODO: the baseURI attribute is defined by DOM Core, but
-         * a correct implementation of it requires HTML features,
-         * so we'll come back to this later.
+           Abstract functions that need to be implemented
+           by the child classes
          */
-        public $baseURI = NULL;
+        abstract public function textContent(string $value=NULL);       /* Should override for DocumentFragment/Element/Attr/Text/ProcessingInstruction/Comment */
+        abstract public function hasChildNodes();                       /* Should override for ContainerNode or non-leaf node? */
+        abstract public function firstChild();                          /* Should override for ContainerNode or non-leaf node? */
+        abstract public function lastChild();                           /* Should override for ContainerNode or non-leaf node? */
+        abstract public function clone();                               /* Called by cloneNode() */
+        abstract public function isEqual();                             /* Called by isEqualNode() */
 
         public function __construct()
         {
-                /* NULL parent for Nodes that aren't inserted into the tree */
+                /*
+                 * TODO PORT NOTE: When a node is inserted into the tree,
+                 * it will get a parentNode.
+                 */
+                /*
+                 * To be honest, this should be called _parentElement,
+                 * or something else in line with the other properties.
+                 * There is a parentElement() method, and this is confusing.
+                 */
                 $this->parentNode = NULL;
-                $this->_nextSibling = $this->_previousSibling = $this;
-                $this->_index = NULL;
 
+                /*
+                 * TODO PORT NOTE: These references implement the circular
+                 * linked list that comprises one way to access the childNodes
+                 * array.
+                 */
+                $this->_nextSibling = $this;
+                $this->_previousSibling = $this;
+                $this->_index = NULL;
+        }
+
+        public function baseURI()
+        {
+                /*
+                 * TODO: the baseURI attribute is defined by DOM Core, but
+                 * a correct implementation of it requires HTML features,
+                 * so we'll come back to this later.
+                 */
+                /* No-op */
         }
 
         public function parentElement()
@@ -172,50 +190,57 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
                 return NULL;
         }
 
-        /* Should override for DocumentFragment/Element/Attr/Text/ProcessingInstruction/Comment */
-        abstract public function textContent(string $value=NULL);
-
-        /* Should override for ContainerNode or non-leaf node? */
-        abstract public function hasChildNodes();
-        abstract public function firstChild();
-        abstract public function lastChild();
-
-        /* Called by cloneNode() */
-        abstract public function clone();
-        /* Called by isEqualNode() */
-        abstract public function isEqual();
-
+        /**
+         * Return the node immediately preceeding $this, in its parent's
+         * childNodes list, or NULL if $this is the first node in that list.
+         */
         public function previousSibling()
         {
-                $parent = this.parentNode;
-                if (!$parent) {
+                /*
+                 * If there is no parentNode, then we have no siblings.
+                 */
+                if (!$this->parentNode) {
                         return NULL;
                 }
-                /* TODO PORT: Does this work in PHP w/ pass-by-ref etc. ? */
-                if ($this === $parent->firstChild) {
+
+                /*
+                 * If this node is the first node in the childNode list of
+                 * its parent, then return null.
+                 */
+                if ($this === $this->parentNode->firstChild) {
                         return NULL;
                 }
+
+                /*
+                 * Otherwise give them the previous sibling node.
+                 */
                 return $this->_previousSibling;
         }
 
         public function nextSibling()
         {
-                $parent = $this->parentNode;
-                $next = $this->_nextSibling;
+                /*
+                 * If there is no parentNode, then we have no siblings.
+                 */
+                if (!$this->parentNode) {
+                        return NULL;
+                }
 
-                if (!$parent) {
+                /*
+                 * If the next node would be the first node in the childNode
+                 * list of its parent, then return null.
+                 */
+                if ($this->_nextSibling === $this->parentNode->firstChild) {
                         return NULL;
                 }
-                if ($next === $parent->firstChild) {
-                        return NULL;
-                }
-                return $next;
+
+                return $this->_nextSibling;
         }
-
 
         /* @type is one of the node-type consts above
          * returns an integer
          */
+        /* TODO: Called exclusively within _ensureInsertValid */
         public function _countChildrenOfType(int $type) : int
         {
                 $sum = 0;
@@ -227,22 +252,29 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
                 return $sum;
         }
 
+        /*
+         * TODO PORT NOTE:
+         * A rather long and complicated set of cases to determine whether
+         * it is valid to insert a particular node at a particular location.
+         *
+         * Will throw an exception if an invalid condition is detected,
+         * otherwise will do nothing.
+         */
         public function _ensureInsertValid($node, $child, boolean $isPreinsert)
         {
-                $parent = $this;
-                $i;
-                $kid;
+                /* TODO PORT: What */
+                /* $parent = $this; */
 
-                /* TODO: PORT: That's it huh? */
                 if (!$node->nodeType) {
-                        throw new TypeError('not a node');
+                        /* TODO: PORT: That's it huh? */
+                        throw new TypeError("not a node");
                 }
 
                 /*
                  * 1. If parent is not a Document, DocumentFragment, or Element
-                 * node, throw a HierarchyRequestError.,
+                 * node, throw a HierarchyRequestError.
                  */
-                switch ($parent->nodeType) {
+                switch ($this->nodeType) {
                 case DOCUMENT_NODE:
                 case DOCUMENT_FRAGMENT_NODE:
                 case ELEMENT_NODE:
@@ -255,7 +287,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
                  * 2. If node is a host-including inclusive ancestor of parent,
                  * throw a HierarchyRequestError.
                  */
-                if ($node->isAncestor($parent)) {
+                if ($node->isAncestor($this)) {
                         utils\HierarchyRequestError();
                 }
 
@@ -265,7 +297,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
                  * null' and throws a TypeError here if child is null.)
                  */
                 if ($child !== NULL || !$isPreinsert) {
-                        if ($child->parentNode !== $parent) {
+                        if ($child->parentNode !== $this) {
                                 utils\NotFoundError();
                         }
                 }
@@ -295,7 +327,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
                  * below, switched on node, are true, throw a
                  * HierarchyRequestError.
                  */
-                if ($parent->nodeType === DOCUMENT_NODE) {
+                if ($this->nodeType === DOCUMENT_NODE) {
                         switch ($node->nodeType) {
                         case TEXT_NODE:
                                 utils\HierarchyRequestError();
@@ -336,7 +368,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
                                                         }
                                                 }
                                         }
-                                        $i = $parent->_countChildrenOfType(ELEMENT_NODE);
+                                        $i = $this->_countChildrenOfType(ELEMENT_NODE);
                                         if ($isPreinsert) {
                                                 // "parent has an element child"
                                                 if ($i > 0) {
@@ -379,7 +411,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
                                                 }
                                         }
                                 }
-                                $i = $parent->_countChildrenOfType(ELEMENT_NODE);
+                                $i = $this->_countChildrenOfType(ELEMENT_NODE);
                                 if ($isPreinsert) {
                                         /* "parent has an element child" */
                                         if ($i > 0) {
@@ -406,12 +438,12 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
                                  * [replaceWith]
                                  */
                                 if ($child === NULL) {
-                                        if ($parent->_countChildrenOfType(ELEMENT_NODE)) {
+                                        if ($this->_countChildrenOfType(ELEMENT_NODE)) {
                                                 utils\HierarchyRequestError();
                                         }
                                 } else {
                                         /* child is always non-null for [replaceWith] case */
-                                        for ($kid = $parent->firstChild; $kid !== NULL; $kid = $kid->nextSibling) {
+                                        for ($kid = $this->firstChild; $kid !== NULL; $kid = $kid->nextSibling) {
                                                 if ($kid === $child) {
                                                         break;
                                                 }
@@ -420,14 +452,14 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
                                                 }
                                         }
                                 }
-                                $i = $parent->_countChildrenOfType(DOCUMENT_TYPE_NODE);
+                                $i = $this->_countChildrenOfType(DOCUMENT_TYPE_NODE);
                                 if ($isPreinsert) {
-                                        // "parent has an doctype child"
+                                        /* "parent has an doctype child" */
                                         if ($i > 0) {
                                                 utils\HierarchyRequestError();
                                         }
                                 } else {
-                                        // "parent has an doctype child that is not child"
+                                        /* "parent has an doctype child that is not child" */
                                         if ($i > 1 || ($i === 1 && $child->nodeType !== DOCUMENT_TYPE_NODE)) {
                                                 utils\HierarchyRequestError();
                                         }
@@ -472,6 +504,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
         public function appendChild($child)
         {
                 /* This invokes _appendChild after doing validity checks. */
+                /* PORT NOTE TODO: It does no such thing */
                 return $this->insertBefore($child, NULL);
         }
 
@@ -543,7 +576,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
          * order of their descendant nodes.  Or, if one list is a prefix
          * of the other one, then that node contains the other.
          */
-        public function compareDocumentPosition($that)
+        public function compareDocumentPosition(Node $that)
         {
                 if ($this === $that) {
                         return 0;
@@ -672,6 +705,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
 
                 switch ($this->nodeType) {
                 case ELEMENT_NODE:
+                        /* TODO PORT : What the heck function is this? */
                         return $this->_lookupNamespacePrefix($ns, $this);
                 case DOCUMENT_NODE:
                         if ($this->documentElement) {

@@ -5,6 +5,8 @@ PORT CHANGES:
 * Window, Event, MouseEvent, UIEvent, and EventTarget should all be
   turned into stubs, or supported only in "interactive/browsing mode".
 
+* Do we need to support Events and MutationObserver stuff?
+
 
 
 CONVENTIONS:
