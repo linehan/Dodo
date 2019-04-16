@@ -363,547 +363,760 @@ class Document extends Node
         }
 
 
-  // Maintain the documentElement and
-  // doctype properties of the document.  Each of the following
-  // methods chains to the Node implementation of the method
-  // to do the actual inserting, removal or replacement.
+        /******************** BEGIN DECORATED FUNCTIONS *****************/
+        /*
+         * Maintain the documentElement and
+         * doctype properties of the document.  Each of the following
+         * methods chains to the Node implementation of the method
+         * to do the actual inserting, removal or replacement.
+         *
+         * TODO PORT: Is there some reason they aren't just inherited?
+         * Well, we're inheriting them now.
+         *
+         * Also, what in the *world* is this doing?
+         */
+        protected function _updateDocTypeElement()
+        {
+                $this->doctype = $this->documentElement = NULL;
 
-  _updateDocTypeElement: { value: function _updateDocTypeElement() {
-    this.doctype = this.documentElement = null;
-    for (var kid = this.firstChild; kid !== null; kid = kid.nextSibling) {
-      if (kid.nodeType === Node.DOCUMENT_TYPE_NODE)
-        this.doctype = kid;
-      else if (kid.nodeType === Node.ELEMENT_NODE)
-        this.documentElement = kid;
-    }
-  }},
+                for ($n=$this->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
+                        if ($n->nodeType === domo\util\DOCUMENT_TYPE_NODE) {
+                                $this->doctype = $n;
+                        } else if ($n->nodeType === domo\util\ELEMENT_NODE) {
+                                $this->documentElement = $n;
+                        }
+                }
+        }
 
-  insertBefore: { value: function insertBefore(child, refChild) {
-    Node.prototype.insertBefore.call(this, child, refChild);
-    this._updateDocTypeElement();
-    return child;
-  }},
+        /*
+         * TODO PORT: Note that this is a method defined on Node, and we
+         * want to extend it here... but we want to use the one on Node
+         * to extend it... so... how ?
+         */
+        public function insertBefore($child, $refChild)
+        {
+                /*
+                 * In PHP inheritance, you can call the method you're
+                 * overriding using parent::
+                 *
+                 * Here, parent is the Node class.
+                 */
+                parent::insertBefore($child, $refChild);
+                $this->_updateDocTypeElement();
+                return $child;
+        }
 
-  replaceChild: { value: function replaceChild(node, child) {
-    Node.prototype.replaceChild.call(this, node, child);
-    this._updateDocTypeElement();
-    return child;
-  }},
+        public function replaceChild($node, $child)
+        {
+                parent::replaceChild($node, $child);
+                $this->_updateDocTypeElement();
+                return $child;
+        }
 
-  removeChild: { value: function removeChild(child) {
-    Node.prototype.removeChild.call(this, child);
-    this._updateDocTypeElement();
-    return child;
-  }},
+        public function removeChild($child)
+        {
+                parent::removeChild($child);
+                $this->_updateDocTypeElement();
+                return $child;
+        }
 
-  getElementById: { value: function(id) {
-    var n = this.byId[id];
-    if (!n) return null;
-    if (n instanceof MultiId) { // there was more than one element with this id
-      return n.getFirst();
-    }
-    return n;
-  }},
+        /******************** END DECORATED FUNCTIONS *****************/
 
-  _hasMultipleElementsWithId: { value: function(id) {
-    // Used internally by querySelectorAll optimization
-    return (this.byId[id] instanceof MultiId);
-  }},
+        public function getElementById($id)
+        {
+                $n = $this->byId[$id];
 
-  // Just copy this method from the Element prototype
-  getElementsByName: { value: Element.prototype.getElementsByName },
-  getElementsByTagName: { value: Element.prototype.getElementsByTagName },
-  getElementsByTagNameNS: { value: Element.prototype.getElementsByTagNameNS },
-  getElementsByClassName: { value: Element.prototype.getElementsByClassName },
+                if (!$n) {
+                        return NULL;
+                }
 
-  adoptNode: { value: function adoptNode(node) {
-    if (node.nodeType === Node.DOCUMENT_NODE) utils.NotSupportedError();
-    if (node.nodeType === Node.ATTRIBUTE_NODE) { return node; }
+                if ($n instanceof MultiId) {
+                        // there was more than one element with this id
+                        return $n->getFirst();
+                }
+                return $n;
+        }
 
-    if (node.parentNode) node.parentNode.removeChild(node);
+        protected function _hasMultipleElementsWithId($id)
+        {
+                // Used internally by querySelectorAll optimization
+                return ($this->byId[$id] instanceof MultiId);
+        }
 
-    if (node.ownerDocument !== this)
-      recursivelySetOwner(node, this);
+        /* Just copy this method from the Element prototype */
+        /* TODO PHP: Not that easy to do mixins in PHP! */
+        /*
+        getElementsByName: { value: Element.prototype.getElementsByName },
+        getElementsByTagName: { value: Element.prototype.getElementsByTagName },
+        getElementsByTagNameNS: { value: Element.prototype.getElementsByTagNameNS },
+        getElementsByClassName: { value: Element.prototype.getElementsByClassName },
+        */
 
-    return node;
-  }},
+        public function adoptNode($node)
+        {
+                if ($node->nodeType === domo\Node\DOCUMENT_NODE) {
+                        domo\utils\NotSupportedError();
+                }
+                if ($node->nodeType === domo\Node\ATTRIBUTE_NODE) {
+                        return $node;
+                }
+                if ($node->parentNode()) {
+                        $node->parentNode()->removeChild($node);
+                }
+                if ($node->ownerDocument !== $this) {
+                        _recursively_set_owner($node, $this);
+                }
 
-  importNode: { value: function importNode(node, deep) {
-    return this.adoptNode(node.cloneNode(deep));
-  }, writable: isApiWritable },
+                return $node;
+        }
 
-  // The following attributes and methods are from the HTML spec
-  origin: { get: function origin() { return null; } },
-  characterSet: { get: function characterSet() { return "UTF-8"; } },
-  contentType: { get: function contentType() { return this._contentType; } },
-  URL: { get: function URL() { return this._address; } },
-  domain: { get: utils.nyi, set: utils.nyi },
-  referrer: { get: utils.nyi },
-  cookie: { get: utils.nyi, set: utils.nyi },
-  lastModified: { get: utils.nyi },
-  location: {
-	get: function() {
-	  return this.defaultView ? this.defaultView.location : null; // gh #75
-	},
-	set: utils.nyi
-  },
-  _titleElement: {
-    get: function() {
-      // The title element of a document is the first title element in the
-      // document in tree order, if there is one, or null otherwise.
-      return this.getElementsByTagName('title').item(0) || null;
-    }
-  },
-  title: {
-    get: function() {
-      var elt = this._titleElement;
-      // The child text content of the title element, or '' if null.
-      var value = elt ? elt.textContent : '';
-      // Strip and collapse whitespace in value
-      return value.replace(/[ \t\n\r\f]+/g, ' ').replace(/(^ )|( $)/g, '');
-    },
-    set: function(value) {
-      var elt = this._titleElement;
-      var head = this.head;
-      if (!elt && !head) { return; /* according to spec */ }
-      if (!elt) {
-        elt = this.createElement('title');
-        head.appendChild(elt);
-      }
-      elt.textContent = value;
-    }
-  },
-  dir: mirrorAttr(function() {
-    var htmlElement = this.documentElement;
-    if (htmlElement && htmlElement.tagName === 'HTML') { return htmlElement; }
-  }, 'dir', ''),
-  fgColor: mirrorAttr(function() { return this.body; }, 'text', ''),
-  linkColor: mirrorAttr(function() { return this.body; }, 'link', ''),
-  vlinkColor: mirrorAttr(function() { return this.body; }, 'vLink', ''),
-  alinkColor: mirrorAttr(function() { return this.body; }, 'aLink', ''),
-  bgColor: mirrorAttr(function() { return this.body; }, 'bgColor', ''),
+        public function importNode($node, $deep)
+        {
+                return $this->adoptNode($node->cloneNode($deep));
+        }
+        //}, writable: isApiWritable }, TODO PORT what is this
 
-  // Historical aliases of Document#characterSet
-  charset: { get: function() { return this.characterSet; } },
-  inputEncoding: { get: function() { return this.characterSet; } },
+        /****************************************************************
+         * The following attributes and methods are from the HTML spec
+         ****************************************************************/
 
-  scrollingElement: {
-    get: function() {
-      return this._quirks ? this.body : this.documentElement;
-    }
-  },
+        public function origin()
+        {
+                return NULL;
+        }
 
-  // Return the first <body> child of the document element.
-  // XXX For now, setting this attribute is not implemented.
-  body: {
-    get: function() {
-      return namedHTMLChild(this.documentElement, 'body');
-    },
-    set: utils.nyi
-  },
-  // Return the first <head> child of the document element.
-  head: { get: function() {
-    return namedHTMLChild(this.documentElement, 'head');
-  }},
-  images: { get: utils.nyi },
-  embeds: { get: utils.nyi },
-  plugins: { get: utils.nyi },
-  links: { get: utils.nyi },
-  forms: { get: utils.nyi },
-  scripts: { get: utils.nyi },
-  applets: { get: function() { return []; } },
-  activeElement: { get: function() { return null; } },
-  innerHTML: {
-    get: function() { return this.serialize(); },
-    set: utils.nyi
-  },
-  outerHTML: {
-    get: function() { return this.serialize(); },
-    set: utils.nyi
-  },
+        public function characterSet()
+        {
+                /* TODO PORT: This isn't a character set... bleh */
+                return "UTF-8";
+        }
 
-  write: { value: function(args) {
-    if (!this.isHTML) utils.InvalidStateError();
+        public function contentType()
+        {
+                return $this->_contentType;
+        }
 
-    // XXX: still have to implement the ignore part
-    if (!this._parser /* && this._ignore_destructive_writes > 0 */ )
-      return;
+        public function URL()
+        {
+                return $this->_address;
+        }
 
-    if (!this._parser) {
-      // XXX call document.open, etc.
-    }
+        public function domain($value = NULL)
+        {
+                domo\utils\nyi();
+        }
 
-    var s = arguments.join('');
+        public function referrer()
+        {
+                domo\utils\nyi();
+        }
 
-    // If the Document object's reload override flag is set, then
-    // append the string consisting of the concatenation of all the
-    // arguments to the method to the Document's reload override
-    // buffer.
-    // XXX: don't know what this is about.  Still have to do it
+        public function cookie()
+        {
+                domo\utils\nyi();
+        }
 
-    // If there is no pending parsing-blocking script, have the
-    // tokenizer process the characters that were inserted, one at a
-    // time, processing resulting tokens as they are emitted, and
-    // stopping when the tokenizer reaches the insertion point or when
-    // the processing of the tokenizer is aborted by the tree
-    // construction stage (this can happen if a script end tag token is
-    // emitted by the tokenizer).
+        public function lastModified()
+        {
+                \domo\utils\nyi();
+        }
 
-    // XXX: still have to do the above. Sounds as if we don't
-    // always call parse() here.  If we're blocked, then we just
-    // insert the text into the stream but don't parse it reentrantly...
+        public function location($value = NULL)
+        {
+                if ($value === NULL) {
+                        /* GET */
+                        if ($this->defaultView) {
+                                return $this->defaultView->location();
+                        } else {
+                                return NULL; // gh #75
+                        }
+                } else {
+                        /* SET */
+                        domo\utils\nyi();
+	}
 
-    // Invoke the parser reentrantly
-    this._parser.parse(s);
-  }},
+        public function _titleElement()
+        {
+                /*
+                 * The title element of a document is the first title
+                 * element in the document in tree order, if there is
+                 * one, or null otherwise.
+                 */
+                return $this->getElementsByTagName("title")->item(0) || null;
+        }
 
-  writeln: { value: function writeln(args) {
-    this.write(Array.prototype.join.call(arguments, '') + '\n');
-  }},
+        public function title($value = NULL)
+        {
+                if ($value === NULL) {
+                        /* GET */
+                        $elt = $this->_titleElement;
+                        /* The child text content of the title element, or '' if null. */
+                        $value = $elt ? $elt->textContent : "";
+                        // Strip and collapse whitespace in value
+                        return $value->replace(/[ \t\n\r\f]+/g, ' ')->replace(/(^ )|( $)/g, '');
+                } else {
+                        /* SET */
+                        $elt = $this->_titleElement;
+                        $head = $this->head;
+                        if (!$elt && !$head) {
+                                return; /* according to spec */
+                        }
+                        if (!$elt) {
+                                $elt = $this->createElement("title");
+                                $head->appendChild($elt);
+                        }
+                        $elt->textContent = $value;
+                }
+        }
 
-  open: { value: function() {
-    this.documentElement = null;
-  }},
+        /*
+         * MirrorAttr stuff
+         */
 
-  close: { value: function() {
-    this.readyState = 'interactive';
-    this._dispatchEvent(new Event('readystatechange'), true);
-    this._dispatchEvent(new Event('DOMContentLoaded'), true);
-    this.readyState = 'complete';
-    this._dispatchEvent(new Event('readystatechange'), true);
-    if (this.defaultView) {
-      this.defaultView._dispatchEvent(new Event('load'), true);
-    }
-  }},
+        dir: mirrorAttr(function() {
+                var htmlElement = this.documentElement;
+                if (htmlElement && htmlElement.tagName === 'HTML') { return htmlElement; }
+        }, 'dir', ''),
+        fgColor: mirrorAttr(function() { return this.body; }, 'text', ''),
+        linkColor: mirrorAttr(function() { return this.body; }, 'link', ''),
+        vlinkColor: mirrorAttr(function() { return this.body; }, 'vLink', ''),
+        alinkColor: mirrorAttr(function() { return this.body; }, 'aLink', ''),
+        bgColor: mirrorAttr(function() { return this.body; }, 'bgColor', ''),
 
-  // Utility methods
-  clone: { value: function clone() {
-    var d = new Document(this.isHTML, this._address);
-    d._quirks = this._quirks;
-    d._contentType = this._contentType;
-    return d;
-  }},
+        /*
+         * Historical aliases of Document#characterSet
+         */
+        //charset: { get: function() { return this.characterSet; } },
+        //inputEncoding: { get: function() { return this.characterSet; } },
 
-  // We need to adopt the nodes if we do a deep clone
-  cloneNode: { value: function cloneNode(deep) {
-    var clone = Node.prototype.cloneNode.call(this, false);
-    if (deep) {
-      for (var kid = this.firstChild; kid !== null; kid = kid.nextSibling) {
-        clone._appendChild(clone.importNode(kid, true));
-      }
-    }
-    clone._updateDocTypeElement();
-    return clone;
-  }},
+        public function scrollingElement()
+        {
+                return $this->_quirks ? $this->body : $this->documentElement;
+        }
 
-  isEqual: { value: function isEqual(n) {
-    // Any two documents are shallowly equal.
-    // Node.isEqualNode will also test the children
-    return true;
-  }},
+        // Return the first <body> child of the document element.
+        // XXX For now, setting this attribute is not implemented.
+        public function body($value = NULL)
+        {
+                if ($value === NULL) {
+                        /* GET */
+                        return namedHTMLChild($this->documentElement, "body");
+                } else {
+                        /* SET */
+                        domo\utils\nyi();
+                }
+        }
 
-  /* TODO: STUB MUTATION JUNK??? */
+        // Return the first <head> child of the document element.
+        public function head()
+        {
+                return namedHTMLChild($this->documentElement, "head");
+        }
 
-  // Implementation-specific function.  Called when a text, comment,
-  // or pi value changes.
-  mutateValue: { value: function(node) {
-    if (this.mutationHandler) {
-      this.mutationHandler({
-        type: MUTATE.VALUE,
-        target: node,
-        data: node.data
-      });
-    }
-  }},
+        public function images()
+        {
+                domo\utils\nyi();
+        }
+        public function embeds()
+        {
+                domo\utils\nyi();
+        }
+        public function plugins()
+        {
+                domo\utils\nyi();
+        }
+        public function links()
+        {
+                domo\utils\nyi();
+        }
+        public function forms()
+        {
+                domo\utils\nyi();
+        }
+        public function scripts()
+        {
+                domo\utils\nyi();
+        }
+        public function applets()
+        {
+                return array();
+        }
+        public function activeElement()
+        {
+                return NULL;
+        }
 
-  // Invoked when an attribute's value changes. Attr holds the new
-  // value.  oldval is the old value.  Attribute mutations can also
-  // involve changes to the prefix (and therefore the qualified name)
-  mutateAttr: { value: function(attr, oldval) {
-    // Manage id->element mapping for getElementsById()
-    // XXX: this special case id handling should not go here,
-    // but in the attribute declaration for the id attribute
-    /*
-    if (attr.localName === 'id' && attr.namespaceURI === null) {
-      if (oldval) delId(oldval, attr.ownerElement);
-      addId(attr.value, attr.ownerElement);
-    }
-    */
-    if (this.mutationHandler) {
-      this.mutationHandler({
-        type: MUTATE.ATTR,
-        target: attr.ownerElement,
-        attr: attr
-      });
-    }
-  }},
+        public function innerHTML($value = NULL)
+        {
+                if ($value === NULL) {
+                        /* GET */
+                        return $this->serialize();
+                } else {
+                        /* SET */
+                        domo\utils\nyi();
+                }
+        }
 
-  // Used by removeAttribute and removeAttributeNS for attributes.
-  mutateRemoveAttr: { value: function(attr) {
-/*
-* This is now handled in Attributes.js
-    // Manage id to element mapping
-    if (attr.localName === 'id' && attr.namespaceURI === null) {
-      this.delId(attr.value, attr.ownerElement);
-    }
-*/
-    if (this.mutationHandler) {
-      this.mutationHandler({
-        type: MUTATE.REMOVE_ATTR,
-        target: attr.ownerElement,
-        attr: attr
-      });
-    }
-  }},
+        /* TODO PORT: Note this is the same as innerHTML b/c we're Document */
+        public function outerHTML($value = NULL)
+        {
+                if ($value === NULL) {
+                        /* GET */
+                        return $this->serialize();
+                } else {
+                        /* SET */
+                        domo\utils\nyi();
+                }
+        }
 
-  // Called by Node.removeChild, etc. to remove a rooted element from
-  // the tree. Only needs to generate a single mutation event when a
-  // node is removed, but must recursively mark all descendants as not
-  // rooted.
-  mutateRemove: { value: function(node) {
-    // Send a single mutation event
-    if (this.mutationHandler) {
-      this.mutationHandler({
-        type: MUTATE.REMOVE,
-        target: node.parentNode,
-        node: node
-      });
-    }
+        public function write(/* DOMStrings */)
+        {
+                if (!$this->isHTML) {
+                        domo\utils\InvalidStateError();
+                }
 
-    // Mark this and all descendants as not rooted
-    recursivelyUproot(node);
-  }},
+                // XXX: still have to implement the ignore part
+                if (!$this->_parser /* && this._ignore_destructive_writes > 0 */ ) {
+                        return;
+                }
 
-  // Called when a new element becomes rooted.  It must recursively
-  // generate mutation events for each of the children, and mark them all
-  // as rooted.
-  mutateInsert: { value: function(node) {
-    // Mark node and its descendants as rooted
-    recursivelyRoot(node);
+                if (!$this->_parser) {
+                        // XXX call document.open, etc.
+                }
 
-    // Send a single mutation event
-    if (this.mutationHandler) {
-      this.mutationHandler({
-        type: MUTATE.INSERT,
-        target: node.parentNode,
-        node: node
-      });
-    }
-  }},
+                /* TODO: Double-check that this is */
+                $arguments = func_get_args();
+                $arguments = implode("", $arguments);
 
-  // Called when a rooted element is moved within the document
-  mutateMove: { value: function(node) {
-    if (this.mutationHandler) {
-      this.mutationHandler({
-        type: MUTATE.MOVE,
-        target: node
-      });
-    }
-  }},
+                /*
+                 * If the Document object's reload override flag is set,
+                 * then append the string consisting of the concatenation
+                 * of all the arguments to the method to the Document's
+                 * reload override buffer.
+                 * XXX: don't know what this is about.  Still have to do it
+                 *
+                 * If there is no pending parsing-blocking script, have the
+                 * tokenizer process the characters that were inserted, one
+                 * at a time, processing resulting tokens as they are emitted,
+                 * and stopping when the tokenizer reaches the insertion point
+                 * or when the processing of the tokenizer is aborted by the
+                 * tree construction stage (this can happen if a script end
+                 * tag token is emitted by the tokenizer).
+                 *
+                 * XXX: still have to do the above. Sounds as if we don't
+                 * always call parse() here.  If we're blocked, then we just
+                 * insert the text into the stream but don't parse it
+                 * reentrantly...
+                 */
 
+                /* Invoke the parser reentrantly */
+                $this->_parser->parse($arguments);
+        }
 
-  // Add a mapping from  id to n for n.ownerDocument
-  addId: { value: function addId(id, n) {
-    var val = this.byId[id];
-    if (!val) {
-      this.byId[id] = n;
-    }
-    else {
-      // TODO: Add a way to opt-out console warnings
-      //console.warn('Duplicate element id ' + id);
-      if (!(val instanceof MultiId)) {
-        val = new MultiId(val);
-        this.byId[id] = val;
-      }
-      val.add(n);
-    }
-  }},
+        public function writeln(/* DOMStrings */)
+        {
+                $arguments = func_get_args();
+                $arguments = implode("", $arguments);
 
-  // Delete the mapping from id to n for n.ownerDocument
-  delId: { value: function delId(id, n) {
-    var val = this.byId[id];
-    utils.assert(val);
+                $this->write($arguments . "\n");
+        }
 
-    if (val instanceof MultiId) {
-      val.del(n);
-      if (val.length === 1) { // convert back to a single node
-        this.byId[id] = val.downgrade();
-      }
-    }
-    else {
-      this.byId[id] = undefined;
-    }
-  }},
+        public function open()
+        {
+                /* TODO PORT: Eh? */
+                $this->documentElement = NULL;
+        }
 
-  _resolve: { value: function(href) {
-    //XXX: Cache the URL
-    return new URL(this._documentBaseURL).resolve(href);
-  }},
+        public function close()
+        {
+                $this->readyState = "interactive";
+                /* These are inherited through Node from EventTarget */
+                $this->_dispatchEvent(new Event("readystatechange"), true);
+                $this->_dispatchEvent(new Event("DOMContentLoaded"), true);
+                $this->readyState = "complete";
+                $this->_dispatchEvent(new Event("readystatechange"), true);
 
-  _documentBaseURL: { get: function() {
-    // XXX: This is not implemented correctly yet
-    var url = this._address;
-    if (url === 'about:blank') url = '/';
+                if ($this->defaultView) {
+                        $this->defaultView->_dispatchEvent(new Event("load"), true);
+                }
+        }
 
-    var base = this.querySelector('base[href]');
-    if (base) {
-      return new URL(url).resolve(base.getAttribute('href'));
-    }
-    return url;
+        /* Utility methods */
+        public function clone()
+        {
+                $d = new Document($this->isHTML, $this->_address);
+                $d->_quirks = $this->_quirks;
+                $d->_contentType = $this->_contentType;
+                return $d;
+        }
 
-    // The document base URL of a Document object is the
-    // absolute URL obtained by running these substeps:
+        /* We need to adopt the nodes if we do a deep clone */
+        public function cloneNode($deep)
+        {
+                $clone = parent::cloneNode(false);
 
-    //     Let fallback base url be the document's address.
+                if ($deep) {
+                        for ($n=$this->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
+                                $clone->_appendChild($clone->importNode($n, true));
+                        }
+                }
+                $clone->_updateDocTypeElement();
+                return $clone;
+        }
 
-    //     If fallback base url is about:blank, and the
-    //     Document's browsing context has a creator browsing
-    //     context, then let fallback base url be the document
-    //     base URL of the creator Document instead.
+        public function isEqual($n)
+        {
+                // Any two documents are shallowly equal.
+                // Node.isEqualNode will also test the children
+                return true;
+        }
 
-    //     If the Document is an iframe srcdoc document, then
-    //     let fallback base url be the document base URL of
-    //     the Document's browsing context's browsing context
-    //     container's Document instead.
+  //[> TODO: STUB MUTATION JUNK??? <]
 
-    //     If there is no base element that has an href
-    //     attribute, then the document base URL is fallback
-    //     base url; abort these steps. Otherwise, let url be
-    //     the value of the href attribute of the first such
-    //     element.
+  //// Implementation-specific function.  Called when a text, comment,
+  //// or pi value changes.
+  //mutateValue: { value: function(node) {
+    //if (this.mutationHandler) {
+      //this.mutationHandler({
+        //type: MUTATE.VALUE,
+        //target: node,
+        //data: node.data
+      //});
+    //}
+  //}},
 
-    //     Resolve url relative to fallback base url (thus,
-    //     the base href attribute isn't affected by xml:base
-    //     attributes).
+  //// Invoked when an attribute's value changes. Attr holds the new
+  //// value.  oldval is the old value.  Attribute mutations can also
+  //// involve changes to the prefix (and therefore the qualified name)
+  //mutateAttr: { value: function(attr, oldval) {
+    //// Manage id->element mapping for getElementsById()
+    //// XXX: this special case id handling should not go here,
+    //// but in the attribute declaration for the id attribute
+    //[>
+    //if (attr.localName === 'id' && attr.namespaceURI === null) {
+      //if (oldval) delId(oldval, attr.ownerElement);
+      //addId(attr.value, attr.ownerElement);
+    //}
+    //*/
+    //if (this.mutationHandler) {
+      //this.mutationHandler({
+        //type: MUTATE.ATTR,
+        //target: attr.ownerElement,
+        //attr: attr
+      //});
+    //}
+  //}},
 
-    //     The document base URL is the result of the previous
-    //     step if it was successful; otherwise it is fallback
-    //     base url.
-  }},
+  //// Used by removeAttribute and removeAttributeNS for attributes.
+  //mutateRemoveAttr: { value: function(attr) {
+//[>
+//* This is now handled in Attributes.js
+    //// Manage id to element mapping
+    //if (attr.localName === 'id' && attr.namespaceURI === null) {
+      //this.delId(attr.value, attr.ownerElement);
+    //}
+//*/
+    //if (this.mutationHandler) {
+      //this.mutationHandler({
+        //type: MUTATE.REMOVE_ATTR,
+        //target: attr.ownerElement,
+        //attr: attr
+      //});
+    //}
+  //}},
 
-  _templateDoc: { get: function() {
-    if (!this._templateDocCache) {
-      // "associated inert template document"
-      var newDoc = new Document(this.isHTML, this._address);
-      this._templateDocCache = newDoc._templateDocCache = newDoc;
-    }
-    return this._templateDocCache;
-  }},
+  //// Called by Node.removeChild, etc. to remove a rooted element from
+  //// the tree. Only needs to generate a single mutation event when a
+  //// node is removed, but must recursively mark all descendants as not
+  //// rooted.
+  //mutateRemove: { value: function(node) {
+    //// Send a single mutation event
+    //if (this.mutationHandler) {
+      //this.mutationHandler({
+        //type: MUTATE.REMOVE,
+        //target: node.parentNode,
+        //node: node
+      //});
+    //}
 
-  querySelector: { value: function(selector) {
-    return select(selector, this)[0];
-  }},
+    //// Mark this and all descendants as not rooted
+    //recursivelyUproot(node);
+  //}},
 
-  querySelectorAll: { value: function(selector) {
-    var nodes = select(selector, this);
-    return nodes.item ? nodes : new NodeList(nodes);
-  }}
+  //// Called when a new element becomes rooted.  It must recursively
+  //// generate mutation events for each of the children, and mark them all
+  //// as rooted.
+  //mutateInsert: { value: function(node) {
+    //// Mark node and its descendants as rooted
+    //recursivelyRoot(node);
 
-});
+    //// Send a single mutation event
+    //if (this.mutationHandler) {
+      //this.mutationHandler({
+        //type: MUTATE.INSERT,
+        //target: node.parentNode,
+        //node: node
+      //});
+    //}
+  //}},
 
+  //// Called when a rooted element is moved within the document
+  //mutateMove: { value: function(node) {
+    //if (this.mutationHandler) {
+      //this.mutationHandler({
+        //type: MUTATE.MOVE,
+        //target: node
+      //});
+    //}
+  //}},
 
-var eventHandlerTypes = [
-  'abort', 'canplay', 'canplaythrough', 'change', 'click', 'contextmenu',
-  'cuechange', 'dblclick', 'drag', 'dragend', 'dragenter', 'dragleave',
-  'dragover', 'dragstart', 'drop', 'durationchange', 'emptied', 'ended',
-  'input', 'invalid', 'keydown', 'keypress', 'keyup', 'loadeddata',
-  'loadedmetadata', 'loadstart', 'mousedown', 'mousemove', 'mouseout',
-  'mouseover', 'mouseup', 'mousewheel', 'pause', 'play', 'playing',
-  'progress', 'ratechange', 'readystatechange', 'reset', 'seeked',
-  'seeking', 'select', 'show', 'stalled', 'submit', 'suspend',
-  'timeupdate', 'volumechange', 'waiting',
+        // Add a mapping from  id to n for n.ownerDocument
+        public function addId($id, $n)
+        {
+                $val = $this->byId[$id];
+                if (!$val) {
+                        $this->byId[$id] = $n;
+                } else {
+                        // TODO: Add a way to opt-out console warnings
+                        //console.warn('Duplicate element id ' + id);
+                        if (!($val instanceof MultiId)) {
+                                $val = new MultiId($val);
+                                $this->byId[$id] = $val;
+                        }
+                        $val->add($n);
+                }
+        }
 
-  'blur', 'error', 'focus', 'load', 'scroll'
-];
+        // Delete the mapping from id to n for n.ownerDocument
+        public function delId($id, $n)
+        {
+                $val = $this->byId[$id];
+                domo\utils\assert($val);
 
-// Add event handler idl attribute getters and setters to Document
-eventHandlerTypes.forEach(function(type) {
-  // Define the event handler registration IDL attribute for this type
-  Object.defineProperty(Document.prototype, 'on' + type, {
-    get: function() {
-      return this._getEventHandler(type);
-    },
-    set: function(v) {
-      this._setEventHandler(type, v);
-    }
-  });
-});
+                if ($val instanceof MultiId) {
+                        $val->del($n);
+                        if (count($val) === 1) { // convert back to a single node
+                                $this->byId[$id] = $val->downgrade();
+                        }
+                } else {
+                        $this->byId[$id] = NULL;
+                }
+        }
 
-function namedHTMLChild(parent, name) {
-  if (parent && parent.isHTML) {
-    for (var kid = parent.firstChild; kid !== null; kid = kid.nextSibling) {
-      if (kid.nodeType === Node.ELEMENT_NODE &&
-        kid.localName === name &&
-        kid.namespaceURI === NAMESPACE.HTML) {
-        return kid;
-      }
-    }
-  }
-  return null;
+        public function _resolve($href)
+        {
+                //XXX: Cache the URL
+                return new URL($lthis->_documentBaseURL)->resolve($href);
+        }
+
+        public function _documentBaseURL()
+        {
+                // XXX: This is not implemented correctly yet
+                $url = $this->_address;
+                if ($url === "about:blank") {
+                        $url = "/";
+                }
+
+                $base = $this->querySelector("base[href]");
+
+                if ($base) {
+                        return new URL($url)->resolve($base->getAttribute("href"));
+                }
+                return $url;
+
+                /*
+                 * The document base URL of a Document object is the
+                 * absolute URL obtained by running these substeps:
+                 *
+                 * Let fallback base url be the document's address.
+                 *
+                 * If fallback base url is about:blank, and the
+                 * Document's browsing context has a creator browsing
+                 * context, then let fallback base url be the document
+                 * base URL of the creator Document instead.
+                 *
+                 * If the Document is an iframe srcdoc document, then
+                 * let fallback base url be the document base URL of
+                 * the Document's browsing context's browsing context
+                 * container's Document instead.
+                 *
+                 * If there is no base element that has an href
+                 * attribute, then the document base URL is fallback
+                 * base url; abort these steps. Otherwise, let url be
+                 * the value of the href attribute of the first such
+                 * element.
+                 *
+                 * Resolve url relative to fallback base url (thus,
+                 * the base href attribute isn't affected by xml:base
+                 * attributes).
+                 *
+                 * The document base URL is the result of the previous
+                 * step if it was successful; otherwise it is fallback
+                 * base url.
+                 */
+        }
+
+        public function _templateDoc()
+        {
+                if (!$this->_templateDocCache) {
+                        /* "associated inert template document" */
+                        $newDoc = new Document($this->isHTML, $this->_address);
+                        $this->_templateDocCache = $newDoc->_templateDocCache = $newDoc;
+                }
+                return $this->_templateDocCache;
+        }
+
+        public function querySelector($selector)
+        {
+                /* TODO: select() provided by some mechanism */
+                return select($selector, $this)[0];
+        }
+
+        public function querySelectorAll($selector)
+        {
+                $nodes = select($selector, $this);
+                if ($nodes->item) {
+                        return $nodes;
+                } else {
+                        return new NodeList($nodes);
+                }
+        }
 }
 
-function root(n) {
-  n._nid = n.ownerDocument._nextnid++;
-  n.ownerDocument._nodes[n._nid] = n;
-  // Manage id to element mapping
-  if (n.nodeType === Node.ELEMENT_NODE) {
-    var id = n.getAttribute('id');
-    if (id) n.ownerDocument.addId(id, n);
 
-    // Script elements need to know when they're inserted
-    // into the document
-    if (n._roothook) n._roothook();
-  }
+/* TODO: Event stuff */
+//$eventHandlerTypes = array(
+        //'abort', 'canplay', 'canplaythrough', 'change', 'click', 'contextmenu',
+        //'cuechange', 'dblclick', 'drag', 'dragend', 'dragenter', 'dragleave',
+        //'dragover', 'dragstart', 'drop', 'durationchange', 'emptied', 'ended',
+        //'input', 'invalid', 'keydown', 'keypress', 'keyup', 'loadeddata',
+        //'loadedmetadata', 'loadstart', 'mousedown', 'mousemove', 'mouseout',
+        //'mouseover', 'mouseup', 'mousewheel', 'pause', 'play', 'playing',
+        //'progress', 'ratechange', 'readystatechange', 'reset', 'seeked',
+        //'seeking', 'select', 'show', 'stalled', 'submit', 'suspend',
+        //'timeupdate', 'volumechange', 'waiting',
+        //'blur', 'error', 'focus', 'load', 'scroll'
+//);
+
+//// Add event handler idl attribute getters and setters to Document
+//eventHandlerTypes.forEach(function(type) {
+  //// Define the event handler registration IDL attribute for this type
+  //Object.defineProperty(Document.prototype, 'on' + type, {
+    //get: function() {
+      //return this._getEventHandler(type);
+    //},
+    //set: function(v) {
+      //this._setEventHandler(type, v);
+    //}
+  //});
+//});
+
+function namedHTMLChild($parent, $name)
+{
+        if ($parent && $parent->isHTML) {
+                for ($n=$parent->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
+                        if ($n->nodeType === domo\Node\ELEMENT_NODE
+                        && $n->localName === $name
+                        && $n->namespaceURI === domo\NAMESPACE_HTML) {
+                                return $n;
+                        }
+                }
+        }
+        return NULL;
 }
 
-function uproot(n) {
-  // Manage id to element mapping
-  if (n.nodeType === Node.ELEMENT_NODE) {
-    var id = n.getAttribute('id');
-    if (id) n.ownerDocument.delId(id, n);
-  }
-  n.ownerDocument._nodes[n._nid] = undefined;
-  n._nid = undefined;
+function root($n)
+{
+        $n->_nid = $n->ownerDocument->_nextnid++;
+
+        $n->ownerDocument->_nodes[$n->_nid] = $n;
+
+        /* Manage id to element mapping */
+        if ($n->nodeType === domo\Node\ELEMENT_NODE) {
+                $id = $n->getAttribute("id");
+                if ($id) {
+                        $n->ownerDocument->addId($id, $n);
+                }
+                /*
+                 * Script elements need to know when they're inserted
+                 * into the document
+                 */
+                if ($n->_roothook) {
+                        $n->_roothook();
+                }
+        }
 }
 
-function recursivelyRoot(node) {
-  root(node);
-  // XXX:
-  // accessing childNodes on a leaf node creates a new array the
-  // first time, so be careful to write this loop so that it
-  // doesn't do that. node is polymorphic, so maybe this is hard to
-  // optimize?  Try switching on nodeType?
-/*
-  if (node.hasChildNodes()) {
-    var kids = node.childNodes;
-    for(var i = 0, n = kids.length;  i < n; i++)
-      recursivelyRoot(kids[i]);
-  }
-*/
-  if (node.nodeType === Node.ELEMENT_NODE) {
-    for (var kid = node.firstChild; kid !== null; kid = kid.nextSibling)
-      recursivelyRoot(kid);
-  }
+function uproot($n)
+{
+        /* Manage id to element mapping */
+        if ($n->nodeType === domo\Node\ELEMENT_NODE) {
+                $id = $n->getAttribute("id");
+                if ($id) {
+                        $n->ownerDocument->delId($id, $n);
+                }
+
+                /* TODO Are we intending to unset this??? */
+                $n->ownerDocument->_nodes[$n->_nid] = undefined;
+                $n->_nid = undefined;
+        }
 }
 
-function recursivelyUproot(node) {
-  uproot(node);
-  for (var kid = node.firstChild; kid !== null; kid = kid.nextSibling)
-      recursivelyUproot(kid);
+function recursivelyRoot($node)
+{
+        root($node);
+
+        /* XXX:
+         * accessing childNodes on a leaf node creates a new array the
+         * first time, so be careful to write this loop so that it
+         * doesn't do that. node is polymorphic, so maybe this is hard to
+         * optimize?  Try switching on nodeType?
+         */
+        /*
+          if (node.hasChildNodes()) {
+            var kids = node.childNodes;
+            for(var i = 0, n = kids.length;  i < n; i++)
+              recursivelyRoot(kids[i]);
+          }
+        */
+        if ($node->nodeType === domo\Node\ELEMENT_NODE) {
+                for ($n=$node->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
+                        recursivelyRoot($n);
+                }
+        }
 }
 
-function recursivelySetOwner(node, owner) {
-  node.ownerDocument = owner;
-  node._lastModTime = undefined; // mod times are document-based
-  if (Object.prototype.hasOwnProperty.call(node, '_tagName')) {
-    node._tagName = undefined; // Element subclasses might need to change case
-  }
-  for (var kid = node.firstChild; kid !== null; kid = kid.nextSibling)
-    recursivelySetOwner(kid, owner);
+function recursivelyUproot($node)
+{
+        uproot($node);
+
+        for ($n=$node->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
+                recursivelyUproot($n);
+        }
 }
+
+function _recursively_set_owner($node, $owner)
+{
+        $node->ownerDocument = $owner;
+        /* TODO: How to handle this undefined thing? */
+        $node->_lastModTime = undefined; // mod times are document-based
+
+        /* TODO: Fix this!! */
+        if (Object.prototype.hasOwnProperty.call(node, "_tagName")) {
+                node._tagName = undefined; // Element subclasses might need to change case
+        }
+
+        for ($n=$n->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
+                _recursively_set_owner($kid, $owner);
+        }
+}
+
+/* TODO PORT: Do we need all this? Just to handle >1 node with same ID? */
+/* TODO PORT: Should these just extend ArrayObject I guess?? */
 
 // A class for storing multiple nodes with the same ID
-function MultiId(node) {
+function MultiId($node)
+{
   this.nodes = Object.create(null);
   this.nodes[node._nid] = node;
   this.length = 1;

@@ -16,6 +16,13 @@ POTENTIAL UPSTREAM BUGS:
 
         ---
 
+        write (Document.js)
+
+        we pass in 'args', but then run s = 'arguments'.join(''), which
+        I don't think is what we meant to do...
+
+
+
 
 
 
