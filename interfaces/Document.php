@@ -201,27 +201,27 @@ class Document extends Node
         }
 
 
-        // This method allows dom.js to communicate with a renderer
-        // that displays the document in some way
-        // XXX: I should probably move this to the window object
-        /* PORT TODO: should stub? */
-        protected function _setMutationHandler($handler)
-        {
-                $this->mutationHandler = $handler;
-        }
+        //// This method allows dom.js to communicate with a renderer
+        //// that displays the document in some way
+        //// XXX: I should probably move this to the window object
+        //[> PORT TODO: should stub? <]
+        //protected function _setMutationHandler($handler)
+        //{
+                //$this->mutationHandler = $handler;
+        //}
 
-        // This method allows dom.js to receive event notifications
-        // from the renderer.
-        // XXX: I should probably move this to the window object
-        /* PORT TODO: should stub? */
-        protected function _dispatchRendererEvent($targetNid, $type, $details)
-        {
-                $target = $this->_nodes[$targetNid];
-                if (!$target) {
-                        return;
-                }
-                $target->_dispatchEvent(new Event($type, $details), true);
-        }
+        //// This method allows dom.js to receive event notifications
+        //// from the renderer.
+        //// XXX: I should probably move this to the window object
+        //[> PORT TODO: should stub? <]
+        //protected function _dispatchRendererEvent($targetNid, $type, $details)
+        //{
+                //$target = $this->_nodes[$targetNid];
+                //if (!$target) {
+                        //return;
+                //}
+                //$target->_dispatchEvent(new Event($type, $details), true);
+        //}
 
         public $nodeName = "#document";
 
@@ -266,8 +266,8 @@ class Document extends Node
         public function createProcessingInstruction($target, $data)
         {
                 /* TODO PORT: Wait, is this a bug? Should it be !== -1, or === -1 ? */
-                if (!domo\xml\isValidName($target) || strpos($data, "?>") !== false) {
-                        utils.InvalidCharacterError();
+                if (!domo\xml\isValidName($target) || strpos($data, "?".">") !== false) {
+                        domo\utils\InvalidCharacterError();
                 }
                 return new ProcessingInstruction($this, $target, $data);
         }
@@ -360,6 +360,49 @@ class Document extends Node
                 } else {
                         return new Element($this, $localName, $namespace, $prefix);
                 }
+        }
+
+        /**
+         * cloneNode()
+         * ```````````
+         * Clone this Document, import nodes, and call _updateDocTypeElement
+         *
+         * @deep  : if true, clone entire subtree
+         * Returns: Clone of $this.
+         * Extends: Node::cloneNode()
+         * Part_Of: DOMO1
+         *
+         * NOTE:
+         * 1. What a tangled web we weave
+         * 2. With Document nodes, we need to take the additional step of
+         *    calling importNode() to bring copies of child nodes into this
+         *    document.
+         * 3. We also need to call _updateDocTypeElement()
+         */
+        public function cloneNode(boolean $deep = false)
+        {
+                /*
+                 * TODO PORT: Is this part of the standard?
+                 */
+
+                /* Make a shallow clone  */
+                $clone = parent::cloneNode(false);
+
+                /* TODO TODO TODO: _updateDocTypeElement and _appendChild */
+
+                if ($deep === false) {
+                        /* Return shallow clone */
+                        $clone->_updateDocTypeElement();
+                        return $clone;
+                }
+
+                /* Clone children too */
+                for ($n=$this->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
+                        $clone->_appendChild($clone->importNode($n, true));
+                }
+
+                $clone->_updateDocTypeElement();
+                return $clone;
         }
 
 
@@ -741,37 +784,47 @@ class Document extends Node
                 }
         }
 
-        /* Utility methods */
-        public function clone()
+        /*********** Utility methods extending normal DOM behavior ***********/
+
+        /**
+         * _subclass_cloneNodeShallow()
+         * ````````````````````````````
+         * Delegated method called by Node::cloneNode()
+         * Performs the shallow clone branch.
+         *
+         * Returns: new Document with same invocation as $this
+         * Part_Of: DOMO1
+         */
+        protected function _subclass_cloneNodeShallow()
         {
-                $d = new Document($this->isHTML, $this->_address);
-                $d->_quirks = $this->_quirks;
-                $d->_contentType = $this->_contentType;
-                return $d;
+                $shallow = new Document($this->isHTML, $this->_address);
+                $shallow->_quirks = $this->_quirks;
+                $shallow->_contentType = $this->_contentType;
+                return $shallow;
         }
 
-        /* We need to adopt the nodes if we do a deep clone */
-        public function cloneNode($deep)
+        /**
+         * _subclass_isEqualNode()
+         * ```````````````````````
+         * Delegated method called by Node::isEqualNode()
+         *
+         * @other: The other Document to compare
+         * Return: True
+         * PartOf: DOMO1
+         *
+         * NOTE:
+         * Any two Documents are shallowly equal, since equality
+         * is determined by their children; this will be tested by
+         * Node::isEqualNode(), so just return true.
+         */
+        protected function _subclass_isEqualNode(Document $other = NULL)
         {
-                $clone = parent::cloneNode(false);
-
-                if ($deep) {
-                        for ($n=$this->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
-                                $clone->_appendChild($clone->importNode($n, true));
-                        }
-                }
-                $clone->_updateDocTypeElement();
-                return $clone;
-        }
-
-        public function isEqual($n)
-        {
-                // Any two documents are shallowly equal.
-                // Node.isEqualNode will also test the children
                 return true;
         }
 
-  //[> TODO: STUB MUTATION JUNK??? <]
+
+
+        /* TODO: STUB MUTATION JUNK??? */
 
   //// Implementation-specific function.  Called when a text, comment,
   //// or pi value changes.

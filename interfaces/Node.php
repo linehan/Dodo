@@ -26,6 +26,11 @@
  *      Moved _ensureChildNodes() into childNode() as a memoization branch
  *      and re-write do-while loop as for loop to match other traversals.
  *
+ *      clone()                 => _subclass_cloneNode()
+ *      isEqual()               => _subclass_isEqualNode()
+ *      Changed the names of these delegated subclass things to be more
+ *      clear about their purpose and role.
+ *
  * NOT CHANGED:
  *      Node.parentNode         => Node->parentNode
  *      this one is kept as an attribute. Is this wise?
@@ -125,8 +130,11 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
         abstract public function hasChildNodes();                       /* Should override for ContainerNode or non-leaf node? */
         abstract public function firstChild();                          /* Should override for ContainerNode or non-leaf node? */
         abstract public function lastChild();                           /* Should override for ContainerNode or non-leaf node? */
-        abstract public function clone();                               /* Called by cloneNode() */
-        abstract public function isEqual();                             /* Called by isEqualNode() */
+
+        /* Delegated subclass method called by Node::isEqualNode() */
+        abstract protected function _subclass_isEqualNode();
+        /* Delegated subclass method called by Node::cloneNode() */
+        abstract protected function _subclass_cloneNodeShallow();
 
         /**
          * NOTE: NODE REFERENCES
@@ -743,35 +751,56 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
                 return $this === $node;
         }
 
-        /*
-         * This method implements the generic parts of node equality testing
-         * and defers to the (non-recursive) type-specific isEqual() method
-         * defined by subclasses
-         * TODO PORT: Is this a good idea?
+        /**
+         * isEqualNode()
+         * `````````````
+         * Determine whether this node and $other are equal
+         *
+         * @other: Node to compare to $this
+         * Return: true if equal, or else false
+         * PartOf: DOM4
+         *
+         * NOTE:
+         * Each subclass of Node has its own criteria for equality.
+         * Rather than extend   Node::isEqualNode(),  subclasses
+         * must implement   _subclass_isEqualNode(),  which is called
+         * from   Node::isEqualNode()  and handles all of the equality
+         * testing specific to the subclass.
+         *
+         * This allows the recursion and other fast checks to be
+         * handled here and written just once.
+         *
+         * Yes, we realize it's a bit weird.
          */
-        public function isEqualNode($node)
+        public function isEqualNode(Node $other = NULL)
         {
-                if (!$node) {
+                if ($other === NULL) {
+                        /* We're not equal to NULL */
                         return false;
                 }
-                if ($node->nodeType !== $this->nodeType) {
-                        return false;
-                }
-
-                /* Check type-specific properties for equality */
-                if (!$this->isEqual($node)) {
+                if ($other->nodeType !== $this->nodeType) {
+                        /* If we're not the same nodeType, we can stop */
                         return false;
                 }
 
-                /* Now check children for number and equality */
-                for ($c1 = $this->firstChild(), $c2 = $node->firstChild();
-                $c1 && $c2;
-                $c1 = $c1->nextSibling(), $c2 = $c2->nextSibling()) {
-                        if (!$c1->isEqualNode($c2)) {
+                if (!$this->_subclass_isEqualNode($other)) {
+                        /* Run subclass-specific equality comparison */
+                        return false;
+                }
+
+                /* Call this method on the children of both nodes */
+                for (
+                        $a=$this->firstChild(), $b=$other->firstChild();
+                        $a!==NULL && $b!==NULL;
+                        $a=$a->nextSibling(), $b=$b->nextSibling()
+                ) {
+                        if (!$a->isEqualNode($b)) {
                                 return false;
                         }
                 }
-                return $c1 === NULL && $c2 === NULL;
+
+                /* If we got through all of the children (why wouldn't we?) */
+                return $a === NULL && $b === NULL;
         }
 
 
@@ -780,15 +809,42 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
          * that each concrete subclass must implement
          * TODO PORT: Is this a good idea?
          */
-        public function cloneNode($deep)
+        /**
+         * cloneNode()
+         * ```````````
+         * Clone this Document (as a Node?)
+         *
+         * @deep  : if true, clone entire subtree
+         * Returns: Clone of $this.
+         * Part_Of: DOM4-LS
+         *
+         * NOTE:
+         * 1. If $deep is false, then no child nodes are cloned, including
+         *    any text the node contains (since these are Text nodes).
+         * 2. The duplicate returned by this method is not part of any
+         *    document until it is added using ::appendChild() or similar.
+         * 3. Initially (DOM4)   , $deep was optional with default of 'true'.
+         *    Currently (DOM4-LS), $deep is optional with default of 'false'.
+         * 4. Shallow cloning is delegated to   _subclass_cloneNodeShallow(),
+         *    which needs to be implemented by the subclass.
+         *    For a similar pattern, see Node::isEqualNode().
+         * 5. All "deep clones" are a shallow clone followed by recursion on
+         *    the tree structure, so this suffices to capture subclass-specific
+         *    behavior.
+         */
+        public function cloneNode(boolean $deep = false)
         {
-                // Clone this node
-                $clone = $this->clone();
+                /* Make a shallow clone using the delegated method */
+                $clone = $this->_subclass_cloneNodeShallow();
 
-                /* Handle the recursive case if necessary */
-                if ($deep) {
-                        for ($kid = $this->firstChild(); $kid !== NULL; $kid = $kid->nextSibling()) {
-                                $clone->_appendChild($kid->cloneNode(true));
+                /* If the shallow clone is all we wanted, we're done. */
+                if ($deep === false) {
+                        return $clone;
+                }
+
+                /* Otherwise, recurse on the children */
+                for ($n=$this->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
+                                $clone->_appendChild($n->cloneNode(true));
                         }
                 }
 
