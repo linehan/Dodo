@@ -9,7 +9,7 @@ class NodeList extends ArrayObject
 
         function item($i)
         {
-                return ($this[$i] || NULL);
+                return $this[$i] ?? NULL;
         }
 }
 

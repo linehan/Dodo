@@ -1,3 +1,90 @@
+IN FUTURE: USE THE PHP IMMUTABLE RFC IF IT IS ADOPTED!
+======================================================
+
+CONVENTIONS:
+------------
+* When referring to PHP class/DOM interface/tags in documents, with a
+  few exceptions (e.g. Attr <=> attribute), the class/interface and the
+  thing its represented have the same name.
+
+  Always use the capitalized version to refer to the class/interface,
+  and a lowercase one to refer to the "thing".
+
+        Element = class or interface
+        element = the "thing" that an Element is representing
+
+* All properties on the DOM interfaces are to be implemented using:
+        - a class method with the name of the DOM property
+        - a class property with the name of the DOM property prefixed with '_'
+
+        (read-only property)
+
+                class Node {
+                        private $_ownerDocument;
+                        public function ownerDocument()
+                        {
+                                return $this->_ownerDocument;
+                        }
+                }
+
+        (read-write property)
+
+                class Attr {
+                        private $_value;
+                        public function value(string $v = NULL)
+                        {
+                                if ($v === NULL) {
+                                        /* GET */
+                                        return $this->_value;
+                                } else {
+                                        /* SET */
+                                        $this->_value = $v;
+                                }
+                        }
+                }
+
+* [TODO: work on]
+  Conventions for functions not in the DOM interface:
+        - DOMO extensions mark with     _domo_*
+        - Helper functions mark with    _helper_*
+        - Delegate functions mark with  _subclass_*
+
+* If a method or property is not supported in the latest DOM4-LS spec,
+  remove it. This is a clean start.
+
+
+==============================================================================
+
+NOTES:
+
+Read-only/read-write and mutable/immutable
+
+These are not equivalent, though it seems at first they might be.
+
+        Immutable <=> read-only
+        Read-write => mutable
+
+But
+
+        mutable =/> read-write
+
+For example, on an Attr object, ownerElement is a read-only property,
+but it can still change if I associate the Attr node with another
+element.
+
+For another example, the name property of an attribute is read-only,
+but the prefix property is read-write, and since I can mutate the prefix
+property, I can mutate the name (which includes this prefix), thus
+making the name property mutable, even if it's read-only.
+
+Basically, there are properties where even if you can't update them
+directly, you can update something that is used to compute their value.
+
+Interesting!
+
+
+==============================================================================
+
 POTENTIAL UPSTREAM BUGS:
 ----------------------
         createProcessingInstruction (Document.js):
@@ -21,7 +108,12 @@ POTENTIAL UPSTREAM BUGS:
         we pass in 'args', but then run s = 'arguments'.join(''), which
         I don't think is what we meant to do...
 
+        ---
 
+        doctype (Document.js)
+
+        Why are we assigning a Document or Node to something that is
+        supposed to be a DocumentType ?
 
 
 
@@ -82,6 +174,9 @@ CONVENTIONS:
   DOM object (e.g. History and Console are always associated to a Window)
   will be defined alongside that class in the class's code page.
 
+* All read-only properties are implemented as getter methods, with the
+  actual value being stored in a property with _ prepended, e.g.
+        public function ownerDocument() { return $this->_ownerDocument; }
 
 ==============================================================================
 C. Scott's list of all domino top-level methods (those not called internally

@@ -174,6 +174,13 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
         /* Child nodes array (NULL if no children) */
         public $_childNodes;
 
+        /* DOM4-LS: Read only top-level Document object of the node */
+        public $_ownerDocument;
+
+        /* Other read-only properties */
+        public $_nodeName;
+        public $_nodeType;
+
         public function __construct()
         {
                 $this->_parentNode = NULL;
@@ -194,6 +201,24 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
                  * Apparently, implementing it correctly requires
                  * HTML features, so the domino developers held off.
                  */
+        }
+
+        public function nodeType()
+        {
+                return $this->_nodeType;
+        }
+
+        public function nodeName()
+        {
+                return $this->_nodeName;
+        }
+
+        public function ownerDocument()
+        {
+                if ($this->_ownerDocument) {
+                        return $this->_ownerDocument;
+                }
+                return NULL;
         }
 
         /**
