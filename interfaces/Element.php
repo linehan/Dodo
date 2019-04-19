@@ -39,19 +39,79 @@ TODO:
           can strap an arbitrary HTML parser into.
 */
 
+/* Used to verify valid XML attribute names */
 require_once("xmlnames");
+/* Used for NYI, some exceptions, and some NAMESPACE_* constants */
 require_once("utils");
+/*
+ * Used for defining IDL reflected attributes, and registering handlers
+ * to fire on mutation. Only used here for 'class' and 'id', although
+ * a full implementation would need to specify all of the unique behavior,
+ * defaults, enumerated values, etc. for <select> and other elements with
+ * semantic attributes. But we're not implementing HTML, we're implementing
+ * the DOM.
+ */
 require_once("attributes.php");
+/*
+ * TODO: Get rid of this?
+ * I think this is here for... the node-type constants? Should be inherited
+ * through NonDocumentTypeChildNode.
+ */
 require_once("Node.php");
+
+/*
+   getElementsByTagName and getElementsByClassName return NodeList
+   querySelectorAll does too, but that belongs on the ParentNode mixin
+   (not implemented here... yet)
+*/
 require_once("NodeList.php");
+/*
+   Why is this here? It's part of Node.php
+*/
 require_once("NodeUtils.php");
+
+/*
+   THIS IS NOT A DOM INTERFACE.
+   A similar thing is exposed in Dart (is that where this came from?)
+   This is sometimes the return value of getElementsBy*Name
+*/
 require_once("FilteredElementList.php");
+
+/*
+   Used sometimes, and other times util\exception or util\assert is
+   used. No clue why.
+   TODO: Unify
+*/
 require_once("DOMException.php");
+
+/*
+   Set of space-separated tokens, returned by Element.classList
+   (also HTMLLinkElement.relList, HTMLAnchorElement.relList,
+    and HTMLAreaElement.relList, but they are not here, are they?)
+*/
 require_once("DOMTokenList.php");
+
+/*
+   The [external] selector library used in querySelector[All] et al.
+*/
 require_once("select.php");
-require_once("ContainerNode.php");
-require_once("ChildNode.php");
+
+/*
+   REMOVED, since ContainerNode is now part of Node
+*/
+//require_once("ContainerNode.php");
+/*
+   REMOVED Since NonDocumentChildNode extends ChildNode, we don't need this
+*/
+//require_once("ChildNode.php");
+/*
+   We extend this class
+*/
 require_once("NonDocumentTypeChildNode.php");
+
+/*
+   The DOM collection of Attr elements, returned by Element.attributes
+*/
 require_once("NamedNodeMap.php");
 
 
