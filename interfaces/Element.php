@@ -32,6 +32,7 @@ CHANGED:
 REMOVED:
         - mutation of prefix in _setAttributeNS() since DOM4 eliminates
         - 'set' branch of Element::classList(), which is not in spec.
+        - AttributesArray object; baked it into NamedNodeMap
 
 TODO:
         - Calls to mozHTMLParser should be replaced by calls to either
@@ -57,45 +58,11 @@ require_once("attributes.php");
  * I think this is here for... the node-type constants? Should be inherited
  * through NonDocumentTypeChildNode.
  */
-require_once("Node.php");
-
-/*
-   getElementsByTagName and getElementsByClassName return NodeList
-   querySelectorAll does too, but that belongs on the ParentNode mixin
-   (not implemented here... yet)
-*/
-require_once("NodeList.php");
+//require_once("Node.php");
 /*
    Why is this here? It's part of Node.php
 */
-require_once("NodeUtils.php");
-
-/*
-   THIS IS NOT A DOM INTERFACE.
-   A similar thing is exposed in Dart (is that where this came from?)
-   This is sometimes the return value of getElementsBy*Name
-*/
-require_once("FilteredElementList.php");
-
-/*
-   Used sometimes, and other times util\exception or util\assert is
-   used. No clue why.
-   TODO: Unify
-*/
-require_once("DOMException.php");
-
-/*
-   Set of space-separated tokens, returned by Element.classList
-   (also HTMLLinkElement.relList, HTMLAnchorElement.relList,
-    and HTMLAreaElement.relList, but they are not here, are they?)
-*/
-require_once("DOMTokenList.php");
-
-/*
-   The [external] selector library used in querySelector[All] et al.
-*/
-require_once("select.php");
-
+//require_once("NodeUtils.php");
 /*
    REMOVED, since ContainerNode is now part of Node
 */
@@ -104,6 +71,31 @@ require_once("select.php");
    REMOVED Since NonDocumentChildNode extends ChildNode, we don't need this
 */
 //require_once("ChildNode.php");
+
+/*
+   getElementsByTagName and getElementsByClassName return NodeList
+   querySelectorAll does too, but that belongs on the ParentNode mixin
+   (not implemented here... yet)
+*/
+require_once("NodeList.php");
+/*
+   THIS IS NOT A DOM INTERFACE.
+   A similar thing is exposed in Dart (is that where this came from?)
+   This is sometimes the return value of getElementsBy*Name
+*/
+require_once("FilteredElementList.php");
+/*
+   Used sometimes, and other times util\exception or util\assert is
+   used. No clue why.
+   TODO: Unify
+*/
+require_once("DOMException.php");
+/*
+   Set of space-separated tokens, returned by Element.classList
+   (also HTMLLinkElement.relList, HTMLAnchorElement.relList,
+    and HTMLAreaElement.relList, but they are not here, are they?)
+*/
+require_once("DOMTokenList.php");
 /*
    We extend this class
 */
@@ -113,6 +105,11 @@ require_once("NonDocumentTypeChildNode.php");
    The DOM collection of Attr elements, returned by Element.attributes
 */
 require_once("NamedNodeMap.php");
+
+/*
+   The [external] selector library used in querySelector[All] et al.
+*/
+require_once("select.php");
 
 
 $uppercaseCache = array();
@@ -134,72 +131,14 @@ function recursiveGetText($node, $a)
         }
 }
 
-
-/*
- * The attributes property of an Element will be an instance of this class.
- * This class is really just a dummy, though. It only defines a length
- * property and an item() method. The AttrArrayProxy that
- * defines the public API just uses the Element object itself.
- */
-class AttributesArray extends NamedNodeMap
-{
-        public function __construct(?Element $element=NULL)
-        {
-                NamedNodeMap.call(this, elt);
-
-                for ($name in $elt->_attrsByQName) {
-                        $this[$name] = $elt->_attrsByQName[$name];
-                }
-
-                for ($i=0; $i<count($elt->_attrKeys); $i++) {
-                        $this[$i] = $elt->_attrsByLName[$elt->_attrKeys[$i]];
-                }
-        }
-
-        public function length()
-        {
-                return count($this->element->_attrKeys);
-        }
-
-        public function item($n)
-        {
-                /* jshint bitwise: false */
-                $n = $n >>> 0;
-                if ($n >= $this->length()) {
-                        return NULL;
-                }
-                return $this->element->_attrsByLName[$this->element->_attrKeys[$n]];
-                /* jshint bitwise: true */
-        }
-}
-
-//// We can't make direct array access work (without Proxies, node >=6)
-//// but we can make `Array.from(node.attributes)` and for-of loops work.
-//if (global.Symbol && global.Symbol.iterator) {
-    //AttributesArray.prototype[global.Symbol.iterator] = function() {
-        //var i=0, n=this.length, self=this;
-        //return {
-            //next: function() {
-                //if (i<n) return { value: self.item(i++) };
-                //return { done: true };
-            //}
-        //};
-    //};
-//}
-
-
-
-
 class Element extends NonDocumentTypeChildNode
 {
         // These properties maintain the set of attributes
-        private $_attrsByQName = array(); // The qname->Attr map
-        private $_attrsByLName = array(); // The ns|lname->Attr map
+        private $_attrsByQName = array(); // The qname->Attr map (can collide)
+        private $_attrsByLName = array(); // The ns|lname->Attr map (unique)
         private $_attrKeys = array();     // attr index -> ns|lname
 
-        // created when calling Element::attributes().
-        // Implemented by an AttributesArray
-        // private $_attributes;
+        public $attributes = NULL;
 
         public function __construct($document, $localName, $namespaceURI, $prefix)
         {
@@ -424,8 +363,9 @@ class Element extends NonDocumentTypeChildNode
         public function attributes()
         {
                 if (!$this->_attributes) {
-                        $this->_attributes = new AttributesArray($this);
+                        $this->_attributes = new NamedNodeMap($this);
                 }
+                /* TODO: Once we return, is this still live? */
                 return $this->_attributes;
         }
 
@@ -837,6 +777,8 @@ class Element extends NonDocumentTypeChildNode
                 $attr->value($value);
 
                 if ($this->_attributes) {
+                        // TODO: is this copying to keep live? or should we
+                        // only do this on the 'new' branch?
                         $this->_attributes[$qname] = $attr;
                 }
 
@@ -874,6 +816,24 @@ class Element extends NonDocumentTypeChildNode
          * TODO: setAttribute and setAttributeNS should be
          * factored into a single method with an option for $ns.
          */
+
+        //public function _my_unsafe_setAttribute(string $qname, $value)
+        //{
+                //$attr = $this->attributes->getNamedItem($qname);
+                //if ($attr === NULL) {
+                        //$attr = new Attr($this, $name, NULL, NULL);
+                //}
+                //$this->attributes->setNamedItem($attr);
+        //}
+
+        //public function _my_unsafe_setAttributeNS(?string $ns, string $qname, $value)
+        //{
+                //$attr = $this->attributes->getNamedItemNS($ns, $qname);
+                //if ($attr === NULL) {
+                        //$attr = new Attr($this, $lname, $prefix, $ns);
+                //}
+                //$this->attributes->setNamedItemNS($attr);
+        //}
 
 
         /* The version with no error checking used by the parser */
