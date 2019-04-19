@@ -882,9 +882,22 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
                         return NULL;
                 }
 
+                /*
+                 * TODO PORT:
+                 * All this function is really doing is calling itself
+                 * again in different contexts until it arrives at an
+                 * Element and is able to call _lookupNamespacePrefix,
+                 * specified on the Element class. Why that, though?
+                 */
+
                 switch ($this->nodeType) {
                 case ELEMENT_NODE:
-                        /* TODO PORT : What the heck function is this? */
+                        /* TODO PORT : What the heck function is this?
+                         * is this working like a subclass decorator?
+                         * seriously, why isn't this just extending
+                         * this one? An Element is a Node, after all.
+                         * Is it just for clarity?
+                         */
                         return $this->_lookupNamespacePrefix($ns, $this);
                 case DOCUMENT_NODE:
                         if ($this->documentElement) {
@@ -897,6 +910,10 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
                 case DOCUMENT_TYPE_NODE:
                         break;
                 case ATTRIBUTE_NODE:
+                        /* TODO PORT : Since Attr is no longer a Node,
+                           I suppose that means we will never ever call
+                           this code?
+                        */
                         if ($this->ownerElement) {
                                 return $this->ownerElement->lookupPrefix($ns);
                         }

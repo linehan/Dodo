@@ -32,6 +32,24 @@ REMOVED:
 */
 
 /*
+ * The fact that
+ *      Element::setAttributeNode()
+ *      Element::removeAttributeNode()
+ *      ...
+ *      exist, but property values like ownerDocument are treated
+ *      as read-only means that there needs to be some kind of
+ *      mechanism to update things, presents us a problem.
+ *
+ *      If Attr should be immutable (except value), then we should
+ *      create a new Attr with the same properties but NULL
+ *      ownerDocument when we remove, etc., and pass around the
+ *      new copy? That is what the w3c spec seems to imply, but
+ *      it is not explicit.
+ *
+ *      Should we bother? Is this spec? I don't know.
+ */
+
+/*
  * The Attr class represents a single attribute node.
  *
  * Element stores Attr objects in its internal storage arrays that cache
@@ -41,6 +59,7 @@ REMOVED:
  *       the Node class.
  * DOM4: This was abandoned.
  */
+
 class Attr
 {
         /* TODO: Re-order these arguments because you can make an Attr with
@@ -68,39 +87,6 @@ class Attr
                 $this->_ownerElement = $elt;
         }
 
-        /*
-         * The fact that
-         *      Element::setAttributeNode()
-         *      Element::removeAttributeNode()
-         *      ...
-         *      exist, but property values like ownerDocument are treated
-         *      as read-only means that there needs to be some kind of
-         *      mechanism to update things, presents us a problem.
-         *
-         *      If Attr should be immutable (except value), then we should
-         *      create a new Attr with the same properties but NULL
-         *      ownerDocument when we remove, etc., and pass around the
-         *      new copy? That is what the w3c spec seems to imply, but
-         *      it is not explicit.
-         *
-         *      Should we bother? Is this spec? I don't know.
-         */
-        //public function _internal_setOwnerElement(?Element $owner)
-        //{
-                /*
-                 * Register change handlers for attributes.
-                 * In practice this is used almost exclusively to track
-                 * updates to the 'id' attribute, to allow Document objects
-                 * to do their book-keeping with their internal id<->Node
-                 * lookup tables used by e.g. Document::getElementById()
-                 */
-                //if ($elt && $this->_prefix === NULL && $this->_namespaceURI === NULL) {
-                        //[> THIS IS USED ENTIRELY TO TRACK ID CHANGES, UGH <]
-                        //$this->onchange = $elt->_attributeChangeHandlers[$this->_localName];
-                //} else {
-                        //$this->onchange = NULL;
-                //}
-        //}
 
         public function ownerElement()
         {

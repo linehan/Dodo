@@ -115,7 +115,13 @@ POTENTIAL UPSTREAM BUGS:
         Why are we assigning a Document or Node to something that is
         supposed to be a DocumentType ?
 
+        ---
 
+        _setAttribute (Element.js)
+
+        Adding the attr to the ._attributes array happens regardless
+        of whether it's new or not. This is not the case for _setAttributeNS,
+        why?
 
 
 PORT CHANGES:
