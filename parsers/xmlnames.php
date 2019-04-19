@@ -1,5 +1,5 @@
 <?php
-namespace domo\util
+namespace domo\util;
 
 /******************************************************************************
  * In XML, valid names for Elements or Attributes are governed by a
@@ -43,19 +43,18 @@ namespace domo\util
  * Recall:
  *      \w matches any alphanumeric character A-Za-z0-9
  */
-const pattern_ascii_name = '/^[_:A-Za-z][-.:\w]+$/';
-const pattern_ascii_qname = '/^([_A-Za-z][-.\w]+|[_A-Za-z][-.\w]+:[_A-Za-z][-.\w]+)$/';
+define('pattern_ascii_name', '/^[_:A-Za-z][-.:\w]+$/');
+define('pattern_ascii_qname', '/^([_A-Za-z][-.\w]+|[_A-Za-z][-.\w]+:[_A-Za-z][-.\w]+)$/');
 
 /*
  * If the regular expressions above fail, try more complex ones that work
  * for any identifiers using codepoints from the Unicode BMP
  */
-const start = '_A-Za-z\\x{00C0}-\\x{00D6}\\x{00D8}-\\x{00F6}\\x{00F8}-\\x{02ff}\\x{0370}-\\x{037D}\\x{037F}-\\x{1FFF}\\x{200C}-\\x{200D}\\x{2070}-\\x{218F}\\x{2C00}-\\x{2FEF}\\x{3001}-\\x{D7FF}\\x{F900}-\\x{FDCF}\\x{FDF0}-\\x{FFFD}';
-const char  = '-._A-Za-z0-9\\x{00B7}\\x{00C0}-\\x{00D6}\\x{00D8}-\\x{00F6}\\x{00F8}-\\x{02ff}\\x{0300}-\\x{037D}\\x{037F}-\\x{1FFF}\\x{200C}\\x{200D}\\x{203f}\\x{2040}\\x{2070}-\\x{218F}\\x{2C00}-\\x{2FEF}\\x{3001}-\\x{D7FF}\\{F900}-\\x{FDCF}\\x{FDF0}-\\x{FFFD}';
+define('start', '_A-Za-z\\x{00C0}-\\x{00D6}\\x{00D8}-\\x{00F6}\\x{00F8}-\\x{02ff}\\x{0370}-\\x{037D}\\x{037F}-\\x{1FFF}\\x{200C}-\\x{200D}\\x{2070}-\\x{218F}\\x{2C00}-\\x{2FEF}\\x{3001}-\\x{D7FF}\\x{F900}-\\x{FDCF}\\x{FDF0}-\\x{FFFD}');
+define ('char', '-._A-Za-z0-9\\x{00B7}\\x{00C0}-\\x{00D6}\\x{00D8}-\\x{00F6}\\x{00F8}-\\x{02ff}\\x{0300}-\\x{037D}\\x{037F}-\\x{1FFF}\\x{200C}\\x{200D}\\x{203f}\\x{2040}\\x{2070}-\\x{218F}\\x{2C00}-\\x{2FEF}\\x{3001}-\\x{D7FF}\\{F900}-\\x{FDCF}\\x{FDF0}-\\x{FFFD}');
 
-
-const pattern_name = '^[' . start . ']' . '[:' . char . ']*$';
-const pattern_qname = '^([' . start . '][' . char . ']*|[' . start . '][' . char . ']*:[' . start . '][' . char . ']*)$';
+define('pattern_name',  '/^[' . start . ']' . '[:' . char . ']*$/');
+define('pattern_qname', '/^([' . start . '][' . char . ']*|[' . start . '][' . char . ']*:[' . start . '][' . char . ']*)$/');
 
 //$regex_qname = '^(' . $ncname . '|' . $ncname . ':' . $ncname . ')$';
 
@@ -71,17 +70,17 @@ const pattern_qname = '^([' . start . '][' . char . ']*|[' . start . '][' . char
  * are not allowed, it means that the high surrogate can only go up to
  * \uDB7f instead of \uDBFF.
  */
-const surrogates = '\\x{D800}-\\x{DB7F}\\x{DC00}-\\x{DFFF}';
+define('surrogates', '\\x{D800}-\\x{DB7F}\\x{DC00}-\\x{DFFF}');
 
-const pattern_has_surrogates =  '/[' . surrogates . ']/';
-const pattern_surrogate_chars = '/[' . surrogates . ']/g';
-const pattern_surrogate_pairs = '/[\\x{D800}-\\x{DB7F}][\\x{DC00}-\\x{DFFF}]/g';
+define('pattern_has_surrogates', '/[' . surrogates . ']/');
+define('pattern_surrogate_chars', '/[' . surrogates . ']/g');
+define('pattern_surrogate_pairs', '/[\\x{D800}-\\x{DB7F}][\\x{DC00}-\\x{DFFF}]/g');
 
-const surrogate_start = start . surrogates;
-const surrogate_char = char . surrogates;
+define('surrogate_start', start . surrogates);
+define('surrogate_char', char . surrogates);
 
-const pattern_surrogate_name = '^[' . surrogate_start . ']' . '[:' . surrogate_char . ']*$';
-const pattern_surrogate_qname = '^([' . surrogate_start . '][' . surrogate_char . ']*|[' . surrogate_start . '][' . surrogate_char . ']*:[' . surrogate_start . '][' . surrogate_char . ']*)$';
+define('pattern_surrogate_name', '/^[' . surrogate_start . ']' . '[:' . surrogate_char . ']*$/');
+define('pattern_surrogate_qname', '/^([' . surrogate_start . '][' . surrogate_char . ']*|[' . surrogate_start . '][' . surrogate_char . ']*:[' . surrogate_start . '][' . surrogate_char . ']*)$/');
 
 
 function isValidName($s)
