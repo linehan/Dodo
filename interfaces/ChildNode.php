@@ -146,17 +146,16 @@ abstract class ChildNode extends Node
          */
         protected function _remove()
         {
-                $parent = $this->parentNode;
-                if ($parent === NULL) {
+                if ($this->parentNode === NULL) {
                         return;
                 }
-                if ($parent->_childNodes) {
-                        array_splice($parent->_childNodes, $this->index(), 1);
-                } else if ($parent->_firstChild === $this) {
+                if ($this->parentNode->_childNodes) {
+                        array_splice($this->parentNode->_childNodes, $this->index(), 1);
+                } else if ($this->parentNode->_firstChild === $this) {
                         if ($this->_nextSibling === $this) {
-                                $parent->_firstChild = NULL;
+                                $this->parentNode->_firstChild = NULL;
                         } else {
-                                $parent->_firstChild = $this->_nextSibling;
+                                $this->parentNode->_firstChild = $this->_nextSibling;
                         }
                 }
 

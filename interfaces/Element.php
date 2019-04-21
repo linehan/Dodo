@@ -4,6 +4,21 @@
  * ````````````
  * Defines an "Element"
  ******************************************************************************/
+/******************************************************************************
+ *
+ * Where a specification is implemented, the following annotations appear.
+ *
+ * DOM-1     W3C DOM Level 1 		     http://w3.org/TR/DOM-Level-1/
+ * DOM-2     W3C DOM Level 2 Core	     http://w3.org/TR/DOM-Level-2-Core/
+ * DOM-3     W3C DOM Level 3 Core	     http://w3.org/TR/DOM-Level-3-Core/
+ * DOM-4     W3C DOM Level 4 		     http://w3.org/TR/dom/
+ * DOM-LS    WHATWG DOM Living Standard      http://dom.spec.whatwg.org/
+ * DOM-PS-WD W3C DOM Parsing & Serialization http://w3.org/TR/DOM-Parsing/
+ * WEBIDL-1  W3C WebIDL Level 1	             http://w3.org/TR/WebIDL-1/
+ * XML-NS    W3C XML Namespaces		     http://w3.org/TR/xml-names/
+ *
+ ******************************************************************************/
+
 /*
 PORT NOTES
 ----------
@@ -33,6 +48,10 @@ REMOVED:
         - mutation of prefix in _setAttributeNS() since DOM4 eliminates
         - 'set' branch of Element::classList(), which is not in spec.
         - AttributesArray object; baked it into NamedNodeMap
+	_ _insertAdjacent was the wrong way to factor insertAdjacentElement
+	  and insertAdjacentText -- the better way puts that functionality
+	  into insertAdjacentElement, and lets insertAdjacentText call
+	  insertAdjacentElement after it's created a text node.
 
 TODO:
         - Calls to mozHTMLParser should be replaced by calls to either
@@ -133,77 +152,51 @@ function recursiveGetText($node, $a)
 
 class Element extends NonDocumentTypeChildNode
 {
-        // These properties maintain the set of attributes
-        private $_attrsByQName = array(); // The qname->Attr map (can collide)
-        private $_attrsByLName = array(); // The ns|lname->Attr map (unique)
-        private $_attrKeys = array();     // attr index -> ns|lname
-
         public $attributes = NULL;
+
+        public $nodeType = ELEMENT_NODE;
+        public $ownerDocument = NULL;
+        public $localName = NULL;
+        public $namespaceURI = NULL;
+        public $prefix = NULL;
+        public $tagName = NULL;
+        public $nodeName = NULL;
+        public $nodeValue = NULL;
 
         public function __construct($document, $localName, $namespaceURI, $prefix)
         {
                 /* Calls NonDocumentTypeChildNode and so on */
                 parent::__construct();
 
-                $this->_nodeType = Node\ELEMENT_NODE;
-                $this->_ownerDocument = $document;
-                $this->_localName = $localName;
-                $this->_namespaceURI = $namespaceURI;
-                $this->_prefix = $prefix;
-                $this->_tagName = NULL;
+                $this->ownerDocument = $document;
+                $this->localName     = $localName;
+                $this->namespaceURI  = $namespaceURI;
+                $this->prefix        = $prefix;
 
+                /* Set tag name */
+                $tagname = ($prefix === NULL) ? $localName : "$prefix:$localName";
+                if ($this->isHTMLElement()) {
+                        if (!isset($uppercaseCache[$tagname])) {
+                                $tagname = $uppercaseCache[$tagname] = utils\toASCIIUpperCase($tagname);
+                        } else {
+                                $tagname = $uppercaseCache[$tagname];
+                        }
+                }
+                $this->tagName = $tagname;
+                $this->nodeName = $tagname; /* per spec */
+                $this->nodeValue = NULL;    /* TODO spec or stub? */
+
+                $this->attributes = new NamedNodeMap($this);
         }
 
-        /* DOMO Convenience function to test if HTMLElement */
-        /* See Document->isHTMLDocument() */
         public function isHTMLElement()
         {
-                if ($this->namespaceURI() === NAMESPACE_HTML && $this->ownerDocument()->isHTMLDocument()) {
+                /* DOMO Convenience function to test if HTMLElement */
+                /* (See Document->isHTMLDocument()) */
+                if ($this->namespaceURI === NAMESPACE_HTML && $this->ownerDocument->isHTMLDocument()) {
                         return true;
                 }
                 return false;
-        }
-
-        public function tagName()
-        {
-                if ($this->_tagName === NULL) {
-                        if ($this->_prefix === NULL) {
-                                $tn = $this->localName();
-                        } else {
-                                $tn = $this->_prefix . ':' . $this->localName();
-                        }
-                        if ($this->isHTMLElement()) {
-                                $up = $uppercaseCache[$tn];
-                                if (!$up) {
-                                        /*
-                                         * Converting to uppercase can be slow,
-                                         * so cache the conversion.
-                                         */
-                                        $uppercaseCache[$tn] = $up = utils\toASCIIUpperCase($tn);
-                                }
-                                $tn = $up;
-                        }
-                        $this->_tagName = $tn;
-                }
-                return $this->_tagName;
-        }
-
-        public function nodeName()
-        {
-                /* Per spec */
-                return $this->tagName();
-        }
-
-        /* TODO: What is this ? */
-        public function nodeValue($value = NULL)
-        {
-                if ($value === NULL) {
-                        /* GET */
-                        return NULL;
-                } else {
-                        /* SET */
-                        return NULL;
-                }
         }
 
         public function textContent(string $newtext = NULL)
@@ -259,7 +252,7 @@ class Element extends NonDocumentTypeChildNode
                                 return;
                         }
                         if ($parent->nodeType() === Node\DOCUMENT_NODE) {
-                                utils\NoModificationAllowedError();
+                                error("NoModificationAllowedError");
                         }
                         if ($parent->nodeType() === Node\DOCUMENT_FRAGMENT_NODE) {
                                 $parent = $parent->ownerDocument()->createElement("body");
@@ -274,44 +267,43 @@ class Element extends NonDocumentTypeChildNode
                 }
         }
 
-        protected function _insertAdjacent($position, $node)
+        /* DOM-LS: Historical method */
+        public function insertAdjacentElement(string $where, Element $element): ?Element
         {
-                $first = false;
-
-                switch ($position) {
+                /*
+                 * PORT: Don't bother with toASCIILowerCase since the values
+                 * are all enumerated as; just do strtolower and if it
+                 * corrupts then it ends up in the default case.
+                 */
+                switch (strtolower($where)) {
                 case "beforebegin":
-                        $first = true;
-                        /* falls through */
-                case "afterend":
-                        $parent = $this->parentNode();
-                        if ($parent === NULL) {
+                        if (NULL === ($parent = $this->parentNode()) {
                                 return NULL;
-                        }
-                        return $parent->insertBefore($node, $first ? $this : $this->nextSibling());
+                        } else {
+                        	return $parent->insertBefore($element, $this);
+			}
+                case "afterend":
+                        if (NULL === ($parent = $this->parentNode())) {
+                                return NULL;
+                        } else {
+                        	return $parent->insertBefore($element, $this->nextSibling());
+			}
                 case "afterbegin":
-                        $first = true;
-                        /* falls through */
+                        return $this->insertBefore($element, $this->firstChild);
                 case 'beforeend':
-                        return $this->insertBefore($node, $first ? $this->firstChild : NULL);
+                        return $this->insertBefore($element, NULL);
                 default:
-                        return utils\SyntaxError();
+                        error("SyntaxError");
+			return NULL;
                 }
         }
 
-        public function insertAdjacentElement($position, $element)
+        /* DOM-LS: Historical method */
+        public function insertAdjacentText(string $where, string $data): void
         {
-                if ($element->nodeType() !== Node\ELEMENT_NODE) {
-                        throw new TypeError('not an element');
-                }
-                $position = utils\toASCIILowerCase(strval($position));
-                return $this->_insertAdjacent($position, $element);
-        }
-
-        public function insertAdjacentText($position, $data)
-        {
-                $textNode = $this->ownerDocument()->createTextNode($data);
-                $position = utils\toASCIILowerCase(strval($position));
-                $this->_insertAdjacent($position, $textNode);
+		/* TODO: Don't we have to check for an ownerDocument? */
+		$textNode = $this->ownerDocument->createTextNode($data);
+		$this->insertAdjacentElement($where, $textNode);
 
                 /*
                  * "This method returns nothing because it existed before we
@@ -319,37 +311,45 @@ class Element extends NonDocumentTypeChildNode
                  */
         }
 
-        public function insertAdjacentHTML($position, $text)
+        /* [DOM-PS-WD] A new extension in draft phase. */
+        public function insertAdjacentHTML(string $where, string $text): void
         {
-                $position = utils\toASCIILowerCase(strval($position));
                 $text = strval($text);
 
-                switch ($position) {
+                switch (strtolower($where)) {
                 case "beforebegin":
                 case "afterend":
-                        $context = $this->parentNode();
-                        if ($context === NULL || $context->nodeType() === Node\DOCUMENT_NODE) {
-                                utils\NoModificationAllowedError();
+                        $ctx = $this->parentNode();
+                        if ($ctx === NULL || $ctx->nodeType === DOCUMENT_NODE) {
+                                error("NoModificationAllowedError");
+				return;
                         }
                         break;
                 case "afterbegin":
                 case "beforeend":
-                        $context = $this;
+                        $ctx = $this;
                         break;
                 default:
-                        utils\SyntaxError();
+                        error("SyntaxError");
+			return;
                 }
 
-                if ((!($context instanceof Element)) || ($context->ownerDocument()->isHTMLDocument() && $context->localName() === "html" && $context->namespaceURI() === NAMESPACE_HTML) ) {
-                        $context = $context->ownerDocument()->createElementNS(NAMESPACE_HTML, "body");
+                if (
+			(!($ctx instanceof Element))
+			||
+			($ctx->ownerDocument->isHTMLDocument() && $ctx->localName === 'html' && $ctx->namespaceURI === NAMESPACE_HTML)
+		) {
+                        $ctx = $ctx->ownerDocument->createElementNS(NAMESPACE_HTML, 'body');
                 }
 
-                $parser = $this->ownerDocument()->implementation()->mozHTMLParser(
-                        $this->ownerDocument()->_address,
-                        $context
+                $parser = /* GET PARSER STUB */
+			//$this->ownerDocument()->implementation()->mozHTMLParser(
+                        //$this->ownerDocument()->_address,
+                        //$context
                 );
+
                 $parser->parse($text, true);
-                $this->_insertAdjacent($position, $parser->_asDocumentFragment());
+                $this->insertAdjacentElement($where, $parser->_asDocumentFragment());
         }
 
         public function children()
@@ -360,19 +360,10 @@ class Element extends NonDocumentTypeChildNode
                 return $this->_children;
         }
 
-        public function attributes()
-        {
-                if (!$this->_attributes) {
-                        $this->_attributes = new NamedNodeMap($this);
-                }
-                /* TODO: Once we return, is this still live? */
-                return $this->_attributes;
-        }
-
         public function firstElementChild()
         {
                 for ($n=$this->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
-                        if ($n->nodeType() === Node\ELEMENT_NODE) {
+                        if ($n->nodeType === ELEMENT_NODE) {
                                 return $n;
                         }
                 }
@@ -382,7 +373,7 @@ class Element extends NonDocumentTypeChildNode
         public function lastElementChild()
         {
                 for ($n=$this->lastChild(); $n!==NULL; $n=$n->previousSibling()) {
-                        if ($n->nodeType() === Node\ELEMENT_NODE) {
+                        if ($n->nodeType === ELEMENT_NODE) {
                                 return $n;
                         }
                 }
@@ -695,215 +686,66 @@ class Element extends NonDocumentTypeChildNode
          * for rules on how attributes are reflected.
          */
 
-         /* TODO: Is breaking these functions out still performant?
-          */
-        private function _helper_lname_key(?string $ns, string $lname) : string
-        {
-                if ($ns === NULL) {
-                        $ns = "";
-                }
-                return "$ns|$lname";
-        }
-
-        private function _helper_qname_key(string $qname) : string
-        {
-                if (!ctype_lower($qname) && $this->isHTMLElement()) {
-                        return utils\toASCIILowerCase($qname);
-                } else {
-                        return $qname;
-                }
-        }
-
 	/****** GET ******/
 
         public function getAttribute(string $qname): ?string
         {
-                $attr = $this->getAttributeNode($qname);
-                return $attr ? $attr->value() : NULL;
+                $attr = $this->attributes->getNamedItem($qname);
+                return $attr ? $attr->value : NULL;
         }
 
         public function getAttributeNS(?string $ns, string $lname): ?string
         {
-                $attr = $this->getAttributeNodeNS($ns, $lname);
-                return $attr ? $attr->value() : NULL;
+                $attr = $this->attributes->getNamedItemNS($ns, $lname);
+                return $attr ? $attr->value : NULL;
         }
 
         public function getAttributeNode(string $qname): ?Attr
         {
-                $key = $this->_helper_qname_key($qname);
-                $attr = $this->_attrsByQName[$key] ?? NULL;
-
-                return is_array($attr) ? $attr[0] : $attr;
+                return $this->attributes->getNamedItem($qname);
         }
 
         public function getAttributeNodeNS(?string $ns, string $lname): ?Attr
         {
-                $key = $this->_helper_lname_key($lname, $ns);
-                return $this->_attrsByLName[$key] ?? NULL;
+                return $this->attributes->getNamedItemNS($ns, $lname);
         }
 
 	/****** SET ******/
 
-        /* Set the attribute without error checking. The parser uses this
-         * directly.
-         */
-        /* TODO: Interestingly, the spec says the value has whatever type,
-           but gets converted to string.
-        */
-        public function _unsafe_setAttribute(string $qname, $value)
+        //}
+
+        public function setAttribute(string $qname, $value)
         {
-                /* TODO: Should this be done in Attr::value() ? */
-                $value = strval($value);
-
-                /*
-                 * XXX: the spec says that this next search should be done
-                 * on the local name, but I think that is an error.
-                 * email pending on www-dom about it.
-                 */
-                $attr = $this->_attrsByQName[$qname] ?? NULL;
-                if ($attr === NULL) {
-                        $new = true;
-                        $attr = $this->_newattr($qname);
-                } else {
-                        $new = false;
-                        $attr = (is_array($attr)) ? $attr[0] : $attr;
-                }
-
-                /*
-                 * Now set the attribute value on the new or existing Attr
-                 * object. The Attr.value setter method handles mutation
-                 * events, etc.
-                 */
-                $attr->value($value);
-
-                if ($this->_attributes) {
-                        // TODO: is this copying to keep live? or should we
-                        // only do this on the 'new' branch?
-                        $this->_attributes[$qname] = $attr;
-                }
-
-                if ($new === true && $this->_newattrhook) {
-                        $this->_newattrhook($qname, $value);
-                }
-        }
-
-        public function setAttribute(string $qname, string $value)
-        {
-                /*
-                 * #1: Ensure qname is valid XML
-                 */
+                /* Check for XML name validation */
                 if (!xml\isValidName($qname)) {
-                        utils\InvalidCharacterError();
+                        error("InvalidCharacterError");
                 }
 
-                /*
-                 * #2: Ensure if we're in HTML, that the qname
-                 * is all lowercase.
-                 *
-                 * NOTE: Same as _helper_qname_key(), but this is
-                 * just a coincidence; if we change how we key things,
-                 * this would be affected and we don't want that.
-                 */
+                /* Case-insensitive in HTML spec */
                 if (!ctype_lower($qname) && $this->isHTMLElement()) {
                         $qname = utils\toASCIILowerCase($qname);
                 }
 
-                /* Call the unsafe one */
-                $this->_unsafe_setAttribute($qname, strval($value));
-        }
-
-        /*
-         * TODO: setAttribute and setAttributeNS should be
-         * factored into a single method with an option for $ns.
-         */
-
-        //public function _my_unsafe_setAttribute(string $qname, $value)
-        //{
-                //$attr = $this->attributes->getNamedItem($qname);
-                //if ($attr === NULL) {
-                        //$attr = new Attr($this, $name, NULL, NULL);
-                //}
-                //$this->attributes->setNamedItem($attr);
-        //}
-
-        //public function _my_unsafe_setAttributeNS(?string $ns, string $qname, $value)
-        //{
-                //$attr = $this->attributes->getNamedItemNS($ns, $qname);
-                //if ($attr === NULL) {
-                        //$attr = new Attr($this, $lname, $prefix, $ns);
-                //}
-                //$this->attributes->setNamedItemNS($attr);
-        //}
-
-
-        /* The version with no error checking used by the parser */
-        /* TODO: This is basically just creating an attribute. Okay. */
-        public function _unsafe_setAttributeNS(?string $ns, string $qname, $value)
-        {
-                /* Split qualified name into prefix and local name. */
-                $pos = strpos($qname, ":");
-                $prefix = ($pos === false) ? NULL : substr($qname, 0, $pos);
-                $lname = ($pos === false) ? $qname : substr($qname, $pos+1);
-
-                /* Coerce empty string namespace to NULL for convenience */
-                $ns = ($ns === "") ? NULL : $ns;
-
-                /* Key to look up attribute record in internal storage */
-                $key = $this->_helper_lname_key($ns, $lname);
-                $attr = $this->_attrsByLName[$key] ?? NULL;
-
+                $attr = $this->attributes->getNamedItem($qname);
                 if ($attr === NULL) {
-			/*
-			 * TODO: We're making a new Attr here, vs how it
-			 * works in setAttribute, like _newattr etc.
-			 */
-                        $attr = new Attr($this, $lname, $prefix, $ns);
-                        $this->_attrsByLName[$key] = $attr;
-
-                        if ($this->_attributes) {
-                                $this->_attributes[] = $attr;
-                        }
-
-                        $this->_attrKeys[] = $key;
-
-                        /*
-                         * We also have to make the attr searchable by qname.
-                         * But we have to be careful because there may already
-                         * be an attr with this qname.
-                         */
-                        $this->_addQName($attr);
+                        $attr = new Attr($this, $name, NULL, NULL);
                 }
-
-                /* Automatically sends mutation event */
-                $attr->value($value);
-
-                /* TODO: Fix this handler to work in PHP */
-                if ($new && $this->_newattrhook) {
-                        $this->_newattrhook($qname, $value);
-                }
+                $attr->value = $value;
+                $this->attributes->setNamedItem($attr);
         }
 
-        /* Do error checking then call _setAttributeNS */
         public function setAttributeNS(?string $ns, string $qname, $value)
         {
-                /*
-                 * #1: Convert parameter types according to WebIDL
-                 */
-                $ns = ($ns === "") ? NULL : $ns;
-
-                /*
-                 * #2: Ensure qname is valid XML
-                 */
+                /* Check for XML name validation */
                 if (!xml\isValidQName($qname)) {
-                        utils\InvalidCharacterError();
+                        error("InvalidCharacterError");
                 }
 
-                /*
-                 * #3: Check for namespace conflicts
-                 */
-                $pos = strpos($qname, ":");
+                /* Check for namespace errors */
+                $ns     = ($ns === "") ? NULL : $ns;
+                $pos    = strpos($qname, ":");
                 $prefix = ($pos === false) ? NULL : substr($qname, 0, $pos);
-
+                /* TODO: Wrap into util\isValidNamespace or something */
                 if (
                         ($prefix !== NULL && $ns === NULL)
                         ||
@@ -921,236 +763,55 @@ class Element extends NonDocumentTypeChildNode
                                 !($qname === "xmlns" || $prefix === "xmlns")
                         )
                 ) {
-                        utils\NamespaceError();
+                        error("NamespaceError");
                 }
 
-                /* Call the unsafe version */
-                $this->_unsafe_setAttributeNS($ns, $qname, $value);
+                $attr = $this->attributes->getNamedItemNS($ns, $qname);
+                if ($attr === NULL) {
+                        $attr = new Attr($this, $lname, $prefix, $ns);
+                }
+                $attr->value = $value;
+                $this->attributes->setNamedItemNS($attr);
         }
 
-        /*
-         * TODO: setAttributeNode and setAttributeNodeNS should be
-         * factored into a single method with an option for $ns.
-         */
-
-        public function setAttributeNode($attr)
+        public function setAttributeNode(Attr $attr): ?Attr
         {
-                if ($attr->ownerElement() !== NULL && $attr->ownerElement() !== $this) {
-                        /* TODO: Fix this exception */
-                        throw new DOMException(DOMException::INUSE_ATTRIBUTE_ERR);
-                }
-
-                $result = NULL;
-
-                $oldAttrs = $this->_attrsByQName[$attr->name()] ?? NULL;
-
-                if ($oldAttrs !== NULL) {
-                        if (!is_array($oldAttrs)) {
-                                $oldAttrs = array($oldAttrs)
-                        }
-
-                        if (in_array($attr, $oldAttrs)) {
-                                return $attr;
-                        } else if ($attr->ownerElement() !== NULL) {
-                                /* TODO: Fix this exception */
-                                throw new DOMException(DOMException::INUSE_ATTRIBUTE_ERR);
-                        }
-                        foreach ($oldAttrs as $a) {
-                                $this->removeAttributeNode($a);
-                        }
-                        $result = $oldAttrs[0];
-                }
-
-                $this->setAttributeNodeNS($attr);
-
-                return $result;
+                return $this->attributes->setNamedItem($attr);
         }
 
         public function setAttributeNodeNS($attr)
         {
-                /* Can't associate if the attribute is not yet dissociated */
-                /* TODO: Why aren't we testing for $this as in setAttributeNode() ? */
-                if ($attr->ownerElement() !== NULL) {
-                        /* TODO: Fix this exception */
-                        throw new DOMException(DOMException::INUSE_ATTRIBUTE_ERR);
-                }
-
-                $key = $this->_helper_lname_key($attr->namespaceURI(), $attr->localName());
-                $oldAttr = $this->_attrsByLName[$key] ?? NULL;
-
-                /*
-                   TODO: Is there no chance of this being an array here??
-                   As in the non-NS version?
-                 */
-
-                if ($oldAttr) {
-                        $this->removeAttributeNode($oldAttr);
-                }
-
-                /* TODO: THIS IS NOT A METHOD ANYMORE! */
-                $attr->_setOwnerElement($this);
-                $this->_attrsByLName[$key] = $attr;
-
-                if ($this->_attributes) {
-                        /*
-                         * TODO: can we not just append? no, I suppose this
-                         * is a bit of memory management going on.
-                         */
-                        $this->_attributes[count($this->_attrKeys)] = $attr;
-                }
-
-                $this->_attrKeys[]= $key;
-                $this->_addQName($attr);
-
-                if ($this->_newattrhook) {
-                        $this->_newattrhook($attr->name(), $attr->value());
-                }
-
-                return $oldAttr ?? NULL;
+                return $this->attributes->setNamedItemNS($attr);
         }
 
 	/****** REMOVE ******/
 
-        /*
-         * TODO: removeAttribute and removeAttributeNS should be
-         * factored into a single method with an option for $ns.
-         */
-
         public function removeAttribute(string $qname)
         {
-                $key = $this->_helper_qname_key($qname);
-                $attr = $this->_attrsByQName[$key] ?? NULL;
-
-                if ($attr === NULL)) {
-                        return;
-                }
-
-                /*
-                 * If there is more than one match for this qname
-                 * so don't delete the qname mapping, just remove the first
-                 * element from it.
-                 */
-                if (is_array($attr)) {
-                        if (count($attr) > 2) {
-                                /* remove it from the array */
-                                $attr = array_shift($attr);
-                        } else {
-                                /* TODO: Ok.. */
-                                $this->_attrsByQName[$key] = $attr[1];
-                                $attr = $attr[0];
-                        }
-                } else {
-                        /* only a single match, so remove the qname mapping */
-                        unset($this->_attrsByQName[$key]);
-                }
-
-                /*
-                 * Now attr is the removed attribute.
-                 * Figure out its ns+lname key and remove it from
-                 * the other mapping as well.
-                 */
-                /*
-                 * TODO: make a helper function for this key stuff,
-                 * and one for the splitting as well.
-                 */
-                $key = $this->_helper_lname_key($attr->namespaceURI(), $attr->localName());
-                unset($this->_attrsByLName[$key]);
-
-                $i = array_search($key, $this->_attrKeys);
-
-                if ($this->_attributes) {
-                        array_splice($this->_attributes, $i, 1);
-                        /* TODO: What is this here for? */
-                        unset($this->_attributes[$qname]);
-                }
-                array_splice($this->_attrKeys, $i, 1);
-
-                /* TODO: one kind of notice; Onchange handler for the attribute */
-                $onchange = attr.onchange; // TODO: THIS IS NOT A THING NOW
-                $attr->_setOwnerElement(NULL);  // TODO: THIS IS NOT A THING NOW
-                if ($onchange) {
-                        $onchange->call($attr, $this, $attr->localName(), $attr->value(), NULL);
-                }
-
-                // TODO: the other kind of notice; Mutation event
-                if ($this->rooted) {
-                        $this->ownerDocument()->mutateRemoveAttr($attr);
-                }
+                return $this->attributes->removeNamedItem($qname);
         }
 
         public function removeAttributeNS(?string $ns, string $lname)
         {
-                $key = $this->_helper_lname_key($ns, $lname);
-                $attr = $this->_attrsByLName[$key] ?? NULL;
-
-                if ($attr === NULL) {
-                        return;
-                }
-
-                unset($this->_attrsByLName[$key]);
-
-                $i = array_search($key, $this->_attrKeys);
-
-                if ($this->_attributes) {
-			/* TODO: Wait, what?? Oh, because we can treat
-			   this as both a numeric array and a map in JS?
-			   (see NamedNodeMap spec) really need to fix this up.
-			*/
-                        array_splice($this->_attributes, $i, 1);
-                }
-                array_splice($this->_attrKeys, $i, 1);
-
-                /*
-                 * Now find the same Attr object in the qname mapping
-                 * and remove it. But be careful because there may be
-                 * more than one match.
-                 */
-                $this->_removeQName($attr);
-
-                /* Onchange handler for the attribute */
-                /* TODO: It doesn't work this way anymore */
-                $onchange = $attr->onchange;
-                $attr->_setOwnerElement(NULL);
-                if ($onchange) {
-                        $onchange($attr, $this, $attr->localName(), $attr->value(), NULL);
-                }
-                // Mutation event
-                if ($this->rooted()) {
-                        /* TODO: FIx */
-                        $this->ownerDocument()->mutateRemoveAttr($attr);
-                }
+                return $this->attributes->removeNamedItemNS($ns, $lname);
         }
-
-        /*
-         * TODO: there is no such thing as removeAttributeNodeNS()
-         */
 
         public function removeAttributeNode(Attr $attr)
         {
-                $key = $this->_helper_lname_key($attr->namespaceURI(), $attr->localName());
-                $old = $this->_attrsByLName[$key] ?? NULL;
-
-                if ($old === NULL || $old !== $attr) {
-                        utils\NotFoundError();
-                }
-
-                $this->removeAttributeNS($attr->namespaceURI(), $attr->localName());
-
-                return $attr;
+                /* TODO: This is not a public function */
+                return $this->attributes->_remove($attr);
         }
 
 	/****** HAS ******/
 
         public function hasAttribute(string $qname): boolean
         {
-                $key = $this->_helper_qname_key($qname);
-                return isset($this->_attrsByQName[$key]);
+                return $this->attributes->hasNamedItem($qname);
         }
 
         public function hasAttributeNS(?string $ns, string $lname): boolean
         {
-                $key = $this->_helper_lname_key($ns, $lname);
-                return isset($this->_attrsByLName[$key]);
+                return $this->attributes->hasNamedItemNS($ns, $lname);
         }
 
 	/****** OTHER ******/
@@ -1158,7 +819,7 @@ class Element extends NonDocumentTypeChildNode
         public function toggleAttribute(string $qname, ?boolean $force=NULL): boolean
         {
                 if (!xml\isValidName($qname)) {
-                        utils\InvalidCharacterError();
+                        error("InvalidCharacterError");
                 }
 
                 $key = $this->_helper_qname_key($qname);
@@ -1182,162 +843,24 @@ class Element extends NonDocumentTypeChildNode
 
         public function hasAttributes(): boolean
         {
-                return $this->_numattrs > 0;
+                return !empty($this->attributes->index_to_attr);
         }
 
         public function getAttributeNames()
         {
                 /*
-                 * TODO: Orig used array_map, but I didn't want to deal
-                 * with a callback...
 		 * Note that per spec, these are not guaranteed to be
  		 * unique.
                  */
                 $ret = array();
 
-                foreach ($this->_attrKeys as $key) {
-                        $ret[] = $this->_attrsByLName[$key]->name();
+                foreach ($this->attributes->index_to_attr as $a) {
+                        $ret[] = $a->name;
                 }
 
                 return $ret;
         }
 
-        /*********************************************************************
-         * 'raw' versions of methods for reflected attributes
-         * TODO: WHY ARE THEY HERE? THESE ARE ONLY CALLED BY THE
-         * JUNK TRUNK IN 'attributes.js' AND JUST...WHY!?
-         *********************************************************************/
-        /*
-         * This 'raw' version of getAttribute is used by the getter functions
-         * of reflected attributes. It skips some error checking and
-         * namespace steps
-         */
-        public function _getattr($qname)
-        {
-                /*
-                 * Assume that qname is already lowercased, so don't do
-                 * it here.
-                 * Also don't check whether attr is an array: a qname with
-                 * no prefix will never have two matching Attr objects
-                 * (because setAttributeNS doesn't allow a non-null namespace
-                 * with a null prefix.
-                 */
-                $attr = $this->_attrsByQName[$qname] ?? NULL;
-                return $attr ? $attr->value() : NULL;
-        }
-
-        /* The raw version of setAttribute for reflected IDL attributes. */
-        public function _setattr($qname, $value)
-        {
-                $attr = $this->_attrsByQName[$qname] ?? NULL;
-                $new = false;
-                if ($attr === NULL) {
-                        $new = true;
-                        $attr = $this->_newattr($qname);
-                }
-                $attr->value(strval($value));
-                if ($this->_attributes) {
-                        $this->_attributes[$qname] = $attr;
-                }
-                if ($new === true && $this->_newattrhook) {
-                        $this->_newattrhook($qname, $value);
-                }
-        }
-
-        /*
-         * Create a new Attr object, insert it, and return it.
-         * Used by _unsafe_setAttribute() and by _setattr()
-	 *
-	 * TODO: So, we basically don't have any namespace here,
-	 * making this an unnecessarily different branch vs *NS
-         */
-        public function _newattr($qname)
-        {
-                $attr = new Attr($this, $qname, NULL, NULL);
-                $key = "|$qname";
-                $this->_attrsByQName[$qname] = $attr;
-                $this->_attrsByLName[$key] = $attr;
-
-                if ($this->_attributes) {
-                        $this->_attributes[count($this->_attrKeys)] = $attr;
-                }
-                $this->_attrKeys[] = $key;
-
-                return $attr;
-        }
-
-        /*********************************************************************
-         * Bizarre book-keeping code
-         *********************************************************************/
-        /*
-         * Add a qname->Attr mapping to the _attrsByQName object, taking into
-         * account that there may be more than one attr object with the
-         * same qname
-         */
-        public function _addQName($attr)
-        {
-                $qname = $attr->name();
-                $existing = $this->_attrsByQName[$qname] ?? NULL;
-
-                if (!$existing === NULL) {
-                        $this->_attrsByQName[$qname] = $attr;
-                } else if (is_array($existing)) {
-                        $existing[] = $attr;
-                } else {
-                        $this->_attrsByQName[$qname] = array($existing, $attr);
-                }
-
-                if ($this->_attributes) {
-                        $this->_attributes[$qname] = $attr;
-                }
-        }
-
-        /*
-         * Remove a qname->Attr mapping to the _attrsByQName object,
-         * taking into account that there may be more than one attr
-         * object with the same qname
-         */
-        public function _removeQName($attr)
-        {
-                $qname = $attr->name();
-                $target = $this->_attrsByQName[$qname] ?? NULL;
-
-                if (is_array($target)) {
-                        $idx = array_search($attr, $target);
-
-                        utils\assert($idx !== -1); // It must be here somewhere
-
-                        if (count($target) === 2) {
-                                $this->_attrsByQName[$qname] = $target[1-$idx];
-                                if ($this->_attributes) {
-                                        $this->_attributes[$qname] = $this->_attrsByQName[$qname];
-                                }
-                        } else {
-                                array_splice($target, $idx, 1);
-                                if ($this->_attributes && $this->_attributes[$qname] === $attr) {
-                                        $this->_attributes[$qname] = $target[0];
-                                }
-                        }
-                } else {
-                        utils\assert($target === $attr);  // If only one, it must match
-                        unset($this->_attrsByQName[$qname]);
-                        if ($this->_attributes) {
-                                unset($this->_attributes[$qname]);
-                        }
-                }
-        }
-
-        /* Return the number of attributes */
-        public function _numattrs()
-        {
-                return count($this->_attrKeys);
-        }
-
-        /* Return the nth Attr object */
-        public function _attr($n)
-        {
-                return $this->_attrsByLName[$this->_attrKeys[$n]];
-        }
 
 /* TODO TODO TODO */
   // Define getters and setters for an 'id' property that reflects

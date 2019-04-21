@@ -13,7 +13,14 @@ CONVENTIONS:
         Element = class or interface
         element = the "thing" that an Element is representing
 
-* All properties on the DOM interfaces are to be implemented using:
+* GO BACK ON THIS:
+
+  Wait for a PHP-immutable RFC to come into force. Until then, just use
+  properties and tell callers in the documentation that these are value
+  objects and don't mess with them unless you want to get undefined
+  behavior.
+
+  All properties on the DOM interfaces are to be implemented using:
         - a class method with the name of the DOM property
         - a class property with the name of the DOM property prefixed with '_'
 

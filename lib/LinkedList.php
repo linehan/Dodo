@@ -64,13 +64,14 @@ function valid($a)
         return true;
 }
 
+/* TODO: Rename 'link' */
 /**
  * insertBefore()
  * --------------
  * Insert $a before $b
  *
- * @a: "circular linked list"
- * @b: "circular linked list"
+ * @a: "circular linked list" THING TO BE INSERTED BEFORE @b
+ * @b: "circular linked list" THING BEFORE WHICH WE INSERT @a
  * Return: None
  * Throws: Exception if lists aren't valid or become invalid.
  */
@@ -78,17 +79,20 @@ function insertBefore($a, $b)
 {
         domo\util\assertion(valid($a) && valid($b));
 
-        $a_first = $a, $a_last = $a->_previousSibling;
-        $b_first = $b, $b_last = $b->_previousSibling;
+        $a_first = $a;
+        $a_last  = $a->_previousSibling;
+        $b_first = $b;
+        $b_last  = $b->_previousSibling;
 
         $a_first->_previousSibling = $b_last;
-        $a_last->_nextSibling = $b_first;
-        $b_last->_nextSibling = $a_first;
+        $a_last->_nextSibling      = $b_first;
+        $b_last->_nextSibling      = $a_first;
         $b_first->_previousSibling = $a_last;
 
         domo\util\assertion(valid($a) && valid($b))
 }
 
+/* TODO: Rename 'unlink' */
 /**
  * remove()
  * --------

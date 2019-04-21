@@ -40,11 +40,15 @@ namespace domo\util;
 /*
  * Most names will be ASCII only. Try matching against simple regexps first
  *
+ * [HTML-5] Attribute names may be written with any mix of ASCII lowercase
+ * and ASCII uppercase alphanumerics.
+ *
  * Recall:
  *      \w matches any alphanumeric character A-Za-z0-9
  */
 define('pattern_ascii_name', '/^[_:A-Za-z][-.:\w]+$/');
 define('pattern_ascii_qname', '/^([_A-Za-z][-.\w]+|[_A-Za-z][-.\w]+:[_A-Za-z][-.\w]+)$/');
+
 
 /*
  * If the regular expressions above fail, try more complex ones that work

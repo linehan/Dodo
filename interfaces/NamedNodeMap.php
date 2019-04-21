@@ -113,8 +113,37 @@ class NamedNodeMap
                 return $this->element->_attrsByLName[$this->element->_attrKeys[$index]];
         }
 
+        /* MY EXTENSION */
+        public function hasNamedItem(string $qname): boolean
+        {
+                /*
+                 * Per HTML spec, we normalize qname before lookup,
+                 * even though XML itself is case-sensitive.
+                 */
+                if (!ctype_lower($qname) && $this->element->isHTMLElement()) {
+                        $qname = utils\toASCIILowerCase($qname);
+                }
+
+                return isset($this->qname_to_attr[$qname];
+        }
+
+        /* MY EXTENSION */
+        public function hasNamedItemNS(?string $ns, string $lname): boolean
+        {
+                $ns = $ns ?? "";
+                return isset($this->lname_to_attr["$ns|$lname"]);
+        }
+
         public function getNamedItem(string $qname): ?Attr
         {
+                /*
+                 * Per HTML spec, we normalize qname before lookup,
+                 * even though XML itself is case-sensitive.
+                 */
+                if (!ctype_lower($qname) && $this->element->isHTMLElement()) {
+                        $qname = utils\toASCIILowerCase($qname);
+                }
+
                 if (!isset($this->qname_to_attr[$qname])) {
                         return NULL;
                 }
@@ -181,6 +210,7 @@ class NamedNodeMap
         }
 
 
+        /* NOTE: qname may be lowercase or normalized in various ways */
         public function removeNamedItem(string $qname): ?Attr
         {
                 $attr = $this->getNamedItem($qname);
@@ -192,6 +222,7 @@ class NamedNodeMap
                 return $attr;
         }
 
+        /* NOTE: qname may be lowercase or normalized in various ways */
         public function removeNamedItemNS(?string $ns, string $lname): ?Attr
         {
                 $attr = $this->getNamedItemNS($ns, $lname);
