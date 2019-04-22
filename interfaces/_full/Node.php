@@ -73,53 +73,6 @@ require_once("utils.php");
  * participate in the document tree (as nodes, in the graph theoretic sense).
  */
 
-/**
- * Node types
- * ``````````
- * Integers enumerating the various specialized node types
- */
-const ELEMENT_NODE = 1;
-const ATTRIBUTE_NODE = 2;
-const TEXT_NODE = 3;
-const CDATA_SECTION_NODE = 4;
-const ENTITY_REFERENCE_NODE = 5;
-const ENTITY_NODE = 6;
-const PROCESSING_INSTRUCTION_NODE = 7;
-const COMMENT_NODE = 8;
-const DOCUMENT_NODE = 9;
-const DOCUMENT_TYPE_NODE = 10;
-const DOCUMENT_FRAGMENT_NODE = 11;
-const NOTATION_NODE = 12;
-
-/**
- * DOCUMENT_POSITION_*
- * ```````````````````
- * Bitmasks indicating position of a node x relative to a node y.
- * Returned from x->compareDocumentPosition(y)
- */
-/* x and y are not part of the same tree */
-const DOCUMENT_POSITION_DISCONNECTED = 1;
-/* y precedes x */
-const DOCUMENT_POSITION_PRECEDING = 2;
-/* y follows x */
-const DOCUMENT_POSITION_FOLLOWING = 4;
-/* y is an ancestor of x */
-const DOCUMENT_POSITION_CONTAINS = 8;
-/* y is a descendant of x */
-const DOCUMENT_POSITION_CONTAINED_BY = 16;
-/* whatever you need it to be */
-const DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC = 32;
-
-
-
-/*
- * All Nodes have a nodeType and an ownerDocument.
- * Once inserted, they also have a parentNode.
- *
- * This is an abstract class; all Nodes in a Document are instances
- * of a subtype, so all the properties are defined by more specific
- * constructors.
- */
 abstract class Node /* extends EventTarget // try factoring events out? */ {
 
         /*
@@ -177,7 +130,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
         public $ownerDocument;
 
         /* DOM-LS: Parent node (NULL if no parent) */
-        public $parentNode;
+        public $_parentNode;
 
         /* DOM-LS Subclasses are responsible for setting these */
         public $nodeName;
@@ -185,28 +138,20 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
 
         public function __construct()
         {
-		/* TODO Check spec for initial values */
                 $this->parentNode = NULL;
 		$this->ownerDocument = NULL;
 
                 /* Used by _childNodes; similar to _nid */
                 $this->_index = NULL;
+                $this->_childNodes = NULL;
 
-                /* TODO: This is weird; this means that the NULL check
-                   on the most common traversal is relying on an if
-                   statement within the nextSibling()/previousSibling()
-                   functions. Try to fix this up somehow.
-                 */
+                /* Internal references */
                 $this->_nextSibling = $this;
                 $this->_previousSibling = $this;
                 $this->_firstChild = NULL;
-                $this->_childNodes = NULL;
         }
 
-        public function baseURI()
-        {
-                /* NYI */
-        }
+        public function baseURI(){}
 
         /**
          * parentElement()
@@ -214,63 +159,32 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
          * Get a node's parent Element, if it has one.
          * Return: Parent Element node, or NULL
          */
-        public function parentElement()
+        public function parentElement(): ?Element
         {
-                $p = $this->parentNode();
-
-                if ($p != NULL && $p->nodeType === ELEMENT_NODE) {
-                        return $p;
-                }
-
-                return NULL;
-        }
-
-        /**
-         * previousSibling()
-         * `````````````````
-         * Get node preceding this one in parentNode's childNodes list
-         * Return: Node, or NULL if no previous sibling exists
-         */
-        public function previousSibling()
-        {
-                $p = $this->parentNode();
-
-                if ($p === NULL || $this === $p->firstChild()) {
+                if ($this->_parentNode === NULL 
+                || $this->_parentNode->nodeType !== ELEMENT_NODE) {
                         return NULL;
                 }
+                return $this->parentNode;
+        }
 
+        public function previousSibling(): ?Node
+        {
+                if ($this->_parentNode === NULL 
+                || $this === $this->_parentNode->firstChild) {
+                        return NULL;
+                }
                 return $this->_previousSibling;
         }
-
-        /**
-         * nextSibling()
-         * `````````````
-         * Get node succeeding this one in parentNode's childNodes list
-         * Return: Node, or NULL if no succeeding sibling exists
-         */
-        public function nextSibling()
+        public function nextSibling(): ?Node
         {
-                $p = $this->parentNode();
-
-                if ($p === NULL || $this->_nextSibling === $p->firstChild()) {
+                if ($this->_parentNode === NULL 
+                || $this->_nextSibling === $this->_parentNode->_firstChild) {
                         return NULL;
                 }
-
                 return $this->_nextSibling;
         }
 
-        /* TODO PORT NOTE: The first time this accessor is used, it will
-         * switch the node into the array-like access branch by generating
-         * the _childNodes NodeList and removing the _firstChild property.
-         *
-         * This is all internal however, since it will just switch e.g.
-         * firstChild(), lastChild(), and hasChildNodes() to fetch
-         * elements from the NodeList rather than references to the
-         * the properties _firstChild.
-         *
-         * It has performance implications though, so it's good to be
-         * aware of it and how it is working
-         */
         public function childNodes()
         {
                 /* Memoized fast path */
@@ -281,7 +195,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
                 /* Build child nodes array by traversing the linked list */
                 $childNodes = new NodeList();
 
-                for ($n=$this->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
+                for ($n=$this->_firstChild; $n!==NULL; $n=$n->_nextSibling) {
                         $childNodes[] = $n;
                 }
 
@@ -330,7 +244,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
                 /* BRANCH: NodeList (array-like) */
                 if ($this->_childNodes !== NULL) {
                         if (!empty($this->_childNodes)) {
-                                return end($this->childNodes);
+                                return end($this->_childNodes);
                         } else {
                                 return NULL;
                         }

@@ -60,28 +60,6 @@ const DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC = 32;
 
 
 
-/******************************************************************************
- * TEXT FORMATTING AND VALIDATORS
- *****************************************************************************/
-/*
- * Why? I don't know. strtolower()/strtoupper() don't do the right thing
- * for non-ASCII characters, and mb_strtolower()/mb_strtoupper() are up
- * to 30x slower. But these are only called on things that should accept
- * only ASCII values to begin with (e.g. attribute names in HTML). So -- why?
- */
-function toASCIILowerCase(string $s)
-{
-	return preg_replace_callback('/[A-Z]+/', function ($char) {
-      		return strtolower($char);
-      	}, $s);
-}
-
-function toASCIIUpperCase(string $s)
-{
-	return preg_replace_callback('/[a-z]+/', function ($char) {
-      		return strtoupper($char);
-      	}, $s);
-}
 
 /*****************************************************************************
  * EXCEPTIONS
@@ -128,5 +106,29 @@ function error(string $name, ?string $message)
 	throw new DOMException($message, $name);
 }
 
+
+/******************************************************************************
+ * TEXT FORMATTING AND VALIDATORS
+ *****************************************************************************/
+
+/*
+ * Why? I don't know. strtolower()/strtoupper() don't do the right thing
+ * for non-ASCII characters, and mb_strtolower()/mb_strtoupper() are up
+ * to 30x slower. But these are only called on things that should accept
+ * only ASCII values to begin with (e.g. attribute names in HTML). So -- why?
+ */
+function ascii_to_lowercase(string $s): string
+{
+	return preg_replace_callback('/[A-Z]+/', function ($char) {
+      		return strtolower($char);
+      	}, $s);
+}
+
+function ascii_to_uppercase(string $s): string
+{
+	return preg_replace_callback('/[a-z]+/', function ($char) {
+      		return strtoupper($char);
+      	}, $s);
+}
 
 ?>

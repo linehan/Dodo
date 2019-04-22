@@ -52,6 +52,11 @@ REMOVED:
 	  and insertAdjacentText -- the better way puts that functionality
 	  into insertAdjacentElement, and lets insertAdjacentText call
 	  insertAdjacentElement after it's created a text node.
+        - The code in setAttributeNS doing validation was literally a
+          re-written version of the validate-and-extract algorithm from
+          the whatwg spec, already implemented as the function 
+          validateAndExtract, which I relocated to lib/xmlnames.php, the
+          same file that handles validation of XML names and qnames.
 
 TODO:
         - Calls to mozHTMLParser should be replaced by calls to either
@@ -141,7 +146,7 @@ function recursiveGetText($node, $a)
          * Wow! This will trigger switches from LL to array on all children
          * Is that okay?
          */
-        if ($node->nodeType() === Node\TEXT_NODE) {
+        if ($node->nodeType === TEXT_NODE) {
                 $a[]= $node->_data;
         } else {
                 for ($i=0, $n=count($node->childNodes()); $i<$n; $i++) {
@@ -177,7 +182,7 @@ class Element extends NonDocumentTypeChildNode
                 $tagname = ($prefix === NULL) ? $localName : "$prefix:$localName";
                 if ($this->isHTMLElement()) {
                         if (!isset($uppercaseCache[$tagname])) {
-                                $tagname = $uppercaseCache[$tagname] = utils\toASCIIUpperCase($tagname);
+                                $tagname = $uppercaseCache[$tagname] = \domo\ascii_to_uppercase($tagname);
                         } else {
                                 $tagname = $uppercaseCache[$tagname];
                         }
@@ -193,7 +198,7 @@ class Element extends NonDocumentTypeChildNode
         {
                 /* DOMO Convenience function to test if HTMLElement */
                 /* (See Document->isHTMLDocument()) */
-                if ($this->namespaceURI === NAMESPACE_HTML && $this->ownerDocument->isHTMLDocument()) {
+                if ($this->namespaceURI === NAMESPACE_HTML && $this->ownerDocument && $this->ownerDocument->isHTMLDocument()) {
                         return true;
                 }
                 return false;
@@ -210,7 +215,7 @@ class Element extends NonDocumentTypeChildNode
                         /* SET */
                         $this->removeChildren();
                         if ($newtext !== "") {
-                                $this->_appendChild($this->ownerDocument()->createTextNode($newtext));
+                                $this->_appendChild($this->ownerDocument->createTextNode($newtext));
                         }
                 }
         }
@@ -226,7 +231,9 @@ class Element extends NonDocumentTypeChildNode
 
         public function outerHTML(string $value = NULL)
         {
+                /* TODO: STUB
                 if ($value === NULL) {
+                */
                         /*
                          * "the attribute must return the result of running
                          * the HTML fragment serialization algorithm on a
@@ -244,6 +251,7 @@ class Element extends NonDocumentTypeChildNode
                          * https://github.com/fgnass/domino/pull/142 for more
                          * information.
                          */
+                /*
                         return NodeUtils::serializeOne($this, array("nodeType" => 0 ));
                 } else {
                         $document = $this->ownerDocument();
@@ -251,13 +259,15 @@ class Element extends NonDocumentTypeChildNode
                         if ($parent === NULL) {
                                 return;
                         }
-                        if ($parent->nodeType() === Node\DOCUMENT_NODE) {
-                                error("NoModificationAllowedError");
+                        if ($parent->nodeType() === DOCUMENT_NODE) {
+                                \domo\error("NoModificationAllowedError");
                         }
-                        if ($parent->nodeType() === Node\DOCUMENT_FRAGMENT_NODE) {
-                                $parent = $parent->ownerDocument()->createElement("body");
+                        if ($parent->nodeType === DOCUMENT_FRAGMENT_NODE) {
+                                $parent = $parent->ownerDocument->createElement("body");
                         }
+                */
                         /* TODO: Deal with this parser */
+                /* 
                         $parser = $document->implementation->mozHTMLParser(
                                 $document->_address,
                                 $parent
@@ -265,6 +275,7 @@ class Element extends NonDocumentTypeChildNode
                         $parser->parse($v===null?'':strval($value), true);
                         $this->replaceWith($parser->_asDocumentFragment());
                 }
+                */
         }
 
         /* DOM-LS: Historical method */
@@ -314,6 +325,7 @@ class Element extends NonDocumentTypeChildNode
         /* [DOM-PS-WD] A new extension in draft phase. */
         public function insertAdjacentHTML(string $where, string $text): void
         {
+                /* STUB 
                 $text = strval($text);
 
                 switch (strtolower($where)) {
@@ -342,7 +354,7 @@ class Element extends NonDocumentTypeChildNode
                         $ctx = $ctx->ownerDocument->createElementNS(NAMESPACE_HTML, 'body');
                 }
 
-                $parser = /* GET PARSER STUB */
+                $parser = 
 			//$this->ownerDocument()->implementation()->mozHTMLParser(
                         //$this->ownerDocument()->_address,
                         //$context
@@ -350,6 +362,7 @@ class Element extends NonDocumentTypeChildNode
 
                 $parser->parse($text, true);
                 $this->insertAdjacentElement($where, $parser->_asDocumentFragment());
+                */
         }
 
         public function children()
@@ -716,14 +729,12 @@ class Element extends NonDocumentTypeChildNode
 
         public function setAttribute(string $qname, $value)
         {
-                /* Check for XML name validation */
-                if (!xml\isValidName($qname)) {
-                        error("InvalidCharacterError");
+                if (!\domo\is_valid_xml_name($qname)) {
+                        \domo\error("InvalidCharacterError");
                 }
 
-                /* Case-insensitive in HTML spec */
                 if (!ctype_lower($qname) && $this->isHTMLElement()) {
-                        $qname = utils\toASCIILowerCase($qname);
+                        $qname = \domo\ascii_to_lowercase($qname);
                 }
 
                 $attr = $this->attributes->getNamedItem($qname);
@@ -736,35 +747,10 @@ class Element extends NonDocumentTypeChildNode
 
         public function setAttributeNS(?string $ns, string $qname, $value)
         {
-                /* Check for XML name validation */
-                if (!xml\isValidQName($qname)) {
-                        error("InvalidCharacterError");
-                }
+                $lname = NULL;
+                $prefix = NULL;
 
-                /* Check for namespace errors */
-                $ns     = ($ns === "") ? NULL : $ns;
-                $pos    = strpos($qname, ":");
-                $prefix = ($pos === false) ? NULL : substr($qname, 0, $pos);
-                /* TODO: Wrap into util\isValidNamespace or something */
-                if (
-                        ($prefix !== NULL && $ns === NULL)
-                        ||
-                        ($prefix === 'xml' && $ns !== NAMESPACE_XML)
-                        ||
-                        (
-                                ($qname === "xmlns" || $prefix === "xmlns")
-                                &&
-                                ($ns !== NAMESPACE_XMLNS)
-                        )
-                        ||
-                        (
-                                ($ns === NAMESPACE_XMLNS)
-                                &&
-                                !($qname === "xmlns" || $prefix === "xmlns")
-                        )
-                ) {
-                        error("NamespaceError");
-                }
+                \domo\extract_and_validate($ns, $qname, &$prefix, &$lname);
 
                 $attr = $this->attributes->getNamedItemNS($ns, $qname);
                 if ($attr === NULL) {
@@ -818,8 +804,8 @@ class Element extends NonDocumentTypeChildNode
 
         public function toggleAttribute(string $qname, ?boolean $force=NULL): boolean
         {
-                if (!xml\isValidName($qname)) {
-                        error("InvalidCharacterError");
+                if (!\domo\is_valid_xml_name($qname)) {
+                        \domo\error("InvalidCharacterError");
                 }
 
                 $key = $this->_helper_qname_key($qname);
@@ -863,13 +849,13 @@ class Element extends NonDocumentTypeChildNode
 
 
 /* TODO TODO TODO */
-  // Define getters and setters for an 'id' property that reflects
-  // the content attribute 'id'.
-  id: attributes.property({name: 'id'}),
+  //// Define getters and setters for an 'id' property that reflects
+  //// the content attribute 'id'.
+  //id: attributes.property({name: 'id'}),
 
-  // Define getters and setters for a 'className' property that reflects
-  // the content attribute 'class'.
-  className: attributes.property({name: 'class'}),
+  //// Define getters and setters for a 'className' property that reflects
+  //// the content attribute 'class'.
+  //className: attributes.property({name: 'class'}),
 /* TODO TODO TODO */
 
         public function classList()
@@ -931,23 +917,23 @@ class Element extends NonDocumentTypeChildNode
 //Object.defineProperties(Element.prototype, NonDocumentTypeChildNode);
 
 // Register special handling for the id attribute
-attributes.registerChangeHandler(Element, 'id',
- function(element, lname, oldval, newval) {
-   if (element.rooted) {
-     if (oldval) {
-       element.ownerDocument.delId(oldval, element);
-     }
-     if (newval) {
-       element.ownerDocument.addId(newval, element);
-     }
-   }
- }
-);
-attributes.registerChangeHandler(Element, 'class',
- function(element, lname, oldval, newval) {
-   if (element._classList) { element._classList._update(); }
- }
-);
+//attributes.registerChangeHandler(Element, 'id',
+ //function(element, lname, oldval, newval) {
+   //if (element.rooted) {
+     //if (oldval) {
+       //element.ownerDocument.delId(oldval, element);
+     //}
+     //if (newval) {
+       //element.ownerDocument.addId(newval, element);
+     //}
+   //}
+ //}
+//);
+//attributes.registerChangeHandler(Element, 'class',
+ //function(element, lname, oldval, newval) {
+   //if (element._classList) { element._classList._update(); }
+ //}
+//);
 
 
 
@@ -959,112 +945,112 @@ attributes.registerChangeHandler(Element, 'class',
 // The children property of an Element will be an instance of this class.
 // It defines length, item() and namedItem() and will be wrapped by an
 // HTMLCollection when exposed through the DOM.
-function ChildrenCollection(e) {
-  this.element = e;
-  this.updateCache();
-}
+//function ChildrenCollection(e) {
+  //this.element = e;
+  //this.updateCache();
+//}
 
-ChildrenCollection.prototype = Object.create(Object.prototype, {
-  length: { get: function() {
-    this.updateCache();
-    return this.childrenByNumber.length;
-  } },
-  item: { value: function item(n) {
-    this.updateCache();
-    return this.childrenByNumber[n] || null;
-  } },
+//ChildrenCollection.prototype = Object.create(Object.prototype, {
+  //length: { get: function() {
+    //this.updateCache();
+    //return this.childrenByNumber.length;
+  //} },
+  //item: { value: function item(n) {
+    //this.updateCache();
+    //return this.childrenByNumber[n] || null;
+  //} },
 
-  namedItem: { value: function namedItem(name) {
-    this.updateCache();
-    return this.childrenByName[name] || null;
-  } },
+  //namedItem: { value: function namedItem(name) {
+    //this.updateCache();
+    //return this.childrenByName[name] || null;
+  //} },
 
-  // This attribute returns the entire name->element map.
-  // It is not part of the HTMLCollection API, but we need it in
-  // src/HTMLCollectionProxy
-  namedItems: { get: function() {
-    this.updateCache();
-    return this.childrenByName;
-  } },
+  //// This attribute returns the entire name->element map.
+  //// It is not part of the HTMLCollection API, but we need it in
+  //// src/HTMLCollectionProxy
+  //namedItems: { get: function() {
+    //this.updateCache();
+    //return this.childrenByName;
+  //} },
 
-  updateCache: { value: function updateCache() {
-    var namedElts = /^(a|applet|area|embed|form|frame|frameset|iframe|img|object)$/;
-    if (this.lastModTime !== this.element.lastModTime) {
-      this.lastModTime = this.element.lastModTime;
+  //updateCache: { value: function updateCache() {
+    //var namedElts = /^(a|applet|area|embed|form|frame|frameset|iframe|img|object)$/;
+    //if (this.lastModTime !== this.element.lastModTime) {
+      //this.lastModTime = this.element.lastModTime;
 
-      var n = this.childrenByNumber && this.childrenByNumber.length || 0;
-      for(var i = 0; i < n; i++) {
-        this[i] = undefined;
-      }
+      //var n = this.childrenByNumber && this.childrenByNumber.length || 0;
+      //for(var i = 0; i < n; i++) {
+        //this[i] = undefined;
+      //}
 
-      this.childrenByNumber = [];
-      this.childrenByName = Object.create(null);
+      //this.childrenByNumber = [];
+      //this.childrenByName = Object.create(null);
 
-      for (var c = this.element.firstChild; c !== null; c = c.nextSibling) {
-        if (c.nodeType === Node.ELEMENT_NODE) {
+      //for (var c = this.element.firstChild; c !== null; c = c.nextSibling) {
+        //if (c.nodeType === Node.ELEMENT_NODE) {
 
-          this[this.childrenByNumber.length] = c;
-          this.childrenByNumber.push(c);
+          //this[this.childrenByNumber.length] = c;
+          //this.childrenByNumber.push(c);
 
-          // XXX Are there any requirements about the namespace
-          // of the id property?
-          var id = c.getAttribute('id');
+          //// XXX Are there any requirements about the namespace
+          //// of the id property?
+          //var id = c.getAttribute('id');
 
-          // If there is an id that is not already in use...
-          if (id && !this.childrenByName[id])
-            this.childrenByName[id] = c;
+          //// If there is an id that is not already in use...
+          //if (id && !this.childrenByName[id])
+            //this.childrenByName[id] = c;
 
-          // For certain HTML elements we check the name attribute
-          var name = c.getAttribute('name');
-          if (name &&
-            this.element.namespaceURI === NAMESPACE.HTML &&
-            namedElts.test(this.element.localName) &&
-            !this.childrenByName[name])
-            this.childrenByName[id] = c;
-        }
-      }
-    }
-  } },
-});
+          //// For certain HTML elements we check the name attribute
+          //var name = c.getAttribute('name');
+          //if (name &&
+            //this.element.namespaceURI === NAMESPACE.HTML &&
+            //namedElts.test(this.element.localName) &&
+            //!this.childrenByName[name])
+            //this.childrenByName[id] = c;
+        //}
+      //}
+    //}
+  //} },
+//});
 
-// These functions return predicates for filtering elements.
-// They're used by the Document and Element classes for methods like
-// getElementsByTagName and getElementsByClassName
+//// These functions return predicates for filtering elements.
+//// They're used by the Document and Element classes for methods like
+//// getElementsByTagName and getElementsByClassName
 
-function localNameElementFilter(lname) {
-  return function(e) { return e.localName === lname; };
-}
+//function localNameElementFilter(lname) {
+  //return function(e) { return e.localName === lname; };
+//}
 
-function htmlLocalNameElementFilter(lname) {
-  var lclname = utils.toASCIILowerCase(lname);
-  if (lclname === lname)
-    return localNameElementFilter(lname);
+//function htmlLocalNameElementFilter(lname) {
+  //var lclname = utils.toASCIILowerCase(lname);
+  //if (lclname === lname)
+    //return localNameElementFilter(lname);
 
-  return function(e) {
-    return e.isHTML ? e.localName === lclname : e.localName === lname;
-  };
-}
+  //return function(e) {
+    //return e.isHTML ? e.localName === lclname : e.localName === lname;
+  //};
+//}
 
-function namespaceElementFilter(ns) {
-  return function(e) { return e.namespaceURI === ns; };
-}
+//function namespaceElementFilter(ns) {
+  //return function(e) { return e.namespaceURI === ns; };
+//}
 
-function namespaceLocalNameElementFilter(ns, lname) {
-  return function(e) {
-    return e.namespaceURI === ns && e.localName === lname;
-  };
-}
+//function namespaceLocalNameElementFilter(ns, lname) {
+  //return function(e) {
+    //return e.namespaceURI === ns && e.localName === lname;
+  //};
+//}
 
-function classNamesElementFilter(names) {
-  return function(e) {
-    return names.every(function(n) { return e.classList.contains(n); });
-  };
-}
+//function classNamesElementFilter(names) {
+  //return function(e) {
+    //return names.every(function(n) { return e.classList.contains(n); });
+  //};
+//}
 
-function elementNameFilter(name) {
-  return function(e) {
-    // All the *HTML elements* in the document with the given name attribute
-    if (e.namespaceURI !== NAMESPACE.HTML) { return false; }
-    return e.getAttribute('name') === name;
-  };
-}
+//function elementNameFilter(name) {
+  //return function(e) {
+    //// All the *HTML elements* in the document with the given name attribute
+    //if (e.namespaceURI !== NAMESPACE.HTML) { return false; }
+    //return e.getAttribute('name') === name;
+  //};
+//}

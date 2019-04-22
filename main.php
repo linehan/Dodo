@@ -21,9 +21,7 @@
  *      HTMLParser
  *      Window
  */
-use domo\interfaces\DOMImplementation;
-use domo\interfaces\Window;
-use domo\parsers\HTMLParser;
+use domo
 
 require_once("interfaces/DOMImplementation.php");
 require_once("interfaces/Window.php");

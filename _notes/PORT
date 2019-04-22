@@ -94,6 +94,7 @@ Interesting!
 
 POTENTIAL UPSTREAM BUGS:
 ----------------------
+
         createProcessingInstruction (Document.js):
                 if (!xml.isValidName(target) || data.indexOf("?>") !== -1) {
                         utils.InvalidCharacterError()

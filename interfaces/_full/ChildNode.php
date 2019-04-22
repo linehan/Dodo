@@ -1,13 +1,7 @@
 <?php
-/*
- * PORT NOTES
- *
- * CHANGED:
- *      createDocumentFragmentFromArguments     =>      fragmentFromArguments
- */
 
 require_once("Node.php");
-require_once("LinkedList.php");
+require_once("../lib/LinkedList.php");
 
 static function _fragment_from_arguments($document, $args)
 {
@@ -17,11 +11,7 @@ static function _fragment_from_arguments($document, $args)
                 $item = $args[$i];
 
                 if (!($item instanceof Node)) {
-                        /*
-                         * TODO PORT:
-                         * Then we assume it's a DOMString just like that?
-                         */
-                        $item = $Document->createTextNode(strval($item));
+                        $item = $document->createTextNode(strval($item));
                 }
 
                 $fragment->appendChild($item);
@@ -49,7 +39,7 @@ abstract class ChildNode extends Node
          */
         public function after(/* Nodes or DOMStrings */)
         {
-                if ($this->parentNode() === NULL) {
+                if ($this->parentNode === NULL) {
                         return;
                 }
 
@@ -60,10 +50,10 @@ abstract class ChildNode extends Node
                  * Find "viable next sibling"; that is, the next
                  * sibling not in the arguments array
                  */
-                $node = $this->nextSibling();
+                $node = $this->nextSibling;
 
                 while ($node !== NULL && in_array($arguments, $node)) {
-                        $node = $node->nextSibling();
+                        $node = $node->nextSibling;
                 }
 
                 /*
@@ -72,7 +62,7 @@ abstract class ChildNode extends Node
                  * move $arguments to a document fragment.
                  */
                 $frag = _fragment_from_arguments($this->doc(), $arguments);
-                $this->parentNode()->insertBefore($frag, $node);
+                $this->parentNode->insertBefore($frag, $node);
         }
 
         /*
@@ -82,7 +72,7 @@ abstract class ChildNode extends Node
          */
         public function before(/* Nodes or DOMStrings */)
         {
-                if ($this->parentNode() === NULL) {
+                if ($this->parentNode === NULL) {
                         return;
                 }
 
@@ -93,10 +83,10 @@ abstract class ChildNode extends Node
                  * Find "viable prev sibling"; that is, prev
                  * one not in $arguments
                  */
-                $node = $this->previousSibling();
+                $node = $this->previousSibling;
 
                 while ($node !== NULL && in_array($arguments, $node)) {
-                        $node = $node->previousSibling();
+                        $node = $node->previousSibling;
                 }
 
                 /*
@@ -107,12 +97,12 @@ abstract class ChildNode extends Node
                 $frag = _fragment_from_arguments($this->doc(), $arguments);
 
                 if ($node) {
-                        $node = $node->nextSibling();
+                        $node = $node->nextSibling;
                 } else {
-                        $this->parentNode()->firstChild();
+                        $this->parentNode->firstChild;
                 }
 
-                $this->parentNode()->insertBefore($frag, $node);
+                $this->parentNode->insertBefore($frag, $node);
         }
 
         /* Remove this node from its parent */
@@ -149,6 +139,7 @@ abstract class ChildNode extends Node
                 if ($this->parentNode === NULL) {
                         return;
                 }
+
                 if ($this->parentNode->_childNodes) {
                         array_splice($this->parentNode->_childNodes, $this->index(), 1);
                 } else if ($this->parentNode->_firstChild === $this) {

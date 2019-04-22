@@ -19,18 +19,11 @@
  *        DOMImplementation->hasFeature(), and renamed to $supported.
  *
  ******************************************************************************/
-declare( strict_types = 1 );
+//declare( strict_types = 1 );
 
-namespace domo\interfaces;
+namespace domo;
 
-use domo\interfaces\Document;
-use domo\interfaces\DocumentType;
-
-use domo\parsers\HTMLParser;
-use domo\parsers\xmlnames;
-
-use domo\utilities;
-
+require_once("Document.php");
 //require_once("interfaces/Document.php");
 //require_once("interfaces/DocumentType.php");
 //require_once("parsers/HTMLParser.php");
@@ -88,11 +81,14 @@ class DOMImplementation
         public
         function createDocumentType($qualifiedName, $publicId, $systemId)
         {
+                /* 
                 if (!xmlnames\isValidQName($qualifiedName)) {
                         utils\InvalidCharacterError();
                 }
 
                 return new DocumentType($this->contextObject, $qualifiedName, $publicId, $systemId);
+                */
+                /* TEMPORARY STUB */
         }
 
         public
@@ -123,9 +119,9 @@ class DOMImplementation
                         $d->appendChild($e);
                 }
 
-                if ($namespace === utils\NAMESPACE_HTML) {
+                if ($namespace === NAMESPACE_HTML) {
                         $d->_contentType = "application/xhtml+xml";
-                } else if ($namespace === utils\NAMESPACE_SVG) {
+                } else if ($namespace === NAMESPACE_SVG) {
                         $d->_contentType = "image/svg+xml";
                 } else {
                         $d->_contentType = "application/xml";
@@ -162,5 +158,6 @@ class DOMImplementation
 
                 return $d;
         }
-
 }
+
+?>

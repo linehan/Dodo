@@ -1,4 +1,5 @@
 <?php
+namespace domo;
 
 require_once("ChildNode.php");
 
@@ -13,30 +14,32 @@ abstract class NonDocumentTypeChildNode extends ChildNode
                 parent::__construct();
         }
 
-        public function nextElementSibling(): ?Element
+        public function nextElementSibling(void): ?Element
         {
-                if ($this->parentNode() === NULL) {
+                if ($this->parentNode === NULL) {
                         return NULL;
                 }
 
-                for ($n=$this->nextSibling(); $n!==NULL; $n=$n->nextSibling()) {
-                        if ($n->nodeType() === Node\ELEMENT_NODE) {
+                for ($n=$this->nextSibling; $n!==NULL; $n=$n->nextSibling) {
+                        if ($n->nodeType === ELEMENT_NODE) {
                                 return $n;
                         }
                 }
                 return NULL;
         }
 
-        public function previousElementSibling(): ?Element
+        public function previousElementSibling(void): ?Element
         {
-                if ($this->parentNode() === NULL) {
+                if ($this->parentNode === NULL) {
                         return NULL;
                 }
-                for ($n=$this->previousSibling(); $n!==NULL; $n=$n->previousSibling()) {
-                        if ($n->nodeType() === Node\ELEMENT_NODE) {
+                for ($n=$this->previousSibling; $n!==NULL; $n=$n->previousSibling) {
+                        if ($n->nodeType === ELEMENT_NODE) {
                                 return $n;
                         }
                 }
                 return NULL;
         }
 }
+
+?>

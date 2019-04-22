@@ -23,17 +23,17 @@
 require_once("Node.php");
 require_once("NodeList.php");
 require_once("Element.php");
-require_once("Text.php");
-require_once("Comment.php");
-require_once("Event.php");
-require_once("DocumentFragment.php");
-require_once("ProcessingInstruction.php");
-require_once("DOMImplementation.php");
-require_once("TreeWalker.php");
-require_once("NodeIterator.php");
-require_once("NodeFilter.php");
-require_once("URL.php");
-require_once("utils.php");
+//require_once("Text.php");
+//require_once("Comment.php");
+//require_once("Event.php");
+//require_once("DocumentFragment.php");
+//require_once("ProcessingInstruction.php");
+//require_once("DOMImplementation.php");
+//require_once("TreeWalker.php");
+//require_once("NodeIterator.php");
+//require_once("NodeFilter.php");
+//require_once("URL.php");
+require_once("../lib/utils.php");
 
 //var Node = require('./Node');
 //var NodeList = require('./NodeList');
@@ -82,58 +82,6 @@ $replacementEvent = array(
 );
 
 
-/** @spec https://dom.spec.whatwg.org/#validate-and-extract */
-function validateAndExtract($namespace, $qualifiedName)
-{
-        $prefix;
-        $localName;
-        $pos;
-
-        if ($namespace === "") {
-                $namespace = NULL;
-        }
-
-        /*
-         * See https://github.com/whatwg/dom/issues/671
-         * and https://github.com/whatwg/dom/issues/319
-         */
-        /* TODO: These namespaces, particularly xml */
-        if (!domo\xml\isValidQName($qualifiedName)) {
-                domo\utils\InvalidCharacterError();
-        }
-
-        $prefix = NULL;
-        $localName = $qualifiedName;
-
-        $pos = strpos($qualifiedName, ":");
-
-        if ($pos >= 0) {
-                $prefix = substr($qualifiedName, 0, $pos);
-                $localName = substr($qualifiedName, $pos+1);
-        }
-
-        if ($prefix !== NULL && $namespace === NULL) {
-                domo\utils\NamespaceError();
-        }
-
-        if ($prefix === "xml" && $namespace !== domo\utils\NAMESPACE_XML) {
-                domo\utils\NamespaceError();
-        }
-
-        if (($prefix === "xmlns" || $qualifiedName === "xmlns") && $namespace !== domo\utils\NAMESPACE_XMLNS) {
-                domo\utils\NamespaceError();
-        }
-
-        if ($namespace === domo\utils\NAMESPACE_XMLNS && !($prefix === "xmlns" || $qualifiedName === "xmlns")) {
-                \domo\utils\NamespaceError();
-        }
-
-        return array(
-                "namespace" => $namespace,
-                "prefix" => $prefix,
-                "localName" => $localName
-        );
-}
 
 
 
@@ -177,7 +125,7 @@ class Document extends Node
                 /***** Spec-compliant defaults *****/
 
                 /* DOM4-LS (access with Node::nodeType()) */
-                $this->_nodeType = Node\DOCUMENT_NODE;
+                $this->_nodeType = DOCUMENT_NODE;
 
                 /* DOM4-LS (access with Node::nodeName()) */
                 $this->_nodeName = "#document";
@@ -208,7 +156,7 @@ class Document extends Node
                 $this->_URL = $url;
 
                 /* DOM4-LS: DOMImplementation associated with document */
-                $this->_implementation = new domo\w3c\DOMImplementation($this);
+                $this->_implementation = new DOMImplementation($this);
 
                 /***** Internal *****/
 
@@ -419,29 +367,35 @@ class Document extends Node
 
         public function createProcessingInstruction($target, $data)
         {
+                /* TODO: STUB */
                 /* TODO PORT: Wait, is this a bug? Should it be !== -1, or === -1 ? */
+                /*
                 if (!domo\xml\isValidName($target) || strpos($data, "?".">") !== false) {
                         domo\utils\InvalidCharacterError();
                 }
                 return new ProcessingInstruction($this, $target, $data);
+                */
         }
 
         public function createAttribute($localName)
         {
+                /* TODO: STUB
                 $localName = strval($localName);
 
                 if (!domo\xml\isValidName($localName)) {
                         domo\utils\InvalidCharacterError();
                 }
                 if ($this->isHTMLDocument) {
-                        $localName = domo\utils\toASCIILowerCase($localName);
+                        $localName = \domo\toASCIILowerCase($localName);
                 }
                 return new Element->_Attr(null, $localName, null, null, "");
+                */
         }
 
         public function createAttributeNS($namespace, $qualifiedName)
         {
                 /* Convert parameter types according to WebIDL */
+                /* TODO: STUB
                 if ($namespace === NULL || $namespace === "") {
                         $namespace = NULL;
                 } else {
@@ -453,14 +407,15 @@ class Document extends Node
                 $ve = validateAndExtract($namespace, $qualifiedName);
 
                 return new Element->_Attr(NULL, $ve["localName"], $ve["prefix"], $ve["namespace"], "");
+                */
         }
 
-        public function createElement($localName)
+        public function createElement($lname)
         {
-                $localName = strval($localName);
+                $lname = strval($lname);
 
-                if (!domo\xml\isValidName($localName)) {
-                        domo\utils\InvalidCharacterError();
+                if (!\domo\is_valid_xml_name($lname)) {
+                        error("InvalidCharacterError");
                 }
 
                 /*
@@ -470,16 +425,16 @@ class Document extends Node
                  * and null otherwise.
                  */
                 if ($this->isHTMLDocument) {
-                        if (!ctype_lower($localName)) {
-                                $localName = domo\utils\toASCIILowerCase($localName);
+                        if (!ctype_lower($lname)) {
+                                $lname = \domo\ascii_to_lowercase($lname);
                         }
 
-                        return domo\html\createElement($this, $localName, NULL);
+                        return domo\html\createElement($this, $lname, NULL);
 
                 } else if ($this->contentType === "application/xhtml+xml") {
-                        return domo\html\createElement($this, $localName, NULL);
+                        return domo\html\createElement($this, $lname, NULL);
                 } else {
-                        return new Element($this, $localName, NULL, NULL);
+                        return new Element($this, $lname, NULL, NULL);
                 }
         }
         // }, writable: isApiWritable }, PORT TODO what is this junk
