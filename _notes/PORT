@@ -95,6 +95,11 @@ Interesting!
 POTENTIAL UPSTREAM BUGS:
 ----------------------
 
+        _insertOrReplace (Node.js)                 
+
+        In the block to determine the index of the new if $before === NULL and $child->_parentNode === $parent, then $before_index will be the same as the index of the last node in $parent->_childNodes.
+
+
         createProcessingInstruction (Document.js):
                 if (!xml.isValidName(target) || data.indexOf("?>") !== -1) {
                         utils.InvalidCharacterError()

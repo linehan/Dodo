@@ -39,7 +39,7 @@ abstract class ChildNode extends Node
          */
         public function after(/* Nodes or DOMStrings */)
         {
-                if ($this->parentNode === NULL) {
+                if ($this->_parentNode === NULL) {
                         return;
                 }
 
@@ -50,10 +50,10 @@ abstract class ChildNode extends Node
                  * Find "viable next sibling"; that is, the next
                  * sibling not in the arguments array
                  */
-                $node = $this->nextSibling;
+                $node = $this->nextSibling();
 
                 while ($node !== NULL && in_array($arguments, $node)) {
-                        $node = $node->nextSibling;
+                        $node = $node->nextSibling();
                 }
 
                 /*
@@ -62,17 +62,20 @@ abstract class ChildNode extends Node
                  * move $arguments to a document fragment.
                  */
                 $frag = _fragment_from_arguments($this->doc(), $arguments);
-                $this->parentNode->insertBefore($frag, $node);
+                $this->_parentNode->insertBefore($frag, $node);
         }
 
         /*
          * Inserts a set of Node or DOMString objects in the children
          * list of this ChildNode's parent, just before this ChildNode.
          * DOMString objects are inserted as equivalent Text nodes.
+         *
+         * TODO: INTERESTING; should the implementation of insertBefore
+         * live here? Or on Node?
          */
         public function before(/* Nodes or DOMStrings */)
         {
-                if ($this->parentNode === NULL) {
+                if ($this->_parentNode === NULL) {
                         return;
                 }
 
@@ -83,10 +86,10 @@ abstract class ChildNode extends Node
                  * Find "viable prev sibling"; that is, prev
                  * one not in $arguments
                  */
-                $node = $this->previousSibling;
+                $node = $this->previousSibling();
 
                 while ($node !== NULL && in_array($arguments, $node)) {
-                        $node = $node->previousSibling;
+                        $node = $node->previousSibling();
                 }
 
                 /*
@@ -97,18 +100,18 @@ abstract class ChildNode extends Node
                 $frag = _fragment_from_arguments($this->doc(), $arguments);
 
                 if ($node) {
-                        $node = $node->nextSibling;
+                        $node = $node->nextSibling();
                 } else {
-                        $this->parentNode->firstChild;
+                        $this->_parentNode->firstChild();
                 }
 
-                $this->parentNode->insertBefore($frag, $node);
+                $this->_parentNode->insertBefore($frag, $node);
         }
 
         /* Remove this node from its parent */
         public function remove()
         {
-                if ($this->parentNode() === NULL) {
+                if ($this->_parentNode === NULL) {
                         return;
                 }
 
@@ -127,7 +130,7 @@ abstract class ChildNode extends Node
                 $this->_remove();
 
                 /* Forget this node's parent */
-                $this->parentNode = NULL;
+                $this->_parentNode = NULL;
         }
 
         /*
@@ -136,17 +139,17 @@ abstract class ChildNode extends Node
          */
         protected function _remove()
         {
-                if ($this->parentNode === NULL) {
+                if ($this->_parentNode === NULL) {
                         return;
                 }
 
-                if ($this->parentNode->_childNodes) {
-                        array_splice($this->parentNode->_childNodes, $this->index(), 1);
-                } else if ($this->parentNode->_firstChild === $this) {
-                        if ($this->_nextSibling === $this) {
-                                $this->parentNode->_firstChild = NULL;
+                if ($this->_parentNode->_childNodes) {
+                        array_splice($this->_parentNode->_childNodes, $this->index(), 1);
+                } else if ($this->_parentNode->firstChild() === $this) {
+                        if ($this->nextSibling() === $this) {
+                                $this->_parentNode->_firstChild = NULL;
                         } else {
-                                $this->parentNode->_firstChild = $this->_nextSibling;
+                                $this->_parentNode->_firstChild = $this->nextSibling();
                         }
                 }
 
@@ -175,7 +178,7 @@ abstract class ChildNode extends Node
                  * not in $arguments
                  */
                 while ($node !== NULL && in_array($arguments, $node)) {
-                        $node = $node.nextSibling();
+                        $node = $node->nextSibling();
                 }
 
                 /*
@@ -186,7 +189,7 @@ abstract class ChildNode extends Node
                 $frag = _fragment_from_arguments($this->doc(), $arguments);
 
                 /* TODO PORT: Huh? What did they mean to say here? */
-                if ($this->parentNode === $parent) {
+                if ($this->_parentNode === $parent) {
                         $parent->replaceChild($fragment, $this);
                 } else {
                         /* `this` was inserted into docFrag */
