@@ -95,6 +95,7 @@ Interesting!
 POTENTIAL UPSTREAM BUGS:
 ----------------------
 
+<<<<<<< HEAD
         _insertOrReplace (Node.js)
 
             /* Ensure index of `before` is cached before we (possibly) remove it. */
@@ -130,6 +131,12 @@ POTENTIAL UPSTREAM BUGS:
         Still, it could trigger re-indexing?
 
         ---
+=======
+        _insertOrReplace (Node.js)                 
+
+        In the block to determine the index of the new if $before === NULL and $child->_parentNode === $parent, then $before_index will be the same as the index of the last node in $parent->_childNodes.
+
+>>>>>>> 730e8f1a405430968d544221a174f2b49e50cf57
 
         createProcessingInstruction (Document.js):
                 if (!xml.isValidName(target) || data.indexOf("?>") !== -1) {
