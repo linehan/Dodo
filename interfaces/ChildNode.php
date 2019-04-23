@@ -94,7 +94,11 @@ abstract class ChildNode extends Node
                 $this->_parentNode->insertBefore($frag, $before);
         }
 
-        /* Remove this node from its parent */
+        /**
+         * Remove this node from its parent  
+         *
+         * @return void
+         */
         public function remove(void)
         {
                 if ($this->_parentNode === NULL) {

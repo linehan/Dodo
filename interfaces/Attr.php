@@ -87,6 +87,17 @@ class Attr extends Node
                 $this->_ownerElement = $elt;
         }
 
+        public function _subclass_cloneNodeShallow(void): ?Attr
+        {
+                return new Attr(
+                        NULL, 
+                        $this->_localName, 
+                        $this->_prefix, 
+                        $this->_namespaceURI, 
+                        $this->_value
+                )
+        }
+
 
         public function ownerElement()
         {
@@ -111,7 +122,6 @@ class Attr extends Node
                         return $this->_localName;
                 }
         }
-
 
         public function specified()
         {

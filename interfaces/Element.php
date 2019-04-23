@@ -159,18 +159,80 @@ class Element extends NonDocumentTypeChildNode
         }
 
         /**********************************************************************
+         * METHODS DELEGATED FROM NODE
+         **********************************************************************/
+
+        public function _subclass_cloneNodeShallow(): Element
+        {
+                /*
+                 * XXX:
+                 * Modify this to use the constructor directly or avoid
+                 * error checking in some other way. In case we try
+                 * to clone an invalid node that the parser inserted.
+                 */
+                if ($this->namespaceURI() !== NAMESPACE_HTML 
+                || $this->prefix() 
+                || !$this->ownerDocument()->isHTMLDocument()) {
+                        if ($this->prefix() === NULL) {
+                                $name = $this->localName();
+                        } else {
+                                $name = $this->prefix().':'.$this->localName();
+                        }
+                        $clone = $this->ownerDocument()->createElementNS(
+                                $this->namespaceURI(), 
+                                $name
+                        );
+                } else {
+                        $clone = $this->ownerDocument()->createElement(
+                                $this->localName()
+                        );
+                }
+
+                foreach ($this->attributes as $a) {
+                        $clone->setAttributeNodeNS($a->cloneNode());
+                }
+
+                return $clone;
+        }
+
+        public function _subclass_isEqual(Element $elt): boolean
+        {
+                if ($this->localName() !== $elt->localName() 
+                || $this->namespaceURI() !== $elt->namespaceURI() 
+                || $this->prefix() !== $elt->prefix() 
+                || $this->attributes->length() !== $elt->attributes->length()) {
+                        return false;
+                }
+
+                /*
+                 * Compare the sets of attributes, ignoring order
+                 * and ignoring attribute prefixes.
+                 */
+                foreach ($this->attributes as $a) {
+                        if (!$elt->hasAttributeNS($a->namespaceURI(), $a->localName())) {
+                                return false;
+                        }
+                        if ($elt->getAttributeNS($a->namespaceURI(), $a->localName()) !== $a->value()) {
+                                return false;
+                        }
+                }
+                return true;
+        }
+
+        /**********************************************************************
          * ACCESSORS 
          **********************************************************************/
-        /* TODO Also on Attr! */
-        public function prefix()
+
+        public function prefix(): ?string
         {
                 return $this->_prefix;
         }
-        /* TODO Also on Attr! */
-        public function localName()
+
+        public function localName(): ?string
         {
                 return $this->_localName;
         }
+
         public function tagName(): string
         {
                 return $this->_tagName;
@@ -204,6 +266,7 @@ class Element extends NonDocumentTypeChildNode
 
         public function outerHTML(string $value = NULL)
         {
+                /* NOT IMPLEMENTED ANYMORE */
         }
 
         /**********************************************************************
@@ -229,7 +292,7 @@ class Element extends NonDocumentTypeChildNode
         public function children()
         {
                 if (!$this->_children) {
-                        $this->_children = new ChildrenCollection($this);
+                        $this->_children = new HTMLCollection($this);
                 }
                 return $this->_children;
         }
@@ -321,68 +384,6 @@ class Element extends NonDocumentTypeChildNode
                 return new FilteredElementList($this, elementNameFilter(strval($name)));
         }
 
-        /**********************************************************************
-         * METHODS DELEGATED FROM NODE
-         **********************************************************************/
-
-        public function _subclass_cloneNodeShallow()
-        {
-                /*
-                 * XXX:
-                 * Modify this to use the constructor directly or
-                 * avoid error checking in some other way. In case we try
-                 * to clone an invalid node that the parser inserted.
-                 */
-                if ($this->namespaceURI() !== NAMESPACE_HTML || $this->prefix() || !$this->ownerDocument()->isHTMLDocument()) {
-                        $e = $this->ownerDocument()->createElementNS(
-                                $this->namespaceURI(), ($this->prefix() !== NULL) ? ($this->prefix() . ':' . $this->localName()) : $this->localName()
-                        );
-                } else {
-                        $e = $this->ownerDocument()->createElement($this->localName());
-                }
-
-                for ($i=0, $n=count($this->_attrKeys); $i<$n; $i++) {
-                        $lname = $this->_attrKeys[$i];
-                        $a = $this->_attrsByLName[$lname];
-                        $b = $a->cloneNode();
-                        $b->_setOwnerElement($e);
-                        $e->_attrsByLName[$lname] = $b;
-                        $e->_addQName($b);
-                }
-                /*
-                 * TODO: PHP Arrays are assigned by copy, while objects are
-                 * assigned by reference.
-                 * We want a copy, and since this is an array, we get one.
-                 */
-                $e->_attrKeys = $this->_attrKeys;
-
-                return $e;
-        }
-
-        public function _subclass_isEqual($other)
-        {
-                if ($this->localName() !== $other->localName() ||
-                $this->namespaceURI() !== $other->namespaceURI() ||
-                $this->prefix() !== $that->prefix() ||
-                $this->_numattrs !== $that->_numattrs) {
-                        return false;
-                }
-
-                /*
-                 * Compare the sets of attributes, ignoring order
-                 * and ignoring attribute prefixes.
-                 */
-                for ($i=0, $n=$this->_numattrs; $i<$n; $i++) {
-                        $a = $this->_attr($i);
-                        if (!$that->hasAttributeNS($a->namespaceURI(), $a->localName())) {
-                                return false;
-                        }
-                        if ($that->getAttributeNS($a->namespaceURI(), $a->localName()) !== $a->value()) {
-                                return false;
-                        }
-                }
-                return true;
-        }
 
         /*********************************************************************
          * ATTRIBUTES
@@ -752,80 +753,10 @@ class Element extends NonDocumentTypeChildNode
 
 
 
-// The children property of an Element will be an instance of this class.
-// It defines length, item() and namedItem() and will be wrapped by an
-// HTMLCollection when exposed through the DOM.
-function ChildrenCollection(e) {
-  this.element = e;
-  this.updateCache();
-}
 
-ChildrenCollection.prototype = Object.create(Object.prototype, {
-  length: { get: function() {
-    this.updateCache();
-    return this.childrenByNumber.length;
-  } },
-  item: { value: function item(n) {
-    this.updateCache();
-    return this.childrenByNumber[n] || null;
-  } },
-
-  namedItem: { value: function namedItem(name) {
-    this.updateCache();
-    return this.childrenByName[name] || null;
-  } },
-
-  // This attribute returns the entire name->element map.
-  // It is not part of the HTMLCollection API, but we need it in
-  // src/HTMLCollectionProxy
-  namedItems: { get: function() {
-    this.updateCache();
-    return this.childrenByName;
-  } },
-
-  updateCache: { value: function updateCache() {
-    var namedElts = /^(a|applet|area|embed|form|frame|frameset|iframe|img|object)$/;
-    if (this.lastModTime !== this.element.lastModTime) {
-      this.lastModTime = this.element.lastModTime;
-
-      var n = this.childrenByNumber && this.childrenByNumber.length || 0;
-      for(var i = 0; i < n; i++) {
-        this[i] = undefined;
-      }
-
-      this.childrenByNumber = [];
-      this.childrenByName = Object.create(null);
-
-      for (var c = this.element.firstChild; c !== null; c = c.nextSibling) {
-        if (c.nodeType === Node.ELEMENT_NODE) {
-
-          this[this.childrenByNumber.length] = c;
-          this.childrenByNumber.push(c);
-
-          // XXX Are there any requirements about the namespace
-          // of the id property?
-          var id = c.getAttribute('id');
-
-          // If there is an id that is not already in use...
-          if (id && !this.childrenByName[id])
-            this.childrenByName[id] = c;
-
-          // For certain HTML elements we check the name attribute
-          var name = c.getAttribute('name');
-          if (name &&
-            this.element.namespaceURI === NAMESPACE.HTML &&
-            namedElts.test(this.element.localName) &&
-            !this.childrenByName[name])
-            this.childrenByName[id] = c;
-        }
-      }
-    }
-  } },
-});
-
-//// These functions return predicates for filtering elements.
-//// They're used by the Document and Element classes for methods like
-//// getElementsByTagName and getElementsByClassName
+// These functions return predicates for filtering elements.
+// They're used by the Document and Element classes for methods like
+// getElementsByTagName and getElementsByClassName
 
 //function localNameElementFilter(lname) {
   //return function(e) { return e.localName === lname; };
