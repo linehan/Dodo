@@ -598,6 +598,7 @@ class Document extends Node
          * Query methods
          *********************************************************************/
 
+        /* TODO: Actually the only member of the NonElementParentNode mixin! */
         public function getElementById($id)
         {
                 $n = $this->byId[$id];

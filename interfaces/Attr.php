@@ -60,7 +60,7 @@ REMOVED:
  * DOM4: This was abandoned.
  */
 
-class Attr
+class Attr extends Node
 {
         /* TODO: Re-order these arguments because you can make an Attr with
          * just an lname, and the defaults are spec'd as
@@ -93,6 +93,10 @@ class Attr
                 return $this->_ownerElement;
         }
 
+        public function localName()
+        {
+                return $this->_localName;
+        }
         public function prefix()
         {
                 return $this->_prefix;
@@ -108,10 +112,6 @@ class Attr
                 }
         }
 
-        public function localName()
-        {
-                return $this->_localName;
-        }
 
         public function specified()
         {

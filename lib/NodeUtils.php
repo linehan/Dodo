@@ -18,7 +18,7 @@
  *      See https://github.com/fgnass/domino/pull/142 for more information.
  */
 
-namespace DOM\NodeUtils;
+namespace domo;
 
 $hasRawContent = array(
         "STYLE" => true,
@@ -87,57 +87,55 @@ function escapeAttr($s)
 
 function attrname($a)
 {
-        $ns = $a->$namespaceURI;
+        $ns = $a->namespaceURI();
 
         if (!$ns) {
-                return $a->localName;
+                return $a->localName();
         }
 
-        if ($ns === \DOM\util\NAMESPACE_XML) {
-                return "xml:$a->localName";
+        if ($ns === NAMESPACE_XML) {
+                return 'xml:'.$a->localName();
         }
-        if ($ns === \DOM\util\NAMESPACE_XLINK) {
-                return "xlink:$a->localName";
+        if ($ns === NAMESPACE_XLINK) {
+                return 'xlink:'.$a->localName();
         }
-        if ($ns === \DOM\util\NAMESPACE_XMLNS) {
-                if ($a->localName === 'xmlns') {
+        if ($ns === NAMESPACE_XMLNS) {
+                if ($a->localName() === 'xmlns') {
                         return 'xmlns';
                 } else {
-                        return "xmlns:$a->localName";
+                        return 'xmlns:' . $a->localName();
                 }
         }
 
-        return $a->name;
+        return $a->name();
 }
 
-function serializeOne($kid, $parent)
+function serializeOne($child, $parent)
 {
         $s = "";
 
-        switch ($kid->nodeType) {
-        case 1: // ELEMENT_NODE
-                $ns = $kid->namespaceURI;
-                $html = ($ns === \DOM\util\NAMESPACE_HTML);
+        switch ($child->_nodeType) {
+        case ELEMENT_NODE: 
+                $ns = $child->namespaceURI();
+                $html = ($ns === NAMESPACE_HTML);
 
-                if ($html || $ns === \DOM\util\NAMESPACE_SVG || $ns === \DOM\util\NAMESPACE_MATHML) {
-                        $tagname = $kid->localName;
+                if ($html || $ns === NAMESPACE_SVG || $ns === NAMESPACE_MATHML) {
+                        $tagname = $child->localName();
                 } else {
-                        $tagname = $kid->tagName;
+                        $tagname = $child->tagName();
                 }
 
                 $s += "<" + $tagname;
 
-                for ($j=0, $k=$kid->_numattrs; $j<$k; $j++) {
-                        /* _attr(): see L890 in Element.js */
-                        $a = $kid->_attr($j);
+                foreach ($child->attributes) {
                         $s += " " + attrname($a);
 
                         /*
                          * PORT: TODO: Need to ensure this value is NULL
                          * rather than undefined?
                          */
-                        if ($a->value !== NULL) {
-                                $s += '="' + escapeAttr($a->value) + '"';
+                        if ($a->value() !== NULL) {
+                                $s += '="' + escapeAttr($a->value()) + '"';
                         }
                 }
 
@@ -145,7 +143,7 @@ function serializeOne($kid, $parent)
 
                 if (!($html && isset($emptyElements[$tagname]))) {
                         /* PORT: TODO: Check this serialize function */
-                        $ss = $kid->serialize();
+                        $ss = $child->serialize();
                         if ($html && isset($extraNewLine[$tagname]) && $ss[0]==='\n') {
                                 $s += '\n';
                         }
@@ -155,51 +153,47 @@ function serializeOne($kid, $parent)
                 }
                 break;
 
-        case 3: // TEXT_NODE
-        case 4: // CDATA_SECTION_NODE
-
-                $parenttag;
-
-                if ($parent->nodeType === 1 /*ELEMENT_NODE*/ && $parent->namespaceURI === \DOM\util\NAMESPACE_HTML) {
-                        $parenttag = $parent->tagName;
+        case TEXT_NODE:
+        case CDATA_SECTION_NODE: 
+                if ($parent->_nodeType === ELEMENT_NODE && $parent->namespaceURI() === NAMESPACE_HTML) {
+                        $parenttag = $parent->tagName();
                 } else {
                         $parenttag = '';
                 }
 
-                if ($hasRawContent[$parenttag] || ($parenttag==='NOSCRIPT' && $parent->ownerDocument->_scripting_enabled)) {
-                        $s += $kid->data;
+                if ($hasRawContent[$parenttag] || ($parenttag==='NOSCRIPT' && $parent->ownerDocument()->_scripting_enabled)) {
+                        $s += $child->data();
                 } else {
-                        $s += escape($kid->data);
+                        $s += escape($child->data());
                 }
                 break;
 
-        case 8: // COMMENT_NODE
-                $s += '<!--' + $kid->data + '-->';
+        case COMMENT_NODE:
+                $s += '<!--' + $child->data() + '-->';
                 break;
 
-        case 7: // PROCESSING_INSTRUCTION_NODE
-                $s += '<?' + $kid->target + ' ' + $kid->data + '?>';
+        case PROCESSING_INSTRUCTION_NODE: 
+                $s += '<?' + $child->target() + ' ' + $kid->data() + '?>';
                 break;
 
-        case 10: // DOCUMENT_TYPE_NODE
-                $s += '<!DOCTYPE ' + $kid->name;
+        case DOCUMENT_TYPE_NODE:
+                $s += '<!DOCTYPE ' + $child->name();
 
                 if (false) {
                         // Latest HTML serialization spec omits the public/system ID
-                        if ($kid->publicID) {
-                                $s += ' PUBLIC "' + $kid->publicId + '"';
+                        if ($child->_publicID) {
+                                $s += ' PUBLIC "' + $child->_publicId + '"';
                         }
 
-                        if ($kid->systemId) {
-                                $s += ' "' + $kid->systemId + '"';
+                        if ($child->_systemId) {
+                                $s += ' "' + $child->_systemId + '"';
                         }
                 }
 
                 $s += '>';
                 break;
         default:
-                /* PORT: TODO: Write this function */
-                \DOM\util\InvalidStateError();
+                \domo\error("InvalidState");
         }
 
         return $s;

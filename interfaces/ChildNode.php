@@ -32,84 +32,70 @@ abstract class ChildNode extends Node
                 parent::__construct();
         }
 
-        /*
-         * Inserts a list of Node or DOMString objects in the children
-         * list of this ChildNode's parent, just after this ChildNode.
-         * DOMString objects are inserted as equivalent Text nodes.
+        /**
+         * Insert list of Nodes or DOMStrings after this ChildNode
+         *
+         * @param ... Any number of Nodes or DOMStrings
+         * @return void
+         *
+         * NOTE
+         * DOMStrings are inserted as equivalent Text nodes.
          */
-        public function after(/* Nodes or DOMStrings */)
+        public function after(/* ... */)
         {
                 if ($this->_parentNode === NULL) {
                         return;
                 }
 
-                /* Get the argument array */
-                $arguments = func_get_args();
+                $args = func_get_args();
 
-                /*
-                 * Find "viable next sibling"; that is, the next
-                 * sibling not in the arguments array
-                 */
-                $node = $this->nextSibling();
-
-                while ($node !== NULL && in_array($arguments, $node)) {
-                        $node = $node->nextSibling();
+                /* Find next sibling not in $args */
+                $after = $this->nextSibling();
+                while ($after !== NULL && in_array($after, $args)) {
+                        $after = $after->nextSibling();
                 }
 
-                /*
-                 * ok, parent and sibling are saved away since this node
-                 * could itself appear in $arguments and we're about to
-                 * move $arguments to a document fragment.
-                 */
-                $frag = _fragment_from_arguments($this->doc(), $arguments);
-                $this->_parentNode->insertBefore($frag, $node);
+                $frag = _fragment_from_arguments($this->doc(), $args);
+                $this->_parentNode->insertBefore($frag, $after);
         }
 
-        /*
-         * Inserts a set of Node or DOMString objects in the children
-         * list of this ChildNode's parent, just before this ChildNode.
-         * DOMString objects are inserted as equivalent Text nodes.
+        /**
+         * Insert list of Nodes or DOMStrings before this ChildNode
          *
-         * TODO: INTERESTING; should the implementation of insertBefore
-         * live here? Or on Node?
+         * @param ... Any number of Nodes or DOMStrings
+         * @return void
+         *
+         * NOTE
+         * DOMStrings are inserted as equivalent Text nodes.
          */
-        public function before(/* Nodes or DOMStrings */)
+        public function before(/* ... */)
         {
                 if ($this->_parentNode === NULL) {
                         return;
                 }
 
-                /* Get the argument array */
-                $arguments = func_get_args();
+                $args = func_get_args();
 
-                /*
-                 * Find "viable prev sibling"; that is, prev
-                 * one not in $arguments
-                 */
-                $node = $this->previousSibling();
+                /* Find prev sibling not in $args */
+                $before = $this->previousSibling();
 
-                while ($node !== NULL && in_array($arguments, $node)) {
-                        $node = $node->previousSibling();
+                while ($before !== NULL && in_array($before, $args)) {
+                        $before = $before->previousSibling();
                 }
 
-                /*
-                 * ok, parent and sibling are saved away since this node
-                 * could itself appear in $arguments and we're about to
-                 * move $arguments to a document fragment.
-                 */
-                $frag = _fragment_from_arguments($this->doc(), $arguments);
+                $frag = _fragment_from_arguments($this->doc(), $args);
 
-                if ($node) {
-                        $node = $node->nextSibling();
+                if ($before) {
+                        $before = $before->nextSibling();
                 } else {
-                        $this->_parentNode->firstChild();
+                        $before = $this->_parentNode->firstChild();
                 }
 
-                $this->_parentNode->insertBefore($frag, $node);
+                $this->_parentNode->insertBefore($frag, $before);
         }
 
         /* Remove this node from its parent */
-        public function remove()
+        public function remove(void)
         {
                 if ($this->_parentNode === NULL) {
                         return;
@@ -168,7 +154,7 @@ abstract class ChildNode extends Node
                 }
 
                 /* Get the argument array */
-                $arguments = func_get_args();
+                $args = func_get_args();
 
                 $parent = $this->parentNode();
                 $node = $this->nextSibling();
@@ -177,7 +163,7 @@ abstract class ChildNode extends Node
                  * Find "viable next sibling"; that is, next one
                  * not in $arguments
                  */
-                while ($node !== NULL && in_array($arguments, $node)) {
+                while ($node !== NULL && in_array($node, $args)) {
                         $node = $node->nextSibling();
                 }
 
@@ -188,12 +174,11 @@ abstract class ChildNode extends Node
                  */
                 $frag = _fragment_from_arguments($this->doc(), $arguments);
 
-                /* TODO PORT: Huh? What did they mean to say here? */
                 if ($this->_parentNode === $parent) {
-                        $parent->replaceChild($fragment, $this);
+                        $parent->replaceChild($frag, $this);
                 } else {
                         /* `this` was inserted into docFrag */
-                        $parent->insertBefore($fragment, $node);
+                        $parent->insertBefore($frag, $node);
                 }
         }
 }

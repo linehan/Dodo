@@ -119,6 +119,10 @@ abstract class Node /* extends EventTarget // try factoring events out? */
         /* DOMO: Integer enumerating node type. See constants. */
         public $_nodeType;
 
+        public $_nodeValue;
+
+        public $_textContent;
+
         public function __construct()
         {
                 /* Our ancestors */
@@ -152,6 +156,22 @@ abstract class Node /* extends EventTarget // try factoring events out? */
         /**********************************************************************
          * ACCESSORS 
          **********************************************************************/
+
+        public function nodeType(void): integer
+        {
+                /* TODO: rules about node type baked into constructors */
+                return $this->_nodeType;
+        }
+        public function nodeName(void)
+        {
+                /* TODO: rules about naming baked into constructors */
+                return $this->_nodeName;
+        }
+        public function nodeValue(void) 
+        {
+                /* TODO: This can take a setter too */
+                return $this->_nodeType;
+        }
 
         /**
          * Document that this node belongs to, or NULL if node is a Document
@@ -457,6 +477,46 @@ abstract class Node /* extends EventTarget // try factoring events out? */
                 return $node;
         }
 
+        /**
+         * What do you do?
+         */
+        public function normalize(void)
+        {
+                $next=NULL;
+
+                for ($n=$this->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
+
+                        /* TODO: HOW TO FIX THIS IN PHP? */
+                        if (method_exists($n, "normalize")) {
+                                $n->normalize();
+                        }
+
+                        if ($n->_nodeType !== TEXT_NODE) {
+                                continue;
+                        }
+
+                        if ($n->_nodeValue === "") {
+                                $this->removeChild($n);
+                                continue;
+                        }
+
+                        $prevChild = $n->previousSibling();
+
+                        if ($prevChild === NULL) {
+                                continue;
+                        } else {
+                                if ($prevChild->_nodeType === TEXT_NODE) {
+                                        /*
+                                         * merge this with previous and
+                                         * remove the child
+                                         */
+                                        $prevChild->appendData($n->_nodeValue);
+                                        $this->removeChild($n);
+                                }
+                        }
+                }
+        }
+
 	/**********************************************************************
 	 * COMPARISONS AND PREDICATES
 	 *********************************************************************/
@@ -725,51 +785,15 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          * Return the ownerDocument, or $this if we are a Document.
          * 
          * @return Document or NULL
+         *
+         * TODO: This should be replaced with the DOM-LS method
+         * getRootNode(), which does somewhat similar behavior.
          */
         public function doc(void) ?Document
         {
                 return $this->_ownerDocument || $this;
         }
 
-        /**
-         * What do you do?
-         */
-        public function normalize(void)
-        {
-                $next=NULL;
-
-                for ($n=$this->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
-
-                        /* TODO: HOW TO FIX THIS IN PHP? */
-                        if (method_exists($n, "normalize")) {
-                                $n->normalize();
-                        }
-
-                        if ($n->_nodeType !== TEXT_NODE) {
-                                continue;
-                        }
-
-                        if ($n->_nodeValue === "") {
-                                $this->removeChild($n);
-                                continue;
-                        }
-
-                        $prevChild = $n->previousSibling();
-
-                        if ($prevChild === NULL) {
-                                continue;
-                        } else {
-                                if ($prevChild->_nodeType === TEXT_NODE) {
-                                        /*
-                                         * merge this with previous and
-                                         * remove the child
-                                         */
-                                        $prevChild->appendData($n->_nodeValue);
-                                        $this->removeChild($n);
-                                }
-                        }
-                }
-        }
 
 
         /**
@@ -784,10 +808,36 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          *
          * Therefore if we are currently rooted, we can tell by checking that
          * we have one of these.
+         *
+         * TODO: This should be Node::isConnected(), see spec.
          */
         public function rooted(void): boolean
         {
                 return !!$this->_nid;
+        }
+
+        /*
+         * Convert the children of a node to an HTML string.
+         * This is used by the innerHTML getter
+         */
+        public function serialize()
+        {
+                $s = "";
+
+                for ($n=$this->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
+                        $s += \domo\algorithm\serialize_node($n, $this);
+                }
+
+                return $s;
+        }
+
+        public function outerHTML(string $value = NULL)
+        {
+                if ($value == NULL) {
+                        return \domo\algorithm\serialize_node($this, { $nodeType: 0 });
+                } else {
+                        /* not yet implemented */
+                }
         }
 
         /**
@@ -838,9 +888,6 @@ abstract class Node /* extends EventTarget // try factoring events out? */
                         }
                 }
         }
-
-        public function serialize(){}
-        public function outerHTML(string $value = NULL){}
 }
 
 

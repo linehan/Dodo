@@ -16,12 +16,12 @@ abstract class NonDocumentTypeChildNode extends ChildNode
 
         public function nextElementSibling(void): ?Element
         {
-                if ($this->parentNode === NULL) {
+                if ($this->_parentNode === NULL) {
                         return NULL;
                 }
 
-                for ($n=$this->nextSibling; $n!==NULL; $n=$n->nextSibling) {
-                        if ($n->nodeType === ELEMENT_NODE) {
+                for ($n=$this->nextSibling(); $n!==NULL; $n=$n->nextSibling()) {
+                        if ($n->_nodeType === ELEMENT_NODE) {
                                 return $n;
                         }
                 }
@@ -30,11 +30,11 @@ abstract class NonDocumentTypeChildNode extends ChildNode
 
         public function previousElementSibling(void): ?Element
         {
-                if ($this->parentNode === NULL) {
+                if ($this->_parentNode === NULL) {
                         return NULL;
                 }
-                for ($n=$this->previousSibling; $n!==NULL; $n=$n->previousSibling) {
-                        if ($n->nodeType === ELEMENT_NODE) {
+                for ($n=$this->previousSibling(); $n!==NULL; $n=$n->previousSibling()) {
+                        if ($n->_nodeType === ELEMENT_NODE) {
                                 return $n;
                         }
                 }
