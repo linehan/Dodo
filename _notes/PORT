@@ -94,6 +94,43 @@ Interesting!
 
 POTENTIAL UPSTREAM BUGS:
 ----------------------
+
+        _insertOrReplace (Node.js)
+
+            /* Ensure index of `before` is cached before we (possibly) remove it. */
+            if (parent._childNodes) {
+              before_index = (before === null) ? parent._childNodes.length :
+                before.index; /* ensure _index is cached */
+
+              // If we are already a child of the specified parent, then
+              // the index may have to be adjusted.
+              if (child.parentNode === parent) {
+                var child_index = child.index;
+                // If the child is before the spot it is to be inserted at,
+                // then when it is removed, the index of that spot will be
+                // reduced.
+                if (child_index < before_index) {
+                  before_index--;
+                }
+              }
+            }
+
+        In this code fragment, we can see that if before === null and
+        child.parentNode === parent, then before_index = parent._childNodes.length,
+        and so by definition child.index < before_index, and therefore
+        before_index becomes parent._childNodes.length - 1, which is the index
+        of the last node in the parent's childNodes list. There is nothing
+        to indicate we are replacing that node, or replacing a node at all.
+        This will result in having to re-index when we call index() again,
+        which is what's hiding this bug I think.
+
+        NO! By spec, if we call insert without a position,
+        the behavior is to append. So this is fine.
+
+        Still, it could trigger re-indexing?
+
+        ---
+
         createProcessingInstruction (Document.js):
                 if (!xml.isValidName(target) || data.indexOf("?>") !== -1) {
                         utils.InvalidCharacterError()
