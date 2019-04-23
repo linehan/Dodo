@@ -44,6 +44,12 @@ CHANGED:
 
           I changed the behavior to conform with spec.
 
+        - _lookupNamespacePrefix has a bizarre prototype and used a
+          context object ($this) and the same thing given as an arg, 
+          was only ever called in one place (on Node class), and there
+          with a bizarre call structure that did not match spec.
+          It was factored out and fixed up here and in Node 
+
 REMOVED:
         - mutation of prefix in _setAttributeNS() since DOM4 eliminates
         - 'set' branch of Element::classList(), which is not in spec.
@@ -555,68 +561,6 @@ class Element extends NonDocumentTypeChildNode
                         }
                 }
                 return true;
-        }
-
-        /*
-         * This is the 'locate a namespace prefix' algorithm from the
-         * DOM specification.  It is used by Node.lookupPrefix()
-         * (Be sure to compare DOM3 and DOM4 versions of spec.)
-         */
-        public function _lookupNamespacePrefix($ns, $originalElement)
-        {
-                if (
-                        $this->namespaceURI() &&
-                        $this->namespaceURI() === $ns &&
-                        $this->prefix() !== NULL &&
-                        $originalElement->lookupNamespaceURI($this->prefix()) === $ns
-                ) {
-                        return $this->prefix();
-                }
-
-                for ($i=0, $n=$this->_numattrs; $i<$n; $i++) {
-                        $a = $this->_attr($i);
-                        if (
-                                $a->prefix() === "xmlns" &&
-                                $a->value() === $ns &&
-                                $originalElement->lookupNamespaceURI($a->localName()) === $ns
-                        ) {
-                                return $a->localName();
-                        }
-                }
-
-                $parent = $this->parentElement();
-                return $parent ? $parent->_lookupNamespacePrefix($ns, $originalElement) : NULL;
-        }
-
-        /*
-         * This is the 'locate a namespace' algorithm for Element nodes
-         * from the DOM Core spec.  It is used by Node#lookupNamespaceURI()
-         */
-        public function lookupNamespaceURI(string $prefix = NULL)
-        {
-                if ($prefix === '') {
-                        $prefix = NULL;
-                }
-
-                if ($this->namespaceURI() !== NULL && $this->prefix() === $prefix) {
-                        return $this->namespaceURI();
-                }
-
-                for ($i=0, $n=$this->_numattrs; $i<$n; $i++) {
-                        $a = $this->_attr($i);
-
-                        if ($a->namespaceURI() === NAMESPACE_XMLNS) {
-                                if (
-                                        ($a->prefix() === 'xmlns' && $a->localName() === $prefix) ||
-                                        ($prefix === NULL && $a->prefix === NULL && $a->localName() === 'xmlns')
-                                ) {
-                                        return $a->value() ?? NULL;
-                                }
-                        }
-                }
-
-                $parent = $this->parentElement();
-                return $parent ? $parent->lookupNamespaceURI($prefix) : NULL;
         }
 
         /*********************************************************************

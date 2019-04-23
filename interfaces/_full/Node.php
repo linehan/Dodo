@@ -31,6 +31,12 @@
  *      Changed the names of these delegated subclass things to be more
  *      clear about their purpose and role.
  *
+ *      _lookupNamespaceURI() => static in algorithms.php
+ *      _lookupPrefix()() => static in algorithms.php
+ *
+ *      compareDocumentPosition() => now includes attribute, bringing up to
+ *                                   DOM-LS spec (was not conformant before)
+ *
  * NOT CHANGED:
  *      Node.parentNode         => Node->parentNode
  *      this one is kept as an attribute. Is this wise?
@@ -301,7 +307,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
 		 * DOM-LS: "To append a node to parent, pre-insert node
 		 * into parent before NULL."
 		 */
-                return $this->insertBefore($child, NULL);
+                return $this->insertBefore($node, NULL);
         }
 
         protected function _appendChild($child)

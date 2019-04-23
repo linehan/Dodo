@@ -24,12 +24,13 @@ require_once("utils.php");
 
 
 
-class NamedNodeMap
+class NamedNodeMap extends ArrayObject
 {
-        public $qname_to_attr = array(); /* qname => Attr */
-        public $lname_to_attr = array(); /* ns|lname => Attr */
-        public $lname_to_index = array(); /* ns|lname => N */
-        public $index_to_attr = array(); /* N => Attr */
+        private $qname_to_attr = array(); /* qname => Attr */
+        private $lname_to_attr = array(); /* ns|lname => Attr */
+        private $lname_to_index = array(); /* ns|lname => N */
+        /* NOW IMPLEMENTED AS $this[], the default */
+        //public $index_to_attr = array(); [> N => Attr <]
 
         public function __construct(?Element $element=NULL)
         {
@@ -53,8 +54,8 @@ class NamedNodeMap
                 }
 
                 $this->lname_to_attr[$attr->ns.'|'.$attr->lname] = $attr;
-                $this->lname_to_index[$attr->ns.'|'.$attr->lname] = count($this->index_to_attr);
-                $this->index_to_attr[] = $attr;
+                $this->lname_to_index[$attr->ns.'|'.$attr->lname] = count($this);
+                $this[] = $attr;
         }
 
         private function _replace(Attr $attr)
@@ -74,7 +75,7 @@ class NamedNodeMap
                 }
 
                 $this->lname_to_attr[$attr->ns.'|'.$attr->lname] = $attr;
-                $this->index_to_attr[$this->lname_to_index[$attr->ns.'|'.$attr->lname]] = $attr;
+                $this[$this->lname_to_index[$attr->ns.'|'.$attr->lname]] = $attr;
         }
 
         private function _remove(Attr $a)
@@ -85,7 +86,7 @@ class NamedNodeMap
                 $i = $this->lname_to_index[$key]);
                 unset($this->lname_to_index[$key]);
 
-                array_splice($this->index_to_attr, $i, 1);
+                array_splice($this, $i, 1);
 
                 if (isset($this->qname_to_attr[$a->name])) {
                         if (is_array($this->qname_to_attr[$a->name])) {
@@ -99,18 +100,14 @@ class NamedNodeMap
                 }
         }
 
-        public function length(): int
+        public function length(void): int
         {
-                return count($this->_attrKeys);
+                return count($this);
         }
 
         public function item(int $index): ?Attr
         {
-                if (!isset($this->element->_attrKeys[$index])) {
-                        return NULL;
-                }
-
-                return $this->element->_attrsByLName[$this->element->_attrKeys[$index]];
+                return $this[$index] ?? NULL;
         }
 
         /* MY EXTENSION */

@@ -15,6 +15,7 @@ require_once("LinkedList.php");
 require_once("NodeUtils.php");
 require_once("NodeList.php");
 require_once("utils.php");
+require_once("algorithms.php");
 
 /*
  * A "Node" is an abstract interface implemented by objects which also
@@ -44,121 +45,164 @@ abstract class Node /* extends EventTarget // try factoring events out? */
         /* Delegated subclass method called by Node::cloneNode() */
         abstract protected function _subclass_cloneNodeShallow();
 
-        /**
-         * NOTE: NODE REFERENCES
-         * ---------------------
-         * Because parentNode, nextSibling, and previousSibling are
-         * read-only attributes in the spec, we implement them as
-         * getter methods in PHP, with the actual node references
-         * stored in protected properties _parentNode, _nextSibling,
-         * and _previousSibling, respectively.
-         *
-         * Nodes implement a circular linked list of siblings using
-         * nextSibling() and previousSibling(), so with only a ref.
-         * to one child (e.g. firstChild), we can traverse all the
-         * children by calling these methods on each in turn.
-         *
-         * The list is circular to ensure all child nodes can be
-         * visited regardless of what node we start from.
-         *
-         * TODO PORT NOTE: We are not actually ensuring this.
-         * nextSibling() and previousSibling() assume that you begin
-         * from firstChild if you want a traversal.
-         *
-         * TODO PORT NOTE: Also, these cannot be protected, they
-         * must be public, because LinkedList accesses them.
-         */
-
         /**********************************************************************
          * BOOK-KEEPING: What Node knows about its ancestors 
          **********************************************************************/
 
-        /* DOM-LS: Read only top-level Document object of the node */
+        /* DOMO: Top-level Document object of the Node */
         public $_ownerDocument;
 
-        /* DOM-LS: Parent node (NULL if no parent) */
+        /* DOMO: Parent node (NULL if no parent) */
         public $_parentNode;
 
         /**********************************************************************
          * BOOK-KEEPING: What Node knows about the childNodes of its parent 
          **********************************************************************/
 
-        /* [DOMO] Node's index in childNodes of parent (NULL if no parent) */
+        /* DOMO: Node's index in childNodes of parent (NULL if no parent) */
         public $_siblingIndex;
 
-        /* Next sibling in childNodes of parent ($this if none) */
+        /* DOMO: Next sibling in childNodes of parent ($this if none) */
         public $_nextSibling;
 
-        /* Prev sibling in childNodes of parent ($this if none) */
+        /* DOMO: Prev sibling in childNodes of parent ($this if none) */
         public $_previousSibling;
 
         /**********************************************************************
          * BOOK-KEEPING: What Node knows about its own childNodes 
          **********************************************************************/
 
-        /* First child Node (NULL if no children) */
+        /* DOMO: Reference to first child Node (NULL if no children) */
         public $_firstChild;
 
-        /* ARRAY FORM of childNodes list (NULL if no children or using LL) */
-        /* 
-         * TODO It's hard to understand if you aren't familiar with the
-         * code, that 'if ($this->_childNodes)' is testing whether we are
-         * using the array representation or a LL representation.
-         * How can we fix this?
-         */
+        /* DOMO: Array form of childNodes (NULL if no children or using LL) */
         public $_childNodes;
 
         /**********************************************************************
          * BOOK-KEEPING: What Node knows about itself 
          **********************************************************************/
 
-        /* DOM-LS Subclasses are responsible for setting these */
+        /* DOMO: For HTMLElement, will contain name of the tag */
         public $_nodeName;
+        /* DOMO: Integer enumerating node type. See constants. */
         public $_nodeType;
 
         public function __construct()
         {
-                $this->_parentNode = NULL;
+                /* Our ancestors */
 		$this->_ownerDocument = NULL;
+                $this->_parentNode = NULL;
 
                 /* Our children */
                 $this->_firstChild = NULL;
                 $this->_childNodes = NULL;
 
                 /* Our siblings */
-                $this->_nextSibling = $this;
-                $this->_previousSibling = $this;
+                $this->_nextSibling = $this; // for LL
+                $this->_previousSibling = $this; // for LL
                 $this->_siblingIndex = NULL;
         }
 
-        public function baseURI(){}
+        /**********************************************************************
+         * UNSUPPORTED
+         **********************************************************************/
 
+        /* Not implemented */
+        public function baseURI(){}
+        public function baseURIObject(){}
+        /* DOM-LS: Obsolete */
+        public function localName(){}
+        public function prefix(){}              // then how do you do this??
+        public function namespaceURI(){}        // then how do you do this??
+        public function nodePrincipal(){}
+        public function rootNode() }
+
+        /**********************************************************************
+         * ACCESSORS 
+         **********************************************************************/
+
+        /**
+         * Document that this node belongs to, or NULL if node is a Document
+         *
+         * @return Document or NULL
+         * @spec DOM-LS
+         */
+        public function ownerDocument(void): ?Document
+        {
+                if ($this->_ownerDocument === NULL
+                ||  $this->_nodeType === DOCUMENT_NODE) {
+                        return NULL;
+                }
+                return $this->_ownerDocument;
+        }
+
+        /**
+         * Node that is the parent of this node, or NULL if DNE.
+         *
+         * @return Node or NULL
+         * @spec DOM-LS
+         *
+         * NOTE
+         * Nodes may not have a parentNode if they are at the top of the
+         * tree (e.g. Document Nodes), or if they don't participate in a
+         * tree.
+         */
         public function parentNode(void): ?Node
         {
                 return $this->_parentNode ?? NULL;
         }
 
+        /**
+         * Element that is the parent of this node, or NULL if DNE.
+         *
+         * @return Element or NULL
+         * @spec DOM-LS
+         *
+         * NOTE
+         * Computed from _parentNode, has no state of its own to mutate. 
+         */
         public function parentElement(void): ?Element
         {
                 if ($this->_parentNode === NULL 
-                || $this->_parentNode->nodeType !== ELEMENT_NODE) {
+                || $this->_parentNode->_nodeType !== ELEMENT_NODE) {
                         return NULL;
                 }
-                return $this->parentNode;
+                return $this->_parentNode;
         }
 
+        /**
+         * Node representing previous sibling, or NULL if DNE. 
+         *
+         * @return Node or NULL
+         * @spec DOM-LS
+         *
+         * CAUTION 
+         * Directly accessing _previousSibling is NOT a substitute 
+         * for this method. When Node is an only child, _previousSibling 
+         * is set to $this, but DOM-LS needs it to be NULL. 
+         */
         public function previousSibling(void): ?Node
         {
-                /* LL loops depend on this returning NULL on these conds. */
                 if ($this->_parentNode === NULL 
-                || $this === $this->_parentNode->_firstChild) {
+                || $this === $this->_parentNode->firstChild()) {
                         return NULL;
                 }
                 return $this->_previousSibling;
         }
+
+        /**
+         * Node representing next sibling, or NULL if DNE. 
+         *
+         * @return Node or NULL
+         * @spec DOM-LS
+         *
+         * CAUTION 
+         * Directly accessing _nextSibling is NOT a substitute 
+         * for this method. When Node is an only child, _nextSibling 
+         * is set to $this, but DOM-LS needs it to be NULL. 
+         */
         public function nextSibling(void): ?Node
         {
-                /* LL loops depend on this returning NULL on these conds. */
                 if ($this->_parentNode === NULL 
                 || $this->_nextSibling === $this->_parentNode->_firstChild) {
                         return NULL;
@@ -166,74 +210,103 @@ abstract class Node /* extends EventTarget // try factoring events out? */
                 return $this->_nextSibling;
         }
 
+        /**
+         * Live NodeList containing this Node's children (NULL if no children)
+         * 
+         * @return NodeList or NULL
+         * @spec DOM-LS
+         *
+         * NOTE
+         * For performance, the creation of this NodeList is done lazily,
+         * and only triggered the first time this method is called. Until
+         * then, other functions rely on the LinkedList representation of
+         * a Node's child nodes.
+         *
+         * So when we test if ($this->_childNodes), we are testing to see
+         * if we have to mutate or work with a live NodeList.
+         */
         public function childNodes(void): ?NodeList
         {
-                /* Memoized fast path */
                 if ($this->_childNodes !== NULL) {
-                        return $this->_childNodes;
+                        return $this->_childNodes; /* memoization */
                 }
 
-                /* Build child nodes array by traversing the linked list */
+                /* Lazy evaluation to build the child nodes */ 
                 $this->_childNodes = new NodeList();
 
-                for ($n=$this->_firstChild; $n!==NULL; $n=$n->_nextSibling) {
+                for ($n=$this->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
                         $this->_childNodes[] = $n;
                 }
 
-                /*
-                 * SIDE EFFECT:
-                 * Switch from circular linked list branch to array-like
-                 * branch.
-                 *
-                 * (Which branch we are on is detected by looking for which
-                 * of these two members is NULL, see methods below.)
-                 */
-                $this->_firstChild = NULL;
-
+                $this->_firstChild = NULL; /* Signals we are not using LL */
                 return $this->_childNodes;
         }
 
-        public function hasChildNodes()
+        /**
+         * Determine if the Node has any children 
+         *
+         * @return boolean
+         * @spec DOM-LS
+         *
+         * CAUTION 
+         * Testing _firstChild or _childNodes alone is *not* a shortcut
+         * for this method. Depending on whether we are in NodeList or
+         * LinkedList mode, one or the other or both may be NULL.
+         */
+        public function hasChildNodes(): boolean
         {
-                /* BRANCH: NodeList (array-like) */
                 if ($this->_childNodes !== NULL) {
-                        return !empty($this->_childNodes);
-                }
-                /* BRANCH: circular linked list */
-                return $this->_firstChild !== NULL;
-        }
-
-        public function firstChild()
-        {
-                /* BRANCH: NodeList (array-like) */
-                if ($this->_childNodes !== NULL) {
-                        if (!empty($this->_childNodes)) {
-                                return $this->_childNodes[0];
-                        } else {
-                                return NULL;
-                        }
-                }
-
-                /* BRANCH: circular linked list */
-                return $this->_firstChild;
-        }
-
-        public function lastChild()
-        {
-                /* BRANCH: NodeList (array-like) */
-                if ($this->_childNodes !== NULL) {
-                        if (!empty($this->_childNodes)) {
-                                return end($this->_childNodes);
-                        } else {
-                                return NULL;
-                        }
-                }
-
-                /* BRANCH: circular linked list */
-                if ($this->_firstChild === NULL) {
-                        return NULL;
+                        return !empty($this->_childNodes); /* NodeList */
                 } else {
-                        return $this->_firstChild->_previousSibling;
+                        return $this->_firstChild !== NULL; /* LinkedList */
+                }
+        }
+
+        /**
+         * Node representing the Node's first child node, or NULL if DNE
+         * 
+         * @return Node or NULL
+         * @spec DOM-LS
+         *
+         * CAUTION 
+         * Directly accessing _firstChild is *not* a substitute for this
+         * method. Where to find the first child depends on whether we
+         * are in NodeList or LinkedList mode.
+         */
+        public function firstChild(): ?Node
+        {
+                if ($this->_childNodes !== NULL) {
+                        if (isset($this->_childNodes[0])) {
+                                return $this->_childNodes[0]; /* NodeList */
+                        } else {
+                                return NULL; /* NodeList */
+                        }
+                }
+                return $this->_firstChild; /* LinkedList */
+        }
+
+        /**
+         * Node representing the Node's last child node, or NULL if DNE
+         *
+         * @return Node or NULL
+         * @spec DOM-LS
+         *
+         * NOTE
+         * See note for firstChild()
+         */
+        public function lastChild(): ?Node
+        {
+                if ($this->_childNodes !== NULL) {
+                        if (!empty($this->_childNodes)) {
+                                return end($this->_childNodes); /* NodeList */
+                        } else {
+                                return NULL; /* NodeList */
+                        }
+                }
+                if ($this->_firstChild !== NULL) {
+                        return $this->_firstChild->previousSibling(); /* LinkedList */
+                } else {
+                        return NULL; /* LinkedList */
                 }
         }
 
@@ -241,118 +314,165 @@ abstract class Node /* extends EventTarget // try factoring events out? */
 	 * MUTATION ALGORITHMS
 	 *********************************************************************/
 
-        public function insertBefore(Node $node, ?Node $child)
+        /**
+         * Insert a Node as a child of this one, before a given reference node
+         *
+         * @param Node $node To be inserted
+         * @param Node $refChild Child of this node before which to insert $node
+         * @return Newly inserted Node or empty DocumentFragment
+         * @throw DOMException "HierarchyRequestError" or "NotFoundError"
+         * @spec DOM-LS
+         *
+         * NOTES
+         * DOM-LS: If $node already exists in this Document, this function 
+         * moves it from its current position to its new position ('move' 
+         * means 'remove' followed by 're-insert').
+         *
+         * DOM-LS: If $refNode is NULL, then $node is added to the end of the 
+         * list of children of $this. In other words, insertBefore($node, NULL) 
+         * is equivalent to appendChild($node).
+         *
+         * DOM-LS: If $node is a DocumentFragment, the children of the 
+         * DocumentFragment are moved into the child list of $this, and the 
+         * empty DocumentFragment is returned.
+         *
+         * SORRY 
+         * Despite its weird syntax (blame the spec) this is a real workhorse, 
+         * used to implement all of the insertion mutations.
+         */
+        public function insertBefore(Node $node, ?Node $refChild): Node 
         {
-                /* 1. Ensure pre-insertion validity */
-                _DOM_ensureInsertValid($node, $this, $child);
+                /* DOM-LS #1. Ensure pre-insertion validity */
+                \domo\algorithm\_DOM_ensureInsertValid($node, $this, $refChild);
 
-                /* 2. Let reference child be child. */
-                $refChild = $child;
-
-                /* 3. If reference child is node, set it to node's next sibling */
+                /* DOM-LS #3. If $refChild is node, set to $node next sibling */
                 if ($refChild === $node) {
                         $refChild = $node->nextSibling();
                 }
 
-                /* 4. Adopt node into parent's node document. */
+                /* DOM-LS #4. Adopt $node into parent's node document. */
                 $this->doc()->adoptNode($node);
 
-                /* 5. Insert node into parent before reference child. */
-                _DOM_insertBeforeOrReplace($node, $this, $refChild, false);
+                /* DOM-LS #5. Insert $node into parent before $refChild . */
+                \domo\algorithm\_DOM_insertBeforeOrReplace($node, $this, $refChild, false);
 
-                /* 6. Return node */
+                /* DOM-LS #6. Return $node */
                 return $node;
         }
 
-        public function removeChild(ChildNode $node)
+        /**
+         * Append the given Node to the child list of this one 
+         *
+         * @param Node $node
+         * @return Newly inserted Node or empty DocumentFragment
+         * @spec DOM-LS
+         * @throw DOMException "HierarchyRequestError", "NotFoundError"
+         */
+        public function appendChild(Node $node)
+        {
+                return $this->insertBefore($node, NULL);
+        }
+
+        /**
+         * Replaces a given child Node with another Node
+         *
+         * @param Node $newChild to be inserted 
+         * @param Node $oldChild to be replaced
+         * @return Reference to $oldChild
+         * @throw DOMException "HierarchyRequestError", "NotFoundError"
+         * @spec DOM-LS
+         */
+        public function replaceChild(Node $newChild, ?Node $oldChild)
+        {
+                \domo\algorithm\_DOM_ensureReplaceValid($newChild, $this, $oldChild);
+
+                /* Adopt node into parent's node document. */
+                if ($newChild->doc() !== $this->doc()) {
+                        /*
+                         * XXX adoptNode has side-effect of removing node from
+                         * its parent and generating a mutation event, causing 
+                         * _insertOrReplace to generate 2 deletes and 1 insert 
+                         * instead of a 'move' event.  It looks like the new 
+                         * MutationObserver stuff avoids this problem, but for 
+                         * now let's only adopt (ie, remove 'node' from its 
+                         * parent) here if we need to.
+                         */
+                        $this->doc()->adoptNode($newChild);
+                }
+
+                \domo\algorithm\_DOM_insertBeforeOrReplace($newChild, $this, $oldChild, true);
+
+                return $oldChild;
+        }
+
+        /**
+         * Removes a child node from the DOM and returns it.
+         *
+         * @param ChildNode $node
+         * @return ChildNode 
+         * @throw DOMException "NotFoundError"
+         * @spec DOM-LS
+         *
+         * NOTE
+         * It must be the case that the returned value === $node
+         */
+        public function removeChild(ChildNode $node): Node
         {
                 if ($this !== $node->_parentNode) {
                         \domo\error("NotFoundError");
                 }
-                $node->remove();
-
+                $node->remove(); /* ChildNode method */
                 return $node;
-        }
-
-        public function appendChild(Node $node)
-        {
-		/*
-		 * [DOM-LS]: "To append a node to parent, pre-insert node
-		 * into parent before NULL."
-		 */
-                return $this->insertBefore($node, NULL);
-        }
-
-        /* To replace a `child` with `node` within a `parent` (this) */
-        public function replaceChild(Node $node, ?Node $child)
-        {
-                /* Ensure validity (slight differences from pre-insertion check) */
-                _DOM_ensureReplaceValid($node, $this, $child);
-
-                /* Adopt node into parent's node document. */
-                if ($node->doc() !== $this->doc()) {
-                        /*
-                         * XXX adoptNode has side-effect of removing node from
-                         * its parent and generating a mutation event, thus
-                         * causing the _insertOrReplace to generate two deletes
-                         * and an insert instead of a 'move' event.  It looks
-                         * like the new MutationObserver stuff avoids this
-                         * problem, but for now let's only adopt (ie, remove
-                         * `node` from its parent) here if we need to.
-                         */
-                        $this->doc()->adoptNode($node);
-                }
-
-                /* Do the replace. */
-                _DOM_insertBeforeOrReplace($node, $this, $child, true);
-
-                return $child;
         }
 
 	/**********************************************************************
 	 * COMPARISONS AND PREDICATES
 	 *********************************************************************/
 
-        // See: http://ejohn.org/blog/comparing-document-position/
-        public function contains($node)
+        /**
+         * Indicates whether a node is a descendant of this one 
+         *
+         * @param Node $node
+         * @returns boolean
+         * @spec DOM-LS
+         * 
+         * NOTE: see http://ejohn.org/blog/comparing-document-position/
+         */
+        public function contains(Node $node): boolean
         {
                 if ($node === NULL) {
                         return false;
                 }
                 if ($this === $node) {
-                        return true; /* inclusive descendant */
+                        return true; /* inclusive descendant, see spec */
                 }
 
                 /* NOTE: bitwise operation */
                 return ($this->compareDocumentPosition($node) & DOCUMENT_POSITION_CONTAINED_BY) !== 0;
         }
 
-        /*
-         * Basic algorithm for finding the relative position of two nodes.
-         * Make a list the ancestors of each node, starting with the
-         * document element and proceeding down to the nodes themselves.
-         * Then, loop through the lists, looking for the first element
-         * that differs.  The order of those two elements give the
-         * order of their descendant nodes.  Or, if one list is a prefix
-         * of the other one, then that node contains the other.
+        /**
+         * Compares position of this Node against another (in any Document)
+         * 
+         * @param Node $that
+         * @return One of the document position constants
+         * @spec DOM-LS
          */
-        public function compareDocumentPosition(Node $that)
+        public function compareDocumentPosition(Node $that): integer
         {
                 if ($this === $that) {
                         return 0;
                 }
 
                 /*
-                 * If they're not owned by the same document
-                 * or if one is rooted and one is not, then
-                 * they're disconnected.
+                 * If they're not owned by the same document or if one is 
+                 * rooted and one is not, then they're disconnected.
                  */
                 if ($this->doc() !== $that->doc() || $this->rooted() !== $that->rooted()) {
                         return (DOCUMENT_POSITION_DISCONNECTED + DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC);
                 }
 
-                /* Get arrays of ancestors for this and that */
-                /* TODO PORT NOTE: Oh jeez... */
+                /* #1 Make a list of the ancestors of each node */
                 $these = array();
                 $those = array();
 
@@ -363,25 +483,25 @@ abstract class Node /* extends EventTarget // try factoring events out? */
                         $those[] = $n;
                 }
 
-                /* So we start with the outermost */
+                /* #2 Reverse them, so they start from the Document element */
                 $these = array_reverse($these);
                 $those = array_reverse($those);
 
-                /* No common ancestor */
+                /* 
+                 * #3 
+                 * The order of the first elements that differ gives the
+                 * order of the descendant nodes. 
+                 */
+
                 if ($these[0] !== $those[0]) {
                         return (DOCUMENT_POSITION_DISCONNECTED + DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC);
                 }
 
-                /* TODO PORT: Gross, $n was for node before, now it's for number */
-                $n = min(count($these), count(those));
+                $len = min(count($these), count($those));
 
-                for ($i = 1; $i < $n; $i++) {
+                for ($i = 1; $i < $len; $i++) {
                         if ($these[$i] !== $those[$i]) {
-                                /*
-                                 * We found two different ancestors,
-                                 * so compare their positions
-                                 */
-                                if ($these[$i]->index < $those[$i]->index) {
+                                if ($these[$i]->index() < $those[$i]->index()) {
                                         return DOCUMENT_POSITION_FOLLOWING;
                                 } else {
                                         return DOCUMENT_POSITION_PRECEDING;
@@ -390,29 +510,35 @@ abstract class Node /* extends EventTarget // try factoring events out? */
                 }
 
                 /*
-                 * If we get to here, then one of the nodes (the one with the
-                 * shorter list of ancestors) contains the other one.
+                 * #4 If we get here, then one list is a prefix of the other,
+                 * and so the one node (the one with the shorter ancestor list)
+                 * contains the other one. 
                  */
-                if (count($these) < count(those)) {
+                if (count($these) < count($those)) {
                         return (DOCUMENT_POSITION_FOLLOWING + DOCUMENT_POSITION_CONTAINED_BY);
                 } else {
                         return (DOCUMENT_POSITION_PRECEDING + DOCUMENT_POSITION_CONTAINS);
                 }
         }
 
-        public function isSameNode($node)
+        /**
+         * Whether this node and another are the same one in the same DOM
+         *
+         * @param Node $node to compare to this one 
+         * @return boolean
+         * @spec DOM-LS
+         */
+        public function isSameNode(Node $node): boolean
         {
                 return $this === $node;
         }
 
         /**
-         * isEqualNode()
-         * `````````````
          * Determine whether this node and $other are equal
          *
-         * @other: Node to compare to $this
-         * Return: true if equal, or else false
-         * PartOf: DOM4
+         * @param Node $other - will be compared to $this
+         * @return boolean
+         * @spec: DOM-LS
          *
          * NOTE:
          * Each subclass of Node has its own criteria for equality.
@@ -426,25 +552,25 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          *
          * Yes, we realize it's a bit weird.
          */
-        public function isEqualNode(Node $other = NULL)
+        public function isEqualNode(?Node $node = NULL): boolean
         {
-                if ($other === NULL) {
+                if ($node === NULL) {
                         /* We're not equal to NULL */
                         return false;
                 }
-                if ($other->_nodeType !== $this->_nodeType) {
+                if ($node->_nodeType !== $this->_nodeType) {
                         /* If we're not the same nodeType, we can stop */
                         return false;
                 }
 
-                if (!$this->_subclass_isEqualNode($other)) {
+                if (!$this->_subclass_isEqualNode($node)) {
                         /* Run subclass-specific equality comparison */
                         return false;
                 }
 
                 /* Call this method on the children of both nodes */
                 for (
-                        $a=$this->firstChild(), $b=$other->firstChild();
+                        $a=$this->firstChild(), $b=$node->firstChild();
                         $a!==NULL && $b!==NULL;
                         $a=$a->nextSibling(), $b=$b->nextSibling()
                 ) {
@@ -458,19 +584,12 @@ abstract class Node /* extends EventTarget // try factoring events out? */
         }
 
 
-        /*
-         * This method delegates shallow cloning to a clone() method
-         * that each concrete subclass must implement
-         * TODO PORT: Is this a good idea?
-         */
         /**
-         * cloneNode()
-         * ```````````
-         * Clone this Document (as a Node?)
+         * Clone this Node 
          *
-         * @deep  : if true, clone entire subtree
-         * Returns: Clone of $this.
-         * Part_Of: DOM4-LS
+         * @param Boolean $deep - if true, clone entire subtree
+         * @return Node (clone of $this)
+         * @spec DOM-LS
          *
          * NOTE:
          * 1. If $deep is false, then no child nodes are cloned, including
@@ -486,10 +605,65 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          *    the tree structure, so this suffices to capture subclass-specific
          *    behavior.
          */
-        public function cloneNode(boolean $deep = false){}
-        public function lookupPrefix($ns){}
-        public function lookupNamespaceURI($prefix){}
-        public function isDefaultNamespace($ns){}
+        public function cloneNode(boolean $deep = false): Node
+        {
+                /* Make a shallow clone using the delegated method */
+                $clone = $this->_subclass_cloneNodeShallow();
+
+                /* If the shallow clone is all we wanted, we're done. */
+                if ($deep === false) {
+                        return $clone;
+                }
+
+                /* Otherwise, recurse on the children */
+                for ($n=$this->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
+                        /* APPEND DIRECTLY; NO CHECKINSERTVALID */
+                        \domo\algorithm\_DOM_insertBeforeOrReplace($clone, $n->cloneNode(true), NULL, false);
+                }
+
+                return $clone;
+        }
+
+        /**
+         * Return DOMString containing prefix for given namespace URI.
+         *
+         * @param string $ns
+         * @return string or NULL
+         * @spec DOM-LS
+         *
+         * NOTE 
+         * Think this function looks weird? It's actually spec:
+         * https://dom.spec.whatwg.org/#locate-a-namespace
+         */
+        public function lookupPrefix(?string $ns): ?string
+        {
+                return \domo\algorithm\_DOM_locate_prefix($this, $ns);
+        }
+
+        /**
+         * Return DOMString containing namespace URI for a given prefix
+         *
+         * @param string $prefix
+         * @return string or NULL
+         *
+         * NOTE
+         * Inverse of Node::lookupPrefix
+         */
+        public function lookupNamespaceURI(?string $prefix): ?string
+        {
+                return \domo\algorithm\_DOM_locate_namespace($this, $prefix);
+        }
+
+        /**
+         * Determine whether this is the default namespace
+         *
+         * @param string $ns
+         * @return boolean
+         */
+        public function isDefaultNamespace(?string $ns): boolean
+        {
+                return ($ns ?? NULL) === $this->lookupNamespaceURI(NULL);
+        }
 
 
 	/**********************************************************************
@@ -615,642 +789,6 @@ abstract class Node /* extends EventTarget // try factoring events out? */
                 $this->modify();
         }
 
-
-
-        public function _insertOrReplace_FIN(Node $parent, ?Node $before, boolean $isReplace)
-        {
-                $child = $this
-
-                if ($child->_nodeType === DOCUMENT_FRAGMENT_NODE && $child->rooted()) {
-                        \domo\error("HierarchyRequestError");
-                }
-                if ($before === $child) {
-                        return;
-                }
-
-                /* ARRAY MODE */
-                if ($parent->_childNodes) {
-                        /* 
-                         * Compute what index to assign to the inserted Node 
-                         * (If you care, it might help to draw a picture)
-                         */
-                        if ($before === NULL) {
-                                /* 
-                                 * When we don't specify Node to insert 
-                                 * relative to, [DOM-LS] says we assume
-                                 * that we're appending.
-                                 */
-                                $index_to_insert_at = count($parent->_childNodes);
-                        } else {
-                                /* 
-                                 * Otherwise, one of two things is true:
-                                 *      - we are going to be inserted before
-                                 *        $before, in which case we take over 
-                                 *        its index ($before and all subsequent 
-                                 *        siblings will shift down by 1)
-                                 *      - we are going to replace $before,
-                                 *        in which case we are going to take
-                                 *        over its index and all subsequent
-                                 *        siblings will not shift down by 1.
-                                 * 
-                                 * Either way, our index is going to be the
-                                 * index of $before. 
-                                 */
-                                $index_to_insert_at = $before->index();
-                        }
-                        if ($child->_parentNode === $parent) {
-                                /*
-                                 * If we are already a child of the parent
-                                 * we are going to insert into, that means
-                                 * we can view this operation as a move.
-                                 *
-                                 * Note that this will never happen if we
-                                 * are a DocumentFragment, since those can
-                                 * never have a parent.
-                                 */
-                                if ($child->index() < $index_to_insert_at) {
-                                        /* 
-                                         * But then, if our current position
-                                         * is prior to the one we wish to 
-                                         * insert into, the removal of our
-                                         * node during this move will have the
-                                         * effect of shifting all the nodes
-                                         * after us down by 1. That includes
-                                         * the place we wish to insert into.
-                                         * Therefore we must reduce it by 1.
-                                         *
-                                         * Notice that in an append (see above),
-                                         * this ensures that $item_to_insert_at
-                                         * will always be the last index in the
-                                         * sibling list.
-                                         */
-                                        $index_to_insert_at--;
-                                }
-                        }
-                }
-
-                /* LINKED LIST MODE 
-                 *
-                 * TODO: This one is harder to understand because it's used
-                 * whether or not ARRAY MODE is active, so it's not like they
-                 * are mutually exclusive. 
-                 * Basically, $n is the node to work with for the LL stuff.
-                 *
-                 * I say it's LL-specific because these LL's are circular and
-                 * have the quirk that if we insert before _firstChild, we
-                 * are effectively appending to the circular LL. That is quite
-                 * confusing, right?
-                 */
-                $reference_node = $before ?? $parent->firstChild();
-
-                /* Delete the old child */
-                if ($isReplace) {
-                        if ($before->rooted()) {
-                                $before->doc()->mutateRemove($before);
-                        }
-                        $before->_parentNode = NULL;
-                }
-
-                /*
-                 * If both the child and the parent are rooted,
-                 * then we want to transplant the child without
-                 * uprooting and rerooting it.
-                 *
-                 * (will never be true if $child instanceof DocumentFragment)
-                 */
-                $bothWereRooted = $child->rooted() && $parent->rooted();
-                if ($bothWereRooted) {
-                        /*
-                         * Remove the child from its current position
-                         * in the tree without calling remove(), since
-                         * we don't want to uproot it.
-                         */
-                        $child->_remove();
-                } else {
-                        if ($child->_parentNode) {
-                                $child->remove();
-                        }
-                }
-
-
-                $insert = array();
-
-                if ($child instanceof DocumentFragment) {
-                        for ($n=$child->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
-                                $insert[] = $n; /* TODO: Needs to clone? */
-                                $n->_parentNode = $parent;
-                        }
-                } else {
-                        $insert[0] = $child; /* TODO: Needs to clone? */
-                        $insert[0]->_parentNode = $parent;
-                }
-
-                if (empty($insert)) {
-                        /* 
-                         * TODO: I think that $reference_node is always 
-                         * non-NULL if $isReplace is true. This is shaky, and
-                         * we should factor this condition out.
-                         */
-                        if ($isReplace) {
-                                if ($reference_node !== NULL /* If you work it out, you'll find that this condition is equivalent to 'if $parent has children' */) {
-                                        LinkedList\replace($reference_node, NULL);
-                                }
-                                if ($parent->_childNodes === NULL && $parent->_firstChild === $before) {
-                                        $parent->_firstChild = NULL;
-                                }
-                        }
-                } else {
-                        if ($reference_node !== NULL) {
-                                if ($isReplace) {
-                                        LinkedList\replace($reference_node, $insert[0]);
-                                } else {
-                                        LinkedList\insertBefore($insert[0], $reference_node);
-                                }
-                        }
-                        if ($parent->_childNodes !== NULL) {
-                                if ($isReplace) {
-                                        array_splice($parent->_childNodes, $index_to_insert_at, 1, $insert);
-                                } else {
-                                        array_splice($parent->_childNodes, $index_to_insert_at, 0, $insert);
-                                }
-                                foreach ($insert as $i => $n) {
-                                        $n->_index = $index_to_insert_at + $i;
-                                }
-                        } else if ($parent->_firstChild === $before) {
-                                $parent->_firstChild = $insert[0];
-                        }
-                }
-
-
-                if ($child->_nodeType === DOCUMENT_FRAGMENT_NODE) {
-                        /* 
-                         * Remove these references on the DocumentFragment,
-                         * so that it now stands empty.
-                         * TODO: Why? SPEC SAYS SO!
-                         */
-                        if ($child->_childNodes) {
-                                /* TODO PORT: This is the easiest way to do this in PHP and preserves references */
-                                $child->_childNodes = array();
-                        } else {
-                                $child->_firstChild = NULL;
-                        }
-                }
-
-                if ($bothWereRooted) {
-                        /* Generate a move mutation event */
-                        $parent->modify();
-                        $parent->doc()->mutateMove($insert[0]);
-                } else {
-                        if ($parent->rooted()) {
-                                $parent->modify();
-                                foreach ($insert as $n) {
-                                        $parent->doc()->mutateInsert($n);
-                                }
-                        }
-                }
-
-
-                if ($child->_nodeType === DOCUMENT_FRAGMENT_NODE) {
-
-                        $insert = array();
-
-                        for ($n=$child->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
-                                /* 
-                                 * Keep a reference to these in an array
-                                 * because we're going to destroy the refs 
-                                 * on the DocumentFragment and will need 
-                                 * them later. 
-                                 * TODO: I think this is supposed to be a
-                                 * clone, but in PHP these are references.
-                                 * Need to fix this.
-                                 */
-                                $insert[] = $n;
-
-                                /* Re-assign each Node's parent as well */
-                                $n->_parentNode = $parent;
-                        }
-
-                        if (empty($insert)) {
-                                /* TODO: I think that $reference_node is always non-NULL if $isReplace is true. This is shaky, and
-                                 * we should factor this condition out.
-                                 */
-                                if ($isReplace) {
-                                        if ($reference_node !== NULL /* If you work it out, you'll find that this condition is equivalent to 'if $parent has children' */) {
-                                                LinkedList\replace($reference_node, NULL);
-                                        }
-                                        if ($parent->_childNodes === NULL && $parent->_firstChild === $before) {
-                                                $parent->_firstChild = NULL;
-                                        }
-                                }
-                        } else {
-                                if ($reference_node !== NULL) {
-                                        if ($isReplace) {
-                                                LinkedList\replace($reference_node, $insert[0]);
-                                        } else {
-                                                LinkedList\insertBefore($insert[0], $reference_node);
-                                        }
-                                }
-                                if ($parent->_childNodes !== NULL) {
-                                        if ($isReplace) {
-                                                array_splice($parent->_childNodes, $index_to_insert_at, 1, $insert);
-                                        } else {
-                                                array_splice($parent->_childNodes, $index_to_insert_at, 0, $insert);
-                                        }
-                                        foreach ($insert as $i => $n) {
-                                                $n->_index = $index_to_insert_at + $i;
-                                        }
-                                } else if ($parent->_firstChild === $before) {
-                                        $parent->_firstChild = $insert[0];
-                                }
-                        }
-
-                        /* 
-                         * Remove these references on the DocumentFragment,
-                         * so that it now stands empty.
-                         * TODO: Why? SPEC SAYS SO!
-                         */
-                        if ($child->_childNodes) {
-                                /* TODO PORT: This is the easiest way to do this in PHP and preserves references */
-                                $child->_childNodes = array();
-                        } else {
-                                $child->_firstChild = NULL;
-                        }
-
-                        /*
-                         * Call the mutation handlers
-                         * Use spliceArgs since the original array has been
-                         * destroyed. 
-                         * TODO: The liveness guarantee requires us to
-                         * clone the array so that references to the childNodes
-                         * of the DocumentFragment will be empty when the
-                         * insertion handlers are called.
-                         * THIS IS NOT BEING DONE RIGHT NOW I THINK?
-                         */
-                        if ($parent->rooted()) {
-                                $parent->modify();
-                                foreach ($insert as $n) {
-                                        $parent->doc()->mutateInsert($n);
-                                }
-                        }
-                /* NOT A DocumentFragment */ 
-                } else {
-                        /*
-                         * If both the child and the parent are rooted,
-                         * then we want to transplant the child without
-                         * uprooting and rerooting it.
-                         */
-                        $bothWereRooted = $child->rooted() && $parent->rooted();
-                        if ($bothWereRooted) {
-                                /*
-                                 * Remove the child from its current position
-                                 * in the tree without calling remove(), since
-                                 * we don't want to uproot it.
-                                 */
-                                $child->_remove();
-                        } else {
-                                if ($child->_parentNode) {
-                                        $child->remove();
-                                }
-                        }
-
-                        /* Insert it as a child of its new parent */
-                        $child->_parentNode = $parent;
-
-                        if ($reference_node !== NULL) {
-                                if ($isReplace) {
-                                        LinkedList\replace($reference_node, $child);
-                                } else {
-                                        LinkedList\insertBefore($child, $reference_node);
-                                }
-                        }
-                        if ($parent->_childNodes !== NULL) {
-                                if ($isReplace) {
-                                        $parent->_childNodes[$index_to_insert_at] = $child;
-                                } else {
-                                        array_splice($parent->_childNodes, $index_to_insert_at, 0, $child);
-                                }
-                                $child->_index = $index_to_insert_at;
-                        } else if ($parent->_firstChild === $before) {
-                                $parent->_firstChild = $child;
-                        }
-
-                        if ($bothWereRooted) {
-                                /* Generate a move mutation event */
-                                $parent->modify();
-                                $parent->doc()->mutateMove($child);
-                        } else {
-                                if ($parent->rooted()) {
-                                        $parent->modify();
-                                        $parent->doc()->mutateInsert($child);
-                                }
-                        }
-                }
-        }
-
-        /*
-         * Insert this node as a child of parent before the specified child,
-         * or insert as the last child of parent if specified child is null,
-         * or replace the specified child with this node, firing mutation events as
-         * necessary
-         */
-        public function _insertOrReplace($parent, $before, $isReplace)
-        {
-                $child = $this
-                $index_to_insert_at;
-                $i;
-
-                if ($child->_nodeType === DOCUMENT_FRAGMENT_NODE && $child->rooted()) {
-                        \domo\error("HierarchyRequestError");
-                }
-
-                /* ARRAY MODE */
-                if ($parent->_childNodes) {
-                        /* 
-                         * Compute what index to assign to the inserted Node 
-                         * (If you care, it might help to draw a picture)
-                         */
-                        if ($before === NULL) {
-                                /* 
-                                 * When we don't specify Node to insert 
-                                 * relative to, [DOM-LS] says we assume
-                                 * that we're appending.
-                                 */
-                                $index_to_insert_at = count($parent->_childNodes);
-                        } else {
-                                /* 
-                                 * Otherwise, one of two things is true:
-                                 *      - we are going to be inserted before
-                                 *        $before, in which case we take over 
-                                 *        its index ($before and all subsequent 
-                                 *        siblings will shift down by 1)
-                                 *      - we are going to replace $before,
-                                 *        in which case we are going to take
-                                 *        over its index and all subsequent
-                                 *        siblings will not shift down by 1.
-                                 * 
-                                 * Either way, our index is going to be the
-                                 * index of $before. 
-                                 */
-                                $index_to_insert_at = $before->index();
-                        }
-
-                        if ($child->_parentNode === $parent) {
-                                /*
-                                 * If we are already a child of the parent
-                                 * we are going to insert into, that means
-                                 * we can view this operation as a move.
-                                 */
-                                if ($child->index() < $index_to_insert_at) {
-                                        /* 
-                                         * But then, if our current position
-                                         * is prior to the one we wish to 
-                                         * insert into, the removal of our
-                                         * node during this move will have the
-                                         * effect of shifting all the nodes
-                                         * after us down by 1. That includes
-                                         * the place we wish to insert into.
-                                         * Therefore we must reduce it by 1.
-                                         *
-                                         * Notice that in an append (see above),
-                                         * this ensures that $item_to_insert_at
-                                         * will always be the last index in the
-                                         * sibling list.
-                                         */
-                                        $index_to_insert_at--;
-                                }
-                        }
-                }
-
-                /* LINKED LIST MODE 
-                 *
-                 * TODO: This one is harder to understand because it's used
-                 * whether or not ARRAY MODE is active, so it's not like they
-                 * are mutually exclusive. 
-                 * Basically, $n is the node to work with for the LL stuff.
-                 *
-                 * I say it's LL-specific because these LL's are circular and
-                 * have the quirk that if we insert before _firstChild, we
-                 * are effectively appending to the circular LL. That is quite
-                 * confusing, right?
-                 */
-                if ($before !== NULL) {
-                        $n = $before;
-                } else {
-                        $n = $parent->_firstChild;
-                }
-
-                /* Delete the old child */
-                if ($isReplace) {
-                        if ($before->rooted()) {
-                                $before->doc()->mutateRemove($before);
-                        }
-                        $before->_parentNode = null;
-                }
-
-
-                /*
-                 * If both the child and the parent are rooted,
-                 * then we want to transplant the child without
-                 * uprooting and rerooting it.
-                 */
-                $bothRooted = $child->rooted() && $parent->rooted();
-
-                if ($child->_nodeType === DOCUMENT_FRAGMENT_NODE) {
-                        
-                        /* 
-                         * If it's a DocumentFragment, then essentially it
-                         * means we are inserting not one Node, but 
-                         * potentially a bunch of Nodes (the children of the
-                         * DocumentFragment). 
-                         *
-                         * Therefore this branch does similar things to the
-                         * else branch, only it needs to handle inserting
-                         * more than one Node. 
-                         */
-
-                        $spliceArgs = array(0, $isReplace ? 1 : 0);
-                        $nodes_to_insert = array();
-
-                        for ($c=$child->firstChild(); $c!==NULL; $c=$c->nextSibling()) {
-                                /* Keep a reference to these in an array
-                                   [We are going to destroy the refs on the
-                                   DocumentFragment and will need them later] 
-                                 */
-                                $nodes_to_insert[] = $c;
-                                /* While you're at it, set the node's parents;
-                                 * This should probably be done some other
-                                 * time... */
-                                $c->_parentNode = $parent;
-                        }
-
-                        $len = count($nodes_to_insert) + count($spliceArgs);
-
-                        /*
-                         * Add all nodes to the new parent,
-                         * overwriting the old child
-                         */
-                        if ($isReplace) {
-                                LinkedList\replace($n, $len > 2 ? $nodes_to_insert[0] : NULL);
-                        } else {
-                                if ($len > 2 && $n !== NULL) {
-                                        LinkedList\insertBefore($nodes_to_insert[0], $n);
-                                }
-                        }
-
-                        if ($parent->_childNodes) {
-                                /* 
-                                   TODO TODO TODO TODO TODO TODO TODO TODO
-
-                                   TODO: HEY WTF, THIS IS THE SAME AS WE'RE
-                                   DOING ABOVE, DETERMINING THE INSERT POSITION.
-                                   WHY ARE WE DUPLICATING IT? HERE?
-
-                                   AND WHY ARE WE NOT DOING THE DECREMENT THING
-                                   WE DID UP THERE?
-
-                                   IF WE REALLY DO IT THIS WAY, THEN THE BIG
-                                   'IF' STATEMENT THAT STARTS THIS FN ONLY 
-                                   REALLY NEEDS TO BE COMPUTED FOR THE ELSE
-                                   BRANCH (WHERE WE AREN'T A DOCUMENT FRAGMENT)
-
-                                   OHHHHH -- BECAUSE WE'RE A 
-                                   DOCUMENTFRAGMENT, WE DON'T *HAVE* A PARENT!
-
-                                   SO THEN YES! FACTOR IT SO THAT THIS IS DONE
-                                   FOR EITHER BRANCH, AND THEN DO THE BIT WITH
-                                   THE ADJUSTMENT ON THE ELSE BRANCH, WHERE WE
-                                   COULD CONCEIVABLY BE A CHILD OF THE PARENT
-                                   ALREADY.
-
-                                   TODO TODO TODO TODO TODO TODO TODO TODO
-                                 */
-                                if ($before === NULL) {
-                                        $spliceArgs[0] = count($parent->_childNodes);
-                                } else {
-                                        $spliceargs[0] = $before->_index;
-                                }
-
-                                //parent._childNodes.splice.apply(parent._childNodes, spliceArgs);
-                                array_splice($parent->_childNodes, $spliceArgs[0], $spliceArgs[1], $nodes_to_insert);
-
-                                /*
-                                 * TODO: We aren't just re-indexing one, we have
-                                 * to re-index all of the things we append. 
-                                 */
-                                foreach ($nodes_to_insert as $i => $inserted_node) {
-                                        $inserted_node->_index = $spliceArgs[0] + $i;
-                                }
-
-                                /* TODO: We don't re-index the shifted nodes? 
-                                 * Ofc not, it catches in the index() function 
-                                 * when it finds out that 
-                                 * $this->_childNodes[$n] !== $this or whatever.
-                                 */
-                        } else {
-                                if ($parent->_firstChild === $before) {
-                                        if ($len > 2) {
-                                                $parent->_firstChild = $nodes_to_insert[0];
-                                        } else {
-                                                if ($isReplace) {
-                                                        // huh? Why would it be empty? Insert NULL is spec valid? */
-                                                        $parent->_firstChild = NULL;
-                                                }
-                                        }
-                                }
-                        }
-
-                        /* 
-                         * Remove these references on the DocumentFragment 
-                         * TODO: Why? 
-                         */
-                        if ($child->_childNodes) {
-                                /* TODO PORT: This is the easiest way to do this in PHP and preserves references */
-                                $child->_childNodes = array();
-                        } else {
-                                $child->_firstChild = NULL;
-                        }
-
-                        /*
-                         * Call the mutation handlers
-                         * Use spliceArgs since the original array has been
-                         * destroyed. The liveness guarantee requires us to
-                         * clone the array so that references to the childNodes
-                         * of the DocumentFragment will be empty when the
-                         * insertion handlers are called.
-                         */
-                        if ($parent->rooted()) {
-                                $parent->modify();
-                                foreach ($nodes_to_insert as $inserted_node) {
-                                        $parent->doc()->mutateInsert($inserted_node);
-                                }
-                        }
-                /* NOT A DocumentFragment */ 
-                } else {
-
-                        if ($before === $child) {
-                                /* 
-                                 * TODO: Easy street; this could be moved up to
-                                 * the main part of the function, way up to
-                                 * the top, for an even faster quit.
-                                 */ 
-                                return;
-                        }
-
-                        if ($bothRooted) {
-                                /*
-                                 * Remove the child from its current position
-                                 * in the tree without calling remove(), since
-                                 * we don't want to uproot it.
-                                 */
-                                $child->_remove();
-                        } else {
-                                if ($child->_parentNode) {
-                                        $child->remove();
-                                }
-                        }
-
-                        /* Insert it as a child of its new parent */
-                        $child->_parentNode = $parent;
-
-                        if ($isReplace) {
-                                LinkedList\replace($n, $child);
-                                if ($parent->_childNodes) {
-                                        $child->_index = $index_to_insert_at;
-                                        $parent->_childNodes[$index_to_insert_at] = $child;
-                                } else {
-                                        if ($parent->_firstChild === $before) {
-                                                $parent->_firstChild = $child;
-                                        }
-                                }
-                        } else {
-                                if ($n !== NULL) {
-                                        LinkedList\insertBefore($child, $n);
-                                }
-                                if ($parent->_childNodes) {
-                                        $child->_index = $index_to_insert_at;
-                                        // parent._childNodes.splice(before_index, 0, child);
-                                        array_splice($parent->_childNodes, $index_to_insert_at, 0, $child);
-                                } else {
-                                        if ($parent->_firstChild === $before) {
-                                                $parent->_firstChild = $child;
-                                        }
-                                }
-                        }
-
-                        if ($bothRooted) {
-                                $parent->modify();
-                                /* Generate a move mutation event */
-                                $parent->doc()->mutateMove($child);
-                        } else {
-                                if ($parent->rooted()) {
-                                        $parent->modify();
-                                        $parent->doc()->mutateInsert($child);
-                                }
-                        }
-                }
-        }
-
-
         /*
          * This attribute is not part of the DOM but is quite helpful.
          * It returns the document with which a node is associated.
@@ -1360,7 +898,6 @@ abstract class Node /* extends EventTarget // try factoring events out? */
         public function serialize(){}
         public function outerHTML(string $value = NULL){}
 }
-
 
 
 ?>

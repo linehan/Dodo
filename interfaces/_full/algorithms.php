@@ -2,8 +2,203 @@
 
 namespace domo\algorithm
 
+/*
+ * Why are these here?
+ * They're here because this is where they make sense.
+ */
 
-function _DOM_insertBeforeOrReplace(Node $node, Node $parent, ?Node $before, boolean $replace): void
+/* https://dom.spec.whatwg.org/#dom-node-comparedocumentposition */
+static function _DOM_compare_document_position(Node $node1, Node $node2): integer
+{
+        /* #1-#2 */
+        if ($node1 === $node2) {
+                return 0;
+        }
+
+        /* #3 */
+        $attr1 = NULL;
+        $attr2 = NULL;
+
+        /* #4 */
+        if ($node1->_nodeType === ATTRIBUTE_NODE) {
+                $attr1 = $node1;
+                $node1 = $attr1->ownerElement();
+        }
+        /* #5 */
+        if ($node2->_nodeType === ATTRIBUTE_NODE) {
+                $attr2 = $node2;
+                $node2 = $attr2->ownerElement();
+
+                if ($attr1 !== NULL && $node1 !== NULL && $node2 === $node1) {
+                        foreach ($node2->attributes as $a) {
+                                if ($a === $attr1) {
+                                        return DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC + DOCUMENT_POSITION_PRECEDING;
+                                }
+                                if ($a === $attr2) {
+                                        return DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC + DOCUMENT_POSITION_FOLLOWING;
+                                }
+                        }
+                }
+        }
+
+        /* #6 */
+        if ($node1 === NULL || $node2 === NULL || $node1->doc() !== $node2->doc() || $node1->rooted() !== $node2->rooted()) {
+                /* UHH, in the spec this is supposed to add DOCUMENT_POSITION_PRECEDING or DOCUMENT_POSITION_FOLLOWING
+                 * in some consistent way, usually based on pointer comparison, which we can't do here. Hmm. Domino
+                 * just straight up omits it. This is stupid, the spec shouldn't ask this. */
+                return (DOCUMENT_POSITION_DISCONNECTED + DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC);
+        }
+
+        /* #7 */
+        $node1_ancestors = array();
+        $node2_ancestors = array();
+        for ($n = $node1->parentNode(); $n !== NULL; $n = $n->parentNode()) {
+                $node1_ancestors[] = $n;
+        }
+        for ($n = $node2->parentNode(); $n !== NULL; $n = $n->parentNode()) {
+                $node2_ancestors[] = $n;
+        }
+
+        if (in_array($node1, $node2_ancestors) && $attr1 === NULL) {
+                return DOCUMENT_POSITION_CONTAINS + DOCUMENT_POSITION_PRECEDING;
+        } else if ($node1 === $node2 && $attr2 !== NULL) {
+                return DOCUMENT_POSITION_CONTAINS + DOCUMENT_POSITION_PRECEDING;
+        }
+
+        /* #8 */
+        if (in_array($node2, $node1_ancestors) && $attr2 === NULL) {
+                return DOCUMENT_POSITION_CONTAINED_BY + DOCUMENT_POSITION_FOLLOWING;
+        } else if ($node1 === $node2 && $attr1 !== NULL) {
+                return DOCUMENT_POSITION_CONTAINED_BY + DOCUMENT_POSITION_FOLLOWING;
+        }
+
+        /* #9 */
+        $node1_ancestors = array_reverse($node1_ancestors);
+        $node2_ancestors = array_reverse($node2_ancestors);
+        $len = min(count($node1_ancestors), count($node2_ancestors));
+
+        for ($i = 1; $i < $len; $i++) {
+                if ($node1_ancestors[$i] !== $node2_ancestors[$i]) {
+                        if ($node1_ancestors[$i]->index() < $node2_ancestors[$i]->index()) {
+                                return DOCUMENT_POSITION_PRECEDING;
+                        }
+                }
+        }
+
+        #10
+        return DOCUMENT_POSITION_FOLLOWING;
+}
+
+
+
+/*
+ * DOM-LS Removes the 'prefix' and 'namespaceURI' attributes from
+ * Node and places them only on Element and Attr.
+ *
+ * Due to the fact that an Attr (should) have an ownerElement,
+ * these two algorithms only operate on Elements.
+ *
+ * The spec actually says that if an Attr has no ownerElement,
+ * then the algorithm returns NULL.
+ *
+ * Anyway, they operate only on Elements.
+ */
+
+/* https://dom.spec.whatwg.org/#locate-a-namespace */
+static function _DOM_locate_namespace(Node $node, ?string $prefix): ?string
+{
+        if ($prefix === '') {
+                $prefix = NULL;
+        }
+
+        switch ($this->_nodeType) {
+        case ENTITY_NODE:
+        case NOTATION_NODE:
+        case DOCUMENT_TYPE_NODE:
+        case DOCUMENT_FRAGMENT_NODE:
+                break;
+        case ELEMENT_NODE:
+                if ($node->namespaceURI()!==NULL && $node->prefix()===$prefix) {
+                        return $node->namespaceURI();
+                }
+                foreach ($node->attributes as $a) {
+                        if ($a->namespaceURI() === NAMESPACE_XMLNS) {
+                                if (($a->prefix() === 'xmlns' && $a->localName() === $prefix)
+                                ||  ($prefix === NULL && $a->prefix() === NULL && $a->localName() === 'xmlns') {
+                                        $val = $a->value();
+                                        return ($val === "") ? NULL : $val;
+                                }
+                        }
+                }
+                break;
+        case DOCUMENT_NODE:
+                if ($this->_documentElement) {
+                        return _DOM_locate_namespace($this->_documentElement, $prefix);
+                }
+                break;
+        case ATTRIBUTE_NODE:
+                if ($this->_ownerElement) {
+                        return _DOM_locate_namespace($this->_ownerElement, $prefix);
+                }
+               break;
+        default:
+                if (NULL === ($parent = $node->parentElement())) {
+                        return NULL;
+                } else {
+                        return _DOM_locate_namespace($parent, $ns);
+                }
+        }
+
+        return NULL;
+}
+
+/* https://dom.spec.whatwg.org/#locate-a-namespace-prefix */
+static function _DOM_locate_prefix(Node $node, ?string $ns): ?string
+{
+        if ($ns === "" || $ns === NULL) {
+                return NULL;
+        }
+
+        switch ($node->_nodeType) {
+        case ENTITY_NODE:
+        case NOTATION_NODE:
+        case DOCUMENT_FRAGMENT_NODE:
+        case DOCUMENT_TYPE_NODE:
+                break;
+        case ELEMENT_NODE:
+                if ($node->namespaceURI()!==NULL && $node->namespaceURI()===$ns) {
+                        return $node->prefix();
+                }
+
+                foreach ($node->attributes as $a) {
+                        if ($a->prefix() === "xmlns" && $a->value() === $ns) {
+                                return $a->localName();
+                        }
+                }
+                break
+        case DOCUMENT_NODE:
+                if ($node->_documentElement) {
+                        return _DOM_locate_prefix($node->_documentElement, $ns);
+                }
+                break;
+        case  ATTRIBUTE_NODE:
+                if ($node->_ownerElement) {
+                        return _DOM_locate_prefix($node->_ownerElement, $ns);
+                }
+                break;
+        default:
+                if (NULL === ($parent = $node->parentElement())) {
+                        return NULL;
+                } else {
+                        return _DOM_locate_prefix($parent, $ns);
+                }
+        }
+
+        return NULL;
+}
+
+
+static function _DOM_insertBeforeOrReplace(Node $node, Node $parent, ?Node $before, boolean $replace): void
 {
         /* 
          * TODO: FACTOR: $ref_node is intended to always be non-NULL 
@@ -132,14 +327,12 @@ function _DOM_insertBeforeOrReplace(Node $node, Node $parent, ?Node $before, boo
         }
 }
 
-
-
 /*
 TODO: Look at the way these were implemented in the original;
 there are some speedups esp in the way that you implement
 things like "node has a doctype child that is not child
 */
-static function _DOM_ensureInsertValid(Node $node, Node $parent, ?Node $child)
+static function _DOM_ensureInsertValid(Node $node, Node $parent, ?Node $child): void
 {
         /*
          * DOM-LS: #1: If parent is not a Document, DocumentFragment,
@@ -310,7 +503,7 @@ static function _DOM_ensureInsertValid(Node $node, Node $parent, ?Node $child)
         }
 }
 
-function _DOM_ensureReplaceValid(Node $node, Node $parent, Node $child)
+static function _DOM_ensureReplaceValid(Node $node, Node $parent, Node $child): void
 {
         /*
          * DOM-LS: #1: If parent is not a Document, DocumentFragment,
