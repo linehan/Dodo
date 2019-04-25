@@ -44,6 +44,8 @@
  *
  *      ensureSameDoc wasn't even being called anywhere...
  *
+ *      doc() => nodeDocument(), mirroring spec: https://dom.spec.whatwg.org/#concept-node-document 
+ *
  * NOT CHANGED:
  *      Node.parentNode         => Node->parentNode
  *      this one is kept as an attribute. Is this wise?
@@ -75,6 +77,15 @@ abstract class Node /* extends EventTarget // try factoring events out? */
 
         /* Delegated subclass method called by Node::cloneNode() */
         abstract protected function _subclass_cloneNodeShallow();
+
+        /**********************************************************************
+         * DOMO internal book-keeping layer 
+         **********************************************************************/
+        /* Used for caching (Node::__lastmod_update, Node::__lastmod) */
+        protected $___lastmod = 0;
+
+        /* Assigned by Document::adopt() as a node index in the Document */
+        protected $__nid;
 
         /**********************************************************************
          * BOOK-KEEPING: What Node knows about its ancestors 
@@ -169,7 +180,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
         }
         public function nodeValue(void) 
         {
-                /* TODO: This can take a setter too */
+                /* TODO: This can take a setter too and has a lot of stuff */
                 return $this->_nodeType;
         }
 
@@ -403,7 +414,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
                 }
 
                 /* DOM-LS #4. Adopt $node into parent's node document. */
-                $this->doc()->adoptNode($node);
+                $this->__node_document()->adoptNode($node);
 
                 /* DOM-LS #5. Insert $node into parent before $refChild . */
                 \domo\algorithm\_DOM_insertBeforeOrReplace($node, $this, $refChild, false);
@@ -420,7 +431,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          * @spec DOM-LS
          * @throw DOMException "HierarchyRequestError", "NotFoundError"
          */
-        public function appendChild(Node $node)
+        public function appendChild(Node $node): Node
         {
                 return $this->insertBefore($node, NULL);
         }
@@ -434,12 +445,12 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          * @throw DOMException "HierarchyRequestError", "NotFoundError"
          * @spec DOM-LS
          */
-        public function replaceChild(Node $newChild, ?Node $oldChild)
+        public function replaceChild(Node $newChild, ?Node $oldChild): ?Node
         {
                 \domo\algorithm\_DOM_ensureReplaceValid($newChild, $this, $oldChild);
 
                 /* Adopt node into parent's node document. */
-                if ($newChild->doc() !== $this->doc()) {
+                if ($newChild->__node_document() !== $this->__node_document()) {
                         /*
                          * XXX adoptNode has side-effect of removing node from
                          * its parent and generating a mutation event, causing 
@@ -449,7 +460,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
                          * now let's only adopt (ie, remove 'node' from its 
                          * parent) here if we need to.
                          */
-                        $this->doc()->adoptNode($newChild);
+                        $this->__node_document()->adoptNode($newChild);
                 }
 
                 \domo\algorithm\_DOM_insertBeforeOrReplace($newChild, $this, $oldChild, true);
@@ -478,7 +489,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
         }
 
         /**
-         * What do you do?
+         * TODO: What do you do?
          */
         public function normalize(void)
         {
@@ -703,6 +714,132 @@ abstract class Node /* extends EventTarget // try factoring events out? */
 	/**********************************************************************
 	 * UTILITY METHODS AND DOMO EXTENSIONS 
 	 *********************************************************************/
+        /* Called by Document::adoptNode */
+        protected function __set_owner(Document $doc)
+        {
+                $this->_ownerDocument = $doc;
+
+                /* lastmod is based on owner document */
+                $this->__lastmod_zero(); 
+
+                if (method_exists($this, "tagName")) {
+                        /* Element subclasses might need to change case */
+                        $this->_tagName = NULL; 
+                }
+
+                for ($n=$this->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
+                        $n->__set_owner($n, $owner);
+                }
+        }
+
+        /**
+         * Determine whether this Node is rooted (belongs to a tree) 
+         *
+         * return: boolean
+         *
+         * NOTE
+         * A Node is rooted if it belongs to a tree, in which case it will
+         * have an ownerDocument. Document nodes maintain a list of all the
+         * nodes inside their tree, assigning each an index, Node::_nid. 
+         *
+         * Therefore if we are currently rooted, we can tell by checking that
+         * we have one of these.
+         *
+         * TODO: This should be Node::isConnected(), see spec.
+         */
+        public function __is_rooted(void): boolean
+        {
+                return !!$this->__nid;
+        }
+
+        /* Called by _DOM_insert_before_or_replace */
+        protected function __root(void): void
+        {
+                $doc = $this->ownerDocument();
+
+                $doc->__add_to_node_table($this);
+
+                if ($this->_nodeType === ELEMENT_NODE) {
+                        /* getElementById table */ 
+                        if (NULL !== ($id = $this->getAttribute('id'))) {
+                                $doc->__add_to_id_table($id, $this);
+                        }
+                        /* <SCRIPT> elements use this hook */
+                        /* TODO This hook */
+                        if ($this->_roothook) {
+                                $this->_roothook();
+                        }
+
+                        /* 
+                         * TODO: Why do we only do this for Element?
+                         * This is how it was written in Domino. Is this
+                         * a bug?
+                         */
+                        /* RECURSE ON CHILDREN */
+                        for ($n=$this->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
+                                $n->__root();
+                        }
+                }
+        }
+
+        protected function __uproot(void): void
+        {
+                $doc = $this->ownerDocument();
+
+                /* Manage id to element mapping */
+                if ($this->_nodeType === ELEMENT_NODE) {
+                        if (NULL !== ($id = $this->getAttribute('id'))) {
+                                $doc->__remove_from_id_table($id, $this);
+                        }
+                }
+
+                /*
+                 * TODO: And here we don't restrict to ELEMENT_NODE. 
+                 * Why not? I think this is the intended behavior, no?
+                 * Then does that make the behavior in root() a bug?
+                 * Go over with Scott.
+                 */
+                for ($n=$this->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
+                        $n->__uproot();
+                }
+
+                $doc->__remove_from_node_table($this);
+        }
+
+        /**
+         * The document this node is associated to.
+         *
+         * @return Document
+         * @spec DOM-LS
+         *
+         * NOTE
+         * How is this different from ownerDocument? According to DOM-LS,
+         * Document::ownerDocument() must equal NULL, even though it's often
+         * more convenient if a document is its own owner. 
+         *
+         * What we're looking for is the "node document" concept, as laid
+         * out in the DOM-LS spec: 
+         *
+         *      -"Each node has an associated node document, set upon creation, 
+         *       that is a document."
+         * 
+         *      -"A node's node document can be changed by the 'adopt' 
+         *       algorithm." 
+         *
+         *      -"The node document of a document is that document itself."
+         * 
+         *      -"All nodes have a node document at all times."
+         *
+         * TODO
+         * Does the DOM-LS method Node::getRootNode (not implemented here)
+         * in its non-shadow-tree branch, do the same thing?
+         */
+        public function __node_document(void): Document
+        {
+                return $this->_ownerDocument ?? $this;
+        }
+
+
 
         /**
          * The index of this Node in its parent's childNodes list 
@@ -781,40 +918,6 @@ abstract class Node /* extends EventTarget // try factoring events out? */
                 $this->modify();
         }
 
-        /**
-         * Return the ownerDocument, or $this if we are a Document.
-         * 
-         * @return Document or NULL
-         *
-         * TODO: This should be replaced with the DOM-LS method
-         * getRootNode(), which does somewhat similar behavior.
-         */
-        public function doc(void) ?Document
-        {
-                return $this->_ownerDocument || $this;
-        }
-
-
-
-        /**
-         * Determine whether this Node is rooted (belongs to a tree) 
-         *
-         * return: boolean
-         *
-         * NOTE
-         * A Node is rooted if it belongs to a tree, in which case it will
-         * have an ownerDocument. Document nodes maintain a list of all the
-         * nodes inside their tree, assigning each an index, Node::_nid. 
-         *
-         * Therefore if we are currently rooted, we can tell by checking that
-         * we have one of these.
-         *
-         * TODO: This should be Node::isConnected(), see spec.
-         */
-        public function rooted(void): boolean
-        {
-                return !!$this->_nid;
-        }
 
         /*
          * Convert the children of a node to an HTML string.
@@ -851,12 +954,20 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          * (modclock does not return the actual time; it is simply a 
          * counter incremented on each document modification)
          */
-        public function lastModTime(void): integer
+        public function __lastmod(void): integer
         {
-                if (!$this->_lastModTime) {
-                        $this->_lastModTime = $this->doc()->modclock;
+                if (!$this->___lastmod) {
+                        $this->___lastmod = $this->__node_document()->__modclock;
                 }
-                return $this->_lastModTime;
+                return $this->___lastmod;
+        }
+
+        /* Called when being adopted into a new owner document, since 
+         * the modtimes are by-owner. 
+         */
+        public function __lastmod_zero(void): void
+        {
+                $this->___lastmod = 0;
         }
 
         /**
@@ -875,15 +986,15 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          * value against, so this will only update nodes that already 
          * have a _lastModTime property.
          */
-        public function modify(void): void
+        public function __lastmod_update(void): void
         {
                 /* Skip while doc.modclock == 0 */
-                if ($this->doc()->modclock) {
-                        $time = ++$this->doc()->modclock;
+                if ($this->__node_document()->__modclock) {
+                        $time = ++$this->__node_document()->__modclock;
 
-                        for ($n = $this; $n; $n = $n->parentElement()) {
-                                if ($n->_lastModTime) {
-                                        $n->_lastModTime = $time;
+                        for ($n=$this; $n!==NULL; $n=$n->parentElement()) {
+                                if ($n->___lastmod) {
+                                        $n->___lastmod = $time;
                                 }
                         }
                 }

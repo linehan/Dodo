@@ -16,6 +16,8 @@
  * DOM-PS-WD W3C DOM Parsing & Serialization http://w3.org/TR/DOM-Parsing/
  * WEBIDL-1  W3C WebIDL Level 1	             http://w3.org/TR/WebIDL-1/
  * XML-NS    W3C XML Namespaces		     http://w3.org/TR/xml-names/
+ * CSS-OM    CSS Object Model                http://drafts.csswg.org/cssom-view/
+ * HTML-LS   HTML Living Standard            https://html.spec.whatwg.org/
  *
  ******************************************************************************/
 /******************************************************************************
@@ -69,6 +71,82 @@
  *          can strap an arbitrary HTML parser into.
  *
  ******************************************************************************/
+/*
+ * Attributes in the DOM are tricky:
+ *
+ * - there are the 8 basic get/set/has/removeAttribute{NS} methods
+ *
+ * - but many HTML attributes are also 'reflected' through IDL
+ *   attributes which means that they can be queried and set through
+ *   regular properties of the element.  There is just one attribute
+ *   value, but two ways to get and set it.
+ *
+ * - Different HTML element types have different sets of reflected
+ *   attributes.
+ *
+ * - attributes can also be queried and set through the .attributes
+ *   property of an element.  This property behaves like an array of
+ *   Attr objects.  The value property of each Attr is writeable, so
+ *   this is a third way to read and write attributes.
+ *
+ * - for efficiency, we really want to store attributes in some kind
+ *   of name->attr map.  But the attributes[] array is an array, not a
+ *   map, which is kind of unnatural.
+ *
+ * - When using namespaces and prefixes, and mixing the NS methods
+ *   with the non-NS methods, it is apparently actually possible for
+ *   an attributes[] array to have more than one attribute with the
+ *   same qualified name.  And certain methods must operate on only
+ *   the first attribute with such a name.  So for these methods, an
+ *   inefficient array-like data structure would be easier to
+ *   implement.
+ *
+ * - The attributes[] array is live, not a snapshot, so changes to the
+ *   attributes must be immediately visible through existing arrays.
+ *
+ * - When attributes are queried and set through IDL properties
+ *   (instead of the get/setAttributes() method or the attributes[]
+ *   array) they may be subject to type conversions, URL
+ *   normalization, etc., so some extra processing is required in that
+ *   case.
+ *
+ * - But access through IDL properties is probably the most common
+ *   case, so we'd like that to be as fast as possible.
+ *
+ * - We can't just store attribute values in their parsed idl form,
+ *   because setAttribute() has to return whatever string is passed to
+ *   getAttribute even if it is not a legal, parseable value. So
+ *   attribute values must be stored in unparsed string form.
+ *
+ * - We need to be able to send change notifications or mutation
+ *   events of some sort to the renderer whenever an attribute value
+ *   changes, regardless of the way in which it changes.
+ *
+ * - Some attributes, such as id and class affect other parts of the
+ *   DOM API, like getElementById and getElementsByClassName and so
+ *   for efficiency, we need to specially track changes to these
+ *   special attributes.
+ *
+ * - Some attributes like class have different names (className) when
+ *   reflected.
+ *
+ * - Attributes whose names begin with the string 'data-' are treated
+ *   specially.
+ *
+ * - Reflected attributes that have a boolean type in IDL have special
+ *   behavior: setting them to false (in IDL) is the same as removing
+ *   them with removeAttribute()
+ *
+ * - numeric attributes (like HTMLElement.tabIndex) can have default
+ *   values that must be returned by the idl getter even if the
+ *   content attribute does not exist. (The default tabIndex value
+ *   actually varies based on the type of the element, so that is a
+ *   tricky one).
+ *
+ * See
+ * http://www.whatwg.org/specs/web-apps/current-work/multipage/urls.html#reflect
+ * for rules on how attributes are reflected.
+ */
 
 require_once("xmlnames");
 require_once("utils");
@@ -200,7 +278,7 @@ class Element extends NonDocumentTypeChildNode
                 if ($this->localName() !== $elt->localName() 
                 || $this->namespaceURI() !== $elt->namespaceURI() 
                 || $this->prefix() !== $elt->prefix() 
-                || $this->attributes->length() !== $elt->attributes->length()) {
+                || count($this->attributes) !== count($elt->attributes)) {
                         return false;
                 }
 
@@ -227,7 +305,6 @@ class Element extends NonDocumentTypeChildNode
         {
                 return $this->_prefix;
         }
-
         public function localName(): ?string
         {
                 return $this->_localName;
@@ -385,114 +462,76 @@ class Element extends NonDocumentTypeChildNode
         }
 
 
-        /*********************************************************************
+        /**********************************************************************
          * ATTRIBUTES
-         ********************************************************************/
-        /*
-         * Attributes in the DOM are tricky:
+         **********************************************************************/
+
+	/* GET ****************************************************************/
+
+        /**
+         * Fetch the value of an attribute with the given qualified name
          *
-         * - there are the 8 basic get/set/has/removeAttribute{NS} methods
-         *
-         * - but many HTML attributes are also 'reflected' through IDL
-         *   attributes which means that they can be queried and set through
-         *   regular properties of the element.  There is just one attribute
-         *   value, but two ways to get and set it.
-         *
-         * - Different HTML element types have different sets of reflected
-         *   attributes.
-         *
-         * - attributes can also be queried and set through the .attributes
-         *   property of an element.  This property behaves like an array of
-         *   Attr objects.  The value property of each Attr is writeable, so
-         *   this is a third way to read and write attributes.
-         *
-         * - for efficiency, we really want to store attributes in some kind
-         *   of name->attr map.  But the attributes[] array is an array, not a
-         *   map, which is kind of unnatural.
-         *
-         * - When using namespaces and prefixes, and mixing the NS methods
-         *   with the non-NS methods, it is apparently actually possible for
-         *   an attributes[] array to have more than one attribute with the
-         *   same qualified name.  And certain methods must operate on only
-         *   the first attribute with such a name.  So for these methods, an
-         *   inefficient array-like data structure would be easier to
-         *   implement.
-         *
-         * - The attributes[] array is live, not a snapshot, so changes to the
-         *   attributes must be immediately visible through existing arrays.
-         *
-         * - When attributes are queried and set through IDL properties
-         *   (instead of the get/setAttributes() method or the attributes[]
-         *   array) they may be subject to type conversions, URL
-         *   normalization, etc., so some extra processing is required in that
-         *   case.
-         *
-         * - But access through IDL properties is probably the most common
-         *   case, so we'd like that to be as fast as possible.
-         *
-         * - We can't just store attribute values in their parsed idl form,
-         *   because setAttribute() has to return whatever string is passed to
-         *   getAttribute even if it is not a legal, parseable value. So
-         *   attribute values must be stored in unparsed string form.
-         *
-         * - We need to be able to send change notifications or mutation
-         *   events of some sort to the renderer whenever an attribute value
-         *   changes, regardless of the way in which it changes.
-         *
-         * - Some attributes, such as id and class affect other parts of the
-         *   DOM API, like getElementById and getElementsByClassName and so
-         *   for efficiency, we need to specially track changes to these
-         *   special attributes.
-         *
-         * - Some attributes like class have different names (className) when
-         *   reflected.
-         *
-         * - Attributes whose names begin with the string 'data-' are treated
-         *   specially.
-         *
-         * - Reflected attributes that have a boolean type in IDL have special
-         *   behavior: setting them to false (in IDL) is the same as removing
-         *   them with removeAttribute()
-         *
-         * - numeric attributes (like HTMLElement.tabIndex) can have default
-         *   values that must be returned by the idl getter even if the
-         *   content attribute does not exist. (The default tabIndex value
-         *   actually varies based on the type of the element, so that is a
-         *   tricky one).
-         *
-         * See
-         * http://www.whatwg.org/specs/web-apps/current-work/multipage/urls.html#reflect
-         * for rules on how attributes are reflected.
+         * @param string $qname The attribute's qualifiedName
+         * @return ?string the value of the attribute
          */
-
-	/****** GET ******/
-
         public function getAttribute(string $qname): ?string
         {
                 $attr = $this->attributes->getNamedItem($qname);
-                return $attr ? $attr->value : NULL;
+                return $attr ? $attr->value() : NULL;
         }
 
+        /**
+         * Fetch value of attribute with the given namespace and localName
+         *
+         * @param ?string $ns The attribute's namespace 
+         * @param string $lname The attribute's local name 
+         * @return ?string the value of the attribute
+         * @spec DOM-LS
+         */
         public function getAttributeNS(?string $ns, string $lname): ?string
         {
                 $attr = $this->attributes->getNamedItemNS($ns, $lname);
-                return $attr ? $attr->value : NULL;
+                return $attr ? $attr->value() : NULL;
         }
 
+        /**
+         * Fetch the Attr node with the given qualifiedName
+         *
+         * @param string $lname The attribute's local name 
+         * @return ?Attr the attribute node, or NULL
+         * @spec DOM-LS
+         */
         public function getAttributeNode(string $qname): ?Attr
         {
                 return $this->attributes->getNamedItem($qname);
         }
 
+        /**
+         * Fetch the Attr node with the given namespace and localName 
+         *
+         * @param string $lname The attribute's local name 
+         * @return ?Attr the attribute node, or NULL
+         * @spec DOM-LS
+         */
         public function getAttributeNodeNS(?string $ns, string $lname): ?Attr
         {
                 return $this->attributes->getNamedItemNS($ns, $lname);
         }
 
-	/****** SET ******/
+	/* SET ****************************************************************/
 
-        //}
-
+        /**
+         * Set the value of first attribute with a particular qualifiedName
+         *
+         * @param string $qname 
+         * @param $value
+         * @return void
+         * @spec DOM-LS
+         *
+         * NOTES
+         * Per spec, $value is not a string, but the string value of
+         * whatever is passed.
+         */
         public function setAttribute(string $qname, $value)
         {
                 if (!\domo\is_valid_xml_name($qname)) {
@@ -511,6 +550,19 @@ class Element extends NonDocumentTypeChildNode
                 $this->attributes->setNamedItem($attr);
         }
 
+        /**
+         * Set value of attribute with a particular namespace and localName
+         *
+         * @param string $ns
+         * @param string $qname 
+         * @param $value
+         * @return void
+         * @spec DOM-LS
+         *
+         * NOTES
+         * Per spec, $value is not a string, but the string value of
+         * whatever is passed.
+         */
         public function setAttributeNS(?string $ns, string $qname, $value)
         {
                 $lname = NULL;
@@ -526,61 +578,116 @@ class Element extends NonDocumentTypeChildNode
                 $this->attributes->setNamedItemNS($attr);
         }
 
+        /**
+         * Add an Attr node to an Element node
+         *
+         * @param Attr $attr
+         * @return ?Attr 
+         */
         public function setAttributeNode(Attr $attr): ?Attr
         {
                 return $this->attributes->setNamedItem($attr);
         }
 
+        /**
+         * Add a namespace-aware Attr node to an Element node
+         *
+         * @param Attr $attr
+         * @return ?Attr 
+         */
         public function setAttributeNodeNS($attr)
         {
                 return $this->attributes->setNamedItemNS($attr);
         }
 
-	/****** REMOVE ******/
+	/* REMOVE *************************************************************/
 
-        public function removeAttribute(string $qname)
+        /**
+         * Remove the first attribute given a particular qualifiedName 
+         *
+         * @param string $qname 
+         * @return Attr or NULL the removed attribute node 
+         * @spec DOM-LS
+         */
+        public function removeAttribute(string $qname): ?Attr
         {
                 return $this->attributes->removeNamedItem($qname);
         }
 
+        /**
+         * Remove attribute given a particular namespace and localName 
+         *
+         * @param string $ns namespace 
+         * @param string $lname localName 
+         * @return Attr or NULL the removed attribute node
+         * @spec DOM-LS
+         */
         public function removeAttributeNS(?string $ns, string $lname)
         {
                 return $this->attributes->removeNamedItemNS($ns, $lname);
         }
 
+        /**
+         * Remove the given attribute node from this Element 
+         *
+         * @param Attr $attr attribute node to remove 
+         * @return Attr or NULL the removed attribute node
+         * @spec DOM-LS
+         */
         public function removeAttributeNode(Attr $attr)
         {
                 /* TODO: This is not a public function */
                 return $this->attributes->_remove($attr);
         }
 
-	/****** HAS ******/
+	/* HAS ****************************************************************/
 
+        /**
+         * Test Element for attribute with the given qualified name
+         *
+         * @param string $qname Qualified name of attribute
+         * @return boolean
+         * @spec DOM-LS
+         */
         public function hasAttribute(string $qname): boolean
         {
                 return $this->attributes->hasNamedItem($qname);
         }
 
+        /**
+         * Test Element for attribute with the given namespace and localName
+         *
+         * @param ?string $ns the namespace 
+         * @param string $lname the localName
+         * @return boolean
+         * @spec DOM-LS
+         */
         public function hasAttributeNS(?string $ns, string $lname): boolean
         {
                 return $this->attributes->hasNamedItemNS($ns, $lname);
         }
 
-	/****** OTHER ******/
+	/* OTHER **************************************************************/
 
+        /**
+         * Toggle the first attribute with the given qualified name
+         *
+         * @param string $qname qualified name
+         * @param boolean $force whether to set if no attribute exists 
+         * @return boolean whether we set or removed an attribute
+         * @spec DOM-LS
+         */
         public function toggleAttribute(string $qname, ?boolean $force=NULL): boolean
         {
                 if (!\domo\is_valid_xml_name($qname)) {
                         \domo\error("InvalidCharacterError");
                 }
 
-                $key = $this->_helper_qname_key($qname);
-                $a = $this->_attrsByQName[$key] ?? NULL;
+                $a = $this->attributes->getNamedItem($qname);
 
                 if ($a === NULL) {
                         if ($force === NULL || $force === true) {
-                                /* TODO: Why are we calling _setAttribute? */
-                                $this->_setAttribute($qname, "");
+                                $this->setAttribute($qname, "");
                                 return true;
                         }
                         return false;
@@ -593,12 +700,27 @@ class Element extends NonDocumentTypeChildNode
                 }
         }
 
-        public function hasAttributes(): boolean
+        /**
+         * Test whether this Element has any attributes
+         *
+         * @return boolean 
+         * @spec DOM-LS
+         */
+        public function hasAttributes(void): boolean
         {
                 return !empty($this->attributes->index_to_attr);
         }
 
-        public function getAttributeNames()
+        /**
+         * Fetch the qualified names of all attributes on this Element 
+         *
+         * @return array of strings, or empty array if no attributes.
+         * @spec DOM-LS
+         *
+         * NOTE
+         * The names are *not* guaranteed to be unique. 
+         */
+        public function getAttributeNames(): array
         {
                 /*
 		 * Note that per spec, these are not guaranteed to be
@@ -606,8 +728,8 @@ class Element extends NonDocumentTypeChildNode
                  */
                 $ret = array();
 
-                foreach ($this->attributes->index_to_attr as $a) {
-                        $ret[] = $a->name;
+                foreach ($this->attributes as $a) {
+                        $ret[] = $a->name();
                 }
 
                 return $ret;
@@ -618,15 +740,15 @@ class Element extends NonDocumentTypeChildNode
          * OTHER 
          ********************************************************************/
 
-/* TODO TODO TODO */
-  //// Define getters and setters for an 'id' property that reflects
-  //// the content attribute 'id'.
-  //id: attributes.property({name: 'id'}),
+        /* TODO TODO TODO */
+          //// Define getters and setters for an 'id' property that reflects
+          //// the content attribute 'id'.
+          //id: attributes.property({name: 'id'}),
 
-  //// Define getters and setters for a 'className' property that reflects
-  //// the content attribute 'class'.
-  //className: attributes.property({name: 'class'}),
-/* TODO TODO TODO */
+          //// Define getters and setters for a 'className' property that reflects
+          //// the content attribute 'class'.
+          //className: attributes.property({name: 'class'}),
+        /* TODO TODO TODO */
 
         public function classList()
         {

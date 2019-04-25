@@ -105,11 +105,11 @@ abstract class ChildNode extends Node
                         return;
                 }
 
-                /* Send mutation events if necessary */
-                if ($this->doc()) {
-                        $this->doc()->_preremoveNodeIterators($this);
-                        if ($this->rooted()) {
-                                $this->doc()->mutateRemove($this);
+                if (($doc = $this->__node_document())) {
+                        //$doc->_preremoveNodeIterators($this);
+                        if ($this->__is_rooted()) {
+                                $doc->__mutate_remove($this);
+                                $doc->__uproot();
                         }
                 }
 
@@ -125,7 +125,6 @@ abstract class ChildNode extends Node
 
         /*
          * Remove this node w/o uprooting or sending mutation events
-         * (But do update the structure id for all ancestors)
          */
         protected function _remove()
         {
@@ -133,19 +132,17 @@ abstract class ChildNode extends Node
                         return;
                 }
 
-                if ($this->_parentNode->_childNodes) {
-                        array_splice($this->_parentNode->_childNodes, $this->index(), 1);
-                } else if ($this->_parentNode->firstChild() === $this) {
-                        if ($this->nextSibling() === $this) {
-                                $this->_parentNode->_firstChild = NULL;
-                        } else {
-                                $this->_parentNode->_firstChild = $this->nextSibling();
-                        }
+                $parent = $this->_parentNode;
+
+                if ($parent->_childNodes !== NULL) {
+                        array_splice($parent->_childNodes, $this->index(), 1);
+                } else if ($parent->_firstChild === $this) {
+                        $parent->_firstChild = $this->nextSibling();
                 }
 
                 LinkedList\remove($this);
 
-                $parent->modify();
+                $parent->__lastmod_update();
         }
 
         /*

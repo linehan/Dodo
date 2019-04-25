@@ -3,3 +3,7 @@ Untitled experiment to port domino from Node.js to PHP
 
 04/14/2019
 I guess its called DOMOperator
+
+TODO
+stuff in interfaces/algorithms.php and lib/xmlnames.php 
+should go together somewhere.

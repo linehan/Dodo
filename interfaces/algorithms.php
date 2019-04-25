@@ -42,7 +42,7 @@ static function _DOM_compare_document_position(Node $node1, Node $node2): intege
         }
 
         /* #6 */
-        if ($node1 === NULL || $node2 === NULL || $node1->doc() !== $node2->doc() || $node1->rooted() !== $node2->rooted()) {
+        if ($node1 === NULL || $node2 === NULL || $node1->__node_document() !== $node2->__node_document() || $node1->__is_rooted() !== $node2->__is_rooted()) {
                 /* UHH, in the spec this is supposed to add DOCUMENT_POSITION_PRECEDING or DOCUMENT_POSITION_FOLLOWING
                  * in some consistent way, usually based on pointer comparison, which we can't do here. Hmm. Domino
                  * just straight up omits it. This is stupid, the spec shouldn't ask this. */
@@ -209,7 +209,7 @@ static function _DOM_insertBeforeOrReplace(Node $node, Node $parent, ?Node $befo
                 return;
         }
 
-        if ($node instanceof DocumentFragment && $node->rooted()) {
+        if ($node instanceof DocumentFragment && $node->__is_rooted()) {
                 \domo\error("HierarchyRequestError");
         }
 
@@ -232,15 +232,16 @@ static function _DOM_insertBeforeOrReplace(Node $node, Node $parent, ?Node $befo
         /************ IF REPLACING, REMOVE OLD CHILD *************/
 
         if ($replace) {
-                if ($before->rooted()) {
-                        $before->doc()->mutateRemove($before);
+                if ($before->__is_rooted()) {
+                        $before->__node_document()->__mutate_remove($before);
+                        $before->__uproot();
                 }
                 $before->_parentNode = NULL;
         }
 
         /************ IF BOTH ROOTED, FIRE MUTATIONS *************/
 
-        $bothWereRooted = $node->rooted() && $parent->rooted();
+        $bothWereRooted = $node->__is_rooted() && $parent->__is_rooted();
 
         if ($bothWereRooted) {
                 /* "soft remove" -- don't want to uproot it. */
@@ -310,16 +311,19 @@ static function _DOM_insertBeforeOrReplace(Node $node, Node $parent, ?Node $befo
                 }
         }
 
-        /************ FIRE MOVE OR INSERT MUTATIONS *************/
+        /************ ROOT NODES AND FIRE MUTATION HANDLERS *************/
+
+        $d = $parent->nodeDocument();
 
         if ($bothWereRooted) {
-                $parent->modify();
-                $parent->doc()->mutateMove($insert[0]);
+                $parent->__lastmod_update(); 
+                $d->__mutate_move($insert[0]); 
         } else {
-                if ($parent->rooted()) {
-                        $parent->modify();
+                if ($parent->__is_rooted()) {
+                        $parent->__lastmod_update(); 
                         foreach ($insert as $n) {
-                                $parent->doc()->mutateInsert($n);
+                                $n->__root($d);
+                                $d->__mutate_insert($n);
                         }
                 }
         }
@@ -352,7 +356,7 @@ static function _DOM_ensureInsertValid(Node $node, Node $parent, ?Node $child): 
         if ($node === $parent) {
                 \domo\error("HierarchyRequestError");
         }
-        if ($node->doc() === $parent->doc() && $node->rooted() === $parent->rooted()) {
+        if ($node->__node_document() === $parent->__node_document() && $node->__is_rooted() === $parent->__is_rooted()) {
                 /* 
                  * If the conditions didn't figure it out, then check
                  * by traversing parentNode chain. 
@@ -534,7 +538,7 @@ static function _DOM_ensureReplaceValid(Node $node, Node $parent, Node $child): 
         if ($node === $parent) {
                 \domo\error("HierarchyRequestError");
         }
-        if ($node->doc() === $parent->doc() && $node->rooted() === $parent->rooted()) {
+        if ($node->__node_document() === $parent->__node_document() && $node->__is_rooted() === $parent->__is_rooted()) {
                 /* 
                  * If the conditions didn't figure it out, then check
                  * by traversing parentNode chain. 

@@ -62,20 +62,31 @@ REMOVED:
 
 class Attr extends Node
 {
-        /* TODO: Re-order these arguments because you can make an Attr with
+        /* DOM-LS Immutables */
+        protected const _specified = true;
+        protected const _nodeType = ATTRIBUTE_NODE;
+
+        /* DOM-LS Defaults */
+        protected $_ownerElement = NULL;
+        protected $_namespaceURI = NULL;
+        protected $_prefix = NULL;
+        protected $_value = "";
+
+        /* 
+        * TODO: Re-order these arguments because you can make an Attr with
          * just an lname, and the defaults are spec'd as
          *      ownerElement = NULL
          *      namespaceURI = NULL
          *      prefix = NULL
          *      value = ""
          */
-        public function __construct($elt, string $lname, string $prefix, string $namespace, string $value)
+        public function __construct(?Element $elt, string $lname, string $prefix, string $ns, string $value)
         {
                 /* DOM4: (readonly) non-empty string */
                 $this->_localName = $lname;
 
                 /* DOM4: (readonly) NULL or non-empty string */
-                $this->_namespaceURI = ($namespace === "") ? NULL : $namespace;
+                $this->_namespaceURI = ($ns === "") ? NULL : $ns;
 
                 /* DOM4: (readonly) NULL or non-empty string */
                 $this->_prefix = ($prefix==="") ? NULL : $prefix;
@@ -97,13 +108,19 @@ class Attr extends Node
                         $this->_value
                 )
         }
-
-
+        public function namespaceURI(void): ?string
+        {
+                return $this->_namespaceURI;
+        }
+        public function specified()
+        {
+                /* DOM spec: always returns true */
+                return $this->_specified;
+        }
         public function ownerElement()
         {
                 return $this->_ownerElement;
         }
-
         public function localName()
         {
                 return $this->_localName;
@@ -112,7 +129,6 @@ class Attr extends Node
         {
                 return $this->_prefix;
         }
-
         /* Must return qualified name */
         public function name()
         {
@@ -122,13 +138,6 @@ class Attr extends Node
                         return $this->_localName;
                 }
         }
-
-        public function specified()
-        {
-                /* DOM spec: always returns true */
-                return true;
-        }
-
         /* NOTE: You can unset an attribute by calling Attr::value(""); */
         public function value(string $v = NULL)
         {

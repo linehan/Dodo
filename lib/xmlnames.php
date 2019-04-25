@@ -37,7 +37,6 @@ namespace domo;
  *                    # An XML Name, minus the ":"
  *****************************************************************************/
 
-
 /*
  * Most names will be ASCII only. Try matching against simple regexps first
  *
@@ -49,7 +48,6 @@ namespace domo;
  */
 define('pattern_ascii_name', '/^[_:A-Za-z][-.:\w]+$/');
 define('pattern_ascii_qname', '/^([_A-Za-z][-.\w]+|[_A-Za-z][-.\w]+:[_A-Za-z][-.\w]+)$/');
-
 
 /*
  * If the regular expressions above fail, try more complex ones that work
@@ -82,7 +80,6 @@ define('surrogate_char', char . surrogates);
 
 define('pattern_surrogate_name', '/^[' . surrogate_start . ']' . '[:' . surrogate_char . ']*$/');
 define('pattern_surrogate_qname', '/^([' . surrogate_start . '][' . surrogate_char . ']*|[' . surrogate_start . '][' . surrogate_char . ']*:[' . surrogate_start . '][' . surrogate_char . ']*)$/');
-
 
 function is_valid_xml_name($s)
 {
@@ -147,7 +144,6 @@ function is_valid_xml_qname($s)
 
   	return ($ret0 && $ret1) && ((2*count($matches_pairs)) === count($matches_chars));
 }
-
 
 /**
  * Validate and extract a namespace and qualifiedName
