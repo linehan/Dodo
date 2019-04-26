@@ -98,7 +98,7 @@ class Attr extends Node
                 $this->_ownerElement = $elt;
         }
 
-        public function _subclass_cloneNodeShallow(void): ?Attr
+        public function _subclass_cloneNodeShallow(): ?Attr
         {
                 return new Attr(
                         NULL, 
@@ -108,7 +108,7 @@ class Attr extends Node
                         $this->_value
                 )
         }
-        public function namespaceURI(void): ?string
+        public function namespaceURI(): ?string
         {
                 return $this->_namespaceURI;
         }

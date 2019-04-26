@@ -33,7 +33,7 @@ class DocumentType extends ChildNodeLeaf
         }
 
         /* Methods delegated in Node */
-        public function _subclass_cloneShallow
+        public function _subclass_cloneNodeShallow
         {
                 return new DocumentType($this->_ownerDocument, $this->_name, $this->_publicId, $this->_systemId);
         }

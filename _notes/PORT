@@ -1,3 +1,27 @@
+ISSUES THAT REMAIN
+-------------------
+1.
+The delegated methods specializing the Node::cloneNode and Node::isEqual
+are really annoying.
+
+Sometimes behavior is overridden by a later class extension, sometimes
+they are left up to the parent, and sometimes the parent's behavior is
+controlled by setting a parameter value on the child.
+
+This is all somewhat confusing to a first-time reader. We should either
+decide on one way to do it (e.g. abstract methods) or just leave it.
+For now, i'm leaving it.
+
+2.
+Confusing indexes. 
+
+Node::__index() / _index is the index of a node
+in its parent's childNodes list (i.e. it's sibling index).
+
+Node::___nid gives the node's index in its owner Document.
+
+
+
 IN FUTURE: USE THE PHP IMMUTABLE RFC IF IT IS ADOPTED!
 ======================================================
 

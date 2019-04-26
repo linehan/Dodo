@@ -100,7 +100,7 @@ abstract class ChildNode extends Node
          *
          * @return void
          */
-        public function remove(void)
+        public function remove()
         {
                 if ($this->_parentNode === NULL) {
                         return;
@@ -136,7 +136,7 @@ abstract class ChildNode extends Node
                 $parent = $this->_parentNode;
 
                 if ($parent->_childNodes !== NULL) {
-                        array_splice($parent->_childNodes, $this->index(), 1);
+                        array_splice($parent->_childNodes, $this->__index(), 1);
                 } else if ($parent->_firstChild === $this) {
                         $parent->_firstChild = $this->nextSibling();
                 }
@@ -203,15 +203,15 @@ abstract class ChildNodeLeaf extends ChildNode
                 parent::__construct();
         }
 
-        public final function hasChildNodes(void): boolean
+        public final function hasChildNodes(): boolean
         {
                 return false;
         }
-        public final function firstChild(void)
+        public final function firstChild()
         {
                 return NULL;
         }
-        public final function lastChild(void)
+        public final function lastChild()
         {
                 return NULL;
         }
@@ -227,11 +227,11 @@ abstract class ChildNodeLeaf extends ChildNode
         {
                 \domo\error("NotFoundError");
         }
-        public final function __remove_children(void)
+        public final function __remove_children()
         {
                 /* no-op */
         }
-        public final function childNodes(void)
+        public final function childNodes()
         {
                 if ($this->_childNodes === NULL) {
                         $this->_childNodes = new NodeList();

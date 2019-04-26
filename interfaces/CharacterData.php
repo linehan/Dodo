@@ -122,7 +122,7 @@ abstract class CharacterData extends NonDocumentTypeChildNodeLeaf
                 return $this->_data === $node->_data;
         }
 
-        public function length(void): integer
+        public function length(): integer
         {
                 strlen($this->_data);
         }

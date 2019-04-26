@@ -42,7 +42,7 @@ class ProcessingInstruction extends CharacterData
         }
 
         /* Delegated methods from Node */
-        public function _subclass_cloneShallow(void)
+        public function _subclass_cloneNodeShallow(void)
         {
                 return new ProcessingInstruction($this->_ownerDocument, $this->_target, $this->_data);
         }

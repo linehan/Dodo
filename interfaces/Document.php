@@ -203,7 +203,7 @@ class Document extends Node
         protected $_documentElement = NULL;
 
         /* Used to mutate the above */
-        private function __update_document_state(void): void
+        private function __update_document_state(): void
         {
                 $this->_doctype = NULL;
                 $this->_documentElement = NULL;
@@ -300,19 +300,19 @@ class Document extends Node
         /*********************************************************************
          * Accessors for read-only properties defined in Document
          *********************************************************************/
-        public function characterSet(void): string
+        public function characterSet(): string
         {
                 return $this->_characterSet;
         }
-        public function charset(void): string
+        public function charset(): string
         {
                 return $this->characterSet(); /* historical alias */
         }
-        public function inputEncoding(void): string
+        public function inputEncoding(): string
         {
                 return $this->characterSet(); /* historical alias */
         }
-        public function implementation(void): DOMImplementation
+        public function implementation(): DOMImplementation
         {
                 return $this->_implementation;
         }
@@ -320,23 +320,23 @@ class Document extends Node
         {
                 return $this->_URL;
         }
-        public function URL(void) : string
+        public function URL() : string
         {
                 return $this->documentURI(); /* Alias for HTMLDocuments */
         }
-        public function compatMode(void)
+        public function compatMode()
         {
                 return $this->_mode === "quirks" ? "BackCompat" : "CSS1Compat";
         }
-        public function contentType(void): ?string
+        public function contentType(): ?string
         {
                 return $this->_contentType;
         }
-        public function doctype(void): ?DocumentType
+        public function doctype(): ?DocumentType
         {
                 return $this->_doctype;
         }
-        public function documentElement(void): ?Element
+        public function documentElement(): ?Element
         {
                 return $this->_documentElement;
         }
@@ -446,7 +446,7 @@ class Document extends Node
                 $lname = NULL;
                 $prefix = NULL;
 
-                \domo\validate_and_extract($ns, $qname, $prefix, $lname);
+                \domo\whatwg\validate_and_extract($ns, $qname, $prefix, $lname);
 
                 return $this->_createElementNS($lname, $ns, $prefix);
         }
@@ -500,11 +500,11 @@ class Document extends Node
          * Adopt a clone of a tree rooted at $node.
          *
          * @param Node $node
-         * @param boolean $deep
+         * @param bool $deep
          * @return Node $node
          * @spec DOM-LS
          */
-        public function importNode(Node $node, boolean $deep=false): Node
+        public function importNode(Node $node, bool $deep=false): Node
         {
                 return $this->adoptNode($node->cloneNode($deep));
         }
@@ -543,10 +543,10 @@ class Document extends Node
         /**
          * Clone this Document, import nodes, and call __update_document_state
          *
-         * @deep  : if true, clone entire subtree
-         * Returns: Clone of $this.
-         * Extends: Node::cloneNode()
-         * Part_Of: DOMO1
+         * @param bool $deep - if true, clone entire subtree
+         * @return Clone of $this.
+         * @extends Node::cloneNode()
+         * @spec DOM-LS 
          *
          * NOTE:
          * 1. What a tangled web we weave
@@ -555,7 +555,7 @@ class Document extends Node
          *    document.
          * 3. We also need to call _updateDocTypeElement()
          */
-        public function cloneNode(boolean $deep = false): ?Node
+        public function cloneNode(bool $deep = false): ?Node
         {
                 /* Make a shallow clone  */
                 $clone = parent::cloneNode(false);
@@ -641,7 +641,7 @@ class Document extends Node
          * In the standard, this is actually a read-write property,
          * but we don't implement that here because it's madness.
          */
-        public function body(void): ?Element
+        public function body(): ?Element
         {
                 $elt = $this->_documentElement;
 
@@ -663,7 +663,7 @@ class Document extends Node
          * @return Element or NULL
          * @spec HTML-LS
          */
-        public function head(void): ?Element
+        public function head(): ?Element
         {
                 $elt = $this->_documentElement;
 
@@ -911,7 +911,7 @@ class Document extends Node
                                 "type" => MUTATE_REMOVE,
                                 "target" => $node->parentNode(),
                                 "node" => $node
-                        )
+                        ));
                 }
         }
         /*
@@ -949,23 +949,27 @@ class Document extends Node
         public function _resolve($href)
         {
                 //XXX: Cache the URL
-                return new URL($this->_documentBaseURL)->resolve($href);
+                //return new URL($this->_documentBaseURL)->resolve($href);
+                /* TODO: implement? */
+                return '';
         }
 
         public function _documentBaseURL()
         {
+                /* TODO: Implement? */
+                return '';
                 // XXX: This is not implemented correctly yet
-                $url = $this->_address;
-                if ($url === "about:blank") {
-                        $url = "/";
-                }
+                //$url = $this->_address;
+                //if ($url === "about:blank") {
+                        //$url = "/";
+                //}
 
-                $base = $this->querySelector("base[href]");
+                //$base = $this->querySelector("base[href]");
 
-                if ($base) {
-                        return new URL($url)->resolve($base->getAttribute("href"));
-                }
-                return $url;
+                //if ($base) {
+                        //return new URL($url)->resolve($base->getAttribute("href"));
+                //}
+                //return $url;
 
                 /*
                  * The document base URL of a Document object is the

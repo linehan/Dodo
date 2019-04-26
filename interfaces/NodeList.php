@@ -1,13 +1,14 @@
 <?php
+namespace domo;
 
-class NodeList extends ArrayObject
+class NodeList extends \ArrayObject
 {
-        function __construct(array $input = NULL)
+        public function __construct($input=NULL)
         {
-                parent::__construct(array $input);
+                parent::__construct($input);
         }
 
-        function item($i)
+        public function item($i)
         {
                 return $this[$i] ?? NULL;
         }

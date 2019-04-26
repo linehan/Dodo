@@ -40,7 +40,7 @@
  *      + Why is it not called prevSibling? I imagine it's due to the DOM spec
  */
 
-namespace domo\LinkedList
+namespace domo\LinkedList;
 
 
 /**
@@ -57,9 +57,9 @@ namespace domo\LinkedList
  */
 function valid($a)
 {
-        \domo\assert($a, "list is falsy")
-        \domo\assert($a->_previousSibling, "previous is falsy")
-        \domo\assert($a->_nextSibling, "next is falsy")
+        \domo\assert($a, "list is falsy");
+        \domo\assert($a->_previousSibling, "previous is falsy");
+        \domo\assert($a->_nextSibling, "next is falsy");
         /* TODO: Check that list is actually circular */
         return true;
 }
@@ -89,7 +89,7 @@ function insertBefore($a, $b)
         $b_last->_nextSibling      = $a_first;
         $b_first->_previousSibling = $a_last;
 
-        domo\assert(valid($a) && valid($b))
+        domo\assert(valid($a) && valid($b));
 }
 
 /* TODO: Rename 'unlink' */

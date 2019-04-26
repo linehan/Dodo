@@ -266,27 +266,27 @@ class Element extends NonDocumentTypeChildNode
          * ACCESSORS
          **********************************************************************/
 
-        public function prefix(void): ?string
+        public function prefix(): ?string
         {
                 return $this->_prefix;
         }
-        public function localName(void): string
+        public function localName(): string
         {
                 return $this->_localName;
         }
-        public function namespaceURI(void): ?string
+        public function namespaceURI(): ?string
         {
                 return $this->_namespaceURI;
         }
-        public function tagName(void): string
+        public function tagName(): string
         {
                 return $this->_nodeName;
         }
-	public function nodeName(void): string
+	public function nodeName(): string
 	{
 		return $this->_nodeName;
 	}
-	public function nodeValue(void): string
+	public function nodeValue(): string
 	{
 		return $this->_nodeValue;
 	}
@@ -311,7 +311,7 @@ class Element extends NonDocumentTypeChildNode
                         $this->__remove_children();
                         if ($value !== "") {
                                 /* Equivalent to Node:: appendChild without checks! */
-                                \domo\algorithm\insert_before_or_replace($node, $this->_ownerDocument->createTextNode($value), NULL);
+                                \domo\whatwg\insert_before_or_replace($node, $this->_ownerDocument->createTextNode($value), NULL);
                         }
                 }
         }
@@ -597,7 +597,7 @@ class Element extends NonDocumentTypeChildNode
          */
         public function setAttribute(string $qname, $value)
         {
-                if (!\domo\is_valid_xml_name($qname)) {
+                if (!\domo\whatwg\is_valid_xml_name($qname)) {
                         \domo\error("InvalidCharacterError");
                 }
 
@@ -742,7 +742,7 @@ class Element extends NonDocumentTypeChildNode
          */
         public function toggleAttribute(string $qname, ?boolean $force=NULL): boolean
         {
-                if (!\domo\is_valid_xml_name($qname)) {
+                if (!\domo\whatwg\is_valid_xml_name($qname)) {
                         \domo\error("InvalidCharacterError");
                 }
 
@@ -769,7 +769,7 @@ class Element extends NonDocumentTypeChildNode
          * @return boolean
          * @spec DOM-LS
          */
-        public function hasAttributes(void): boolean
+        public function hasAttributes(): boolean
         {
                 return !empty($this->attributes->index_to_attr);
         }

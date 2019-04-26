@@ -144,7 +144,7 @@ abstract class ChildNode extends Node
                 }
 
                 if ($this->_parentNode->_childNodes) {
-                        array_splice($this->_parentNode->_childNodes, $this->index(), 1);
+                        array_splice($this->_parentNode->_childNodes, $this->__index(), 1);
                 } else if ($this->_parentNode->firstChild() === $this) {
                         if ($this->nextSibling() === $this) {
                                 $this->_parentNode->_firstChild = NULL;
