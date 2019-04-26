@@ -19,27 +19,32 @@ class DocumentType extends ChildNodeLeaf
                 $this->_systemId = $systemId;
         }
 
-        public function name(void)
+        public function name()
         {
                 return $this->_name;
         }
-        public function publicId(void)
+        public function publicId()
         {
                 return $this->_publicId;
         }
-        public function systemId(void)
+        public function systemId()
         {
                 return $this->_systemId;
         }
 
         /* Methods delegated in Node */
-        public function _subclass_cloneNodeShallow
+        public function _subclass_cloneNodeShallow(): ?Node 
         {
                 return new DocumentType($this->_ownerDocument, $this->_name, $this->_publicId, $this->_systemId);
         }
 
-        public function _subclass_isEqual(Node $node)
+        public function _subclass_isEqualNode(Node $node): bool
         {
-                return $this->_name === $node->_name && $this->_publicId === $node->_publicId && $this->_systemId === $node->_systemId;
+                return ($this->_name === $node->_name && $this->_publicId === $node->_publicId && $this->_systemId === $node->_systemId);
+        }
+
+        public function textContent(?string $value = NULL)
+        {
+                return NULL;
         }
 }

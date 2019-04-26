@@ -101,7 +101,7 @@ function assert(boolean $condition, ?string $message="")
  *
  * For more information, see interfaces/DOMException.php
  */
-function error(string $name, ?string $message)
+function error(string $name, ?string $message=NULL)
 {
 	throw new DOMException($message, $name);
 }

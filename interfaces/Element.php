@@ -149,9 +149,10 @@
  */
 namespace domo;
 
-require_once('../lib/utils.php');
+require_once(__DIR__.'/../lib/util.php');
 require_once('NonDocumentTypeChildNode.php');
-require_once("NamedNodeMap.php");
+require_once('Attr.php');
+require_once('NamedNodeMap.php');
 
 
 /*
@@ -177,15 +178,15 @@ $UC_Cache = array();
 class Element extends NonDocumentTypeChildNode
 {
 	/* Required by Node */
-        protected const _nodeType = ELEMENT_NODE;
-        protected const _nodeValue = NULL;
-	protected $_nodeName = NULL; /* HTML-uppercased qualified name */
-        protected $_ownerDocument = NULL;
+        public $_nodeType = ELEMENT_NODE;
+        public $_nodeValue = NULL;
+	public $_nodeName = NULL; /* HTML-uppercased qualified name */
+        public $_ownerDocument = NULL;
 
 	/* Required by Element */
-        protected $_namespaceURI = NULL;
-        protected $_localName = NULL;
-        protected $_prefix = NULL;
+        public $_namespaceURI = NULL;
+        public $_localName = NULL;
+        public $_prefix = NULL;
 
 	/* Actually attached without an accessor */
         public $attributes = NULL;
@@ -199,7 +200,7 @@ class Element extends NonDocumentTypeChildNode
 	 * @param ?string $ns
 	 * @return void
 	 */
-        public function __construct(Document $doc, string $lname, string $ns, ?string $prefix)
+        public function __construct(Document $doc, string $lname, ?string $ns, ?string $prefix)
         {
 		global $UC_Cache; /* See declaration, above */
 
@@ -251,7 +252,7 @@ class Element extends NonDocumentTypeChildNode
 		 * HTML-uppercased qualified name by storing them in internal
 		 * slots."
 		 */
-                $this->_nodeValue = $uc_qname;
+                $this->_nodeName = $uc_qname;
 
 		/*
 		 * DOM-LS: "Elements also have an attribute list, which is
@@ -351,7 +352,7 @@ class Element extends NonDocumentTypeChildNode
          * METHODS DELEGATED FROM NODE
          **********************************************************************/
 
-        public function _subclass_cloneNodeShallow(): Element
+        public function _subclass_cloneNodeShallow(): ?Node 
         {
                 /*
                  * XXX:
@@ -384,12 +385,12 @@ class Element extends NonDocumentTypeChildNode
                 return $clone;
         }
 
-        public function _subclass_isEqual(Element $elt): boolean
+        public function _subclass_isEqualNode(Node $node): bool 
         {
-                if ($this->localName() !== $elt->localName()
-                || $this->namespaceURI() !== $elt->namespaceURI()
-                || $this->prefix() !== $elt->prefix()
-                || count($this->attributes) !== count($elt->attributes)) {
+                if ($this->localName() !== $node->localName()
+                || $this->namespaceURI() !== $node->namespaceURI()
+                || $this->prefix() !== $node->prefix()
+                || count($this->attributes) !== count($node->attributes)) {
                         return false;
                 }
 
@@ -398,10 +399,10 @@ class Element extends NonDocumentTypeChildNode
                  * and ignoring attribute prefixes.
                  */
                 foreach ($this->attributes as $a) {
-                        if (!$elt->hasAttributeNS($a->namespaceURI(), $a->localName())) {
+                        if (!$node->hasAttributeNS($a->namespaceURI(), $a->localName())) {
                                 return false;
                         }
-                        if ($elt->getAttributeNS($a->namespaceURI(), $a->localName()) !== $a->value()) {
+                        if ($node->getAttributeNS($a->namespaceURI(), $a->localName()) !== $a->value()) {
                                 return false;
                         }
                 }
@@ -631,7 +632,7 @@ class Element extends NonDocumentTypeChildNode
                 $lname = NULL;
                 $prefix = NULL;
 
-                \domo\extract_and_validate($ns, $qname, &$prefix, &$lname);
+                \domo\whatwg\validate_and_extract($ns, $qname, $prefix, $lname);
 
                 $attr = $this->attributes->getNamedItemNS($ns, $qname);
                 if ($attr === NULL) {
@@ -836,7 +837,7 @@ class Element extends NonDocumentTypeChildNode
         public function matches($selector)
         {
                 /* TODO: SELECTOR INTEGRATION */
-                return select->matches($this, $selector);
+                //return $select->matches($this, $selector);
         }
 
         public function closest($selector)
@@ -845,7 +846,7 @@ class Element extends NonDocumentTypeChildNode
                 while (method_exists($el, "matches") && !$el->matches($selector)) {
                         $el = $el->parentNode();
                 }
-                return (method_exists($el, "matches") ? $el : NULL;
+                return (method_exists($el, "matches")) ? $el : NULL;
         }
 
         /*********************************************************************

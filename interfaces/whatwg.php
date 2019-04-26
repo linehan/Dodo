@@ -2,6 +2,12 @@
 
 namespace domo\whatwg;
 
+require_once('Node.php');
+require_once('Element.php');
+require_once('Document.php');
+require_once('Attr.php');
+require_once(__DIR__.'/../lib/util.php');
+
 /*
  * Why are these here?
  * They're here because this is where they make sense.
@@ -11,7 +17,7 @@ namespace domo\whatwg;
  */
 
 /* https://dom.spec.whatwg.org/#dom-node-comparedocumentposition */
-function compare_document_position(Node $node1, Node $node2): integer
+function compare_document_position(\domo\Node $node1, \domo\Node $node2): integer
 {
         /* #1-#2 */
         if ($node1 === $node2) {
@@ -35,10 +41,10 @@ function compare_document_position(Node $node1, Node $node2): integer
                 if ($attr1 !== NULL && $node1 !== NULL && $node2 === $node1) {
                         foreach ($node2->attributes as $a) {
                                 if ($a === $attr1) {
-                                        return DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC + DOCUMENT_POSITION_PRECEDING;
+                                        return \domo\DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC + \domo\DOCUMENT_POSITION_PRECEDING;
                                 }
                                 if ($a === $attr2) {
-                                        return DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC + DOCUMENT_POSITION_FOLLOWING;
+                                        return \domo\DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC + \domo\DOCUMENT_POSITION_FOLLOWING;
                                 }
                         }
                 }
@@ -49,7 +55,7 @@ function compare_document_position(Node $node1, Node $node2): integer
                 /* UHH, in the spec this is supposed to add DOCUMENT_POSITION_PRECEDING or DOCUMENT_POSITION_FOLLOWING
                  * in some consistent way, usually based on pointer comparison, which we can't do here. Hmm. Domino
                  * just straight up omits it. This is stupid, the spec shouldn't ask this. */
-                return (DOCUMENT_POSITION_DISCONNECTED + DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC);
+                return (\domo\DOCUMENT_POSITION_DISCONNECTED + \domo\DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC);
         }
 
         /* #7 */
@@ -63,16 +69,16 @@ function compare_document_position(Node $node1, Node $node2): integer
         }
 
         if (in_array($node1, $node2_ancestors) && $attr1 === NULL) {
-                return DOCUMENT_POSITION_CONTAINS + DOCUMENT_POSITION_PRECEDING;
+                return \domo\DOCUMENT_POSITION_CONTAINS + \domo\DOCUMENT_POSITION_PRECEDING;
         } else if ($node1 === $node2 && $attr2 !== NULL) {
-                return DOCUMENT_POSITION_CONTAINS + DOCUMENT_POSITION_PRECEDING;
+                return \domo\DOCUMENT_POSITION_CONTAINS + \domo\DOCUMENT_POSITION_PRECEDING;
         }
 
         /* #8 */
         if (in_array($node2, $node1_ancestors) && $attr2 === NULL) {
-                return DOCUMENT_POSITION_CONTAINED_BY + DOCUMENT_POSITION_FOLLOWING;
+                return \domo\DOCUMENT_POSITION_CONTAINED_BY + \domo\DOCUMENT_POSITION_FOLLOWING;
         } else if ($node1 === $node2 && $attr1 !== NULL) {
-                return DOCUMENT_POSITION_CONTAINED_BY + DOCUMENT_POSITION_FOLLOWING;
+                return \domo\DOCUMENT_POSITION_CONTAINED_BY + \domo\DOCUMENT_POSITION_FOLLOWING;
         }
 
         /* #9 */
@@ -83,13 +89,13 @@ function compare_document_position(Node $node1, Node $node2): integer
         for ($i = 1; $i < $len; $i++) {
                 if ($node1_ancestors[$i] !== $node2_ancestors[$i]) {
                         if ($node1_ancestors[$i]->__index() < $node2_ancestors[$i]->__index()) {
-                                return DOCUMENT_POSITION_PRECEDING;
+                                return \domo\DOCUMENT_POSITION_PRECEDING;
                         }
                 }
         }
 
         #10
-        return DOCUMENT_POSITION_FOLLOWING;
+        return \domo\DOCUMENT_POSITION_FOLLOWING;
 }
 
 /*
@@ -106,38 +112,38 @@ function compare_document_position(Node $node1, Node $node2): integer
  */
 
 /* https://dom.spec.whatwg.org/#locate-a-namespace */
-function locate_namespace(Node $node, ?string $prefix): ?string
+function locate_namespace(\domo\Node $node, ?string $prefix): ?string
 {
         if ($prefix === '') {
                 $prefix = NULL;
         }
 
         switch ($this->_nodeType) {
-        case ENTITY_NODE:
-        case NOTATION_NODE:
-        case DOCUMENT_TYPE_NODE:
-        case DOCUMENT_FRAGMENT_NODE:
+        case \domo\ENTITY_NODE:
+        case \domo\NOTATION_NODE:
+        case \domo\DOCUMENT_TYPE_NODE:
+        case \domo\DOCUMENT_FRAGMENT_NODE:
                 break;
-        case ELEMENT_NODE:
+        case \domo\ELEMENT_NODE:
                 if ($node->namespaceURI()!==NULL && $node->prefix()===$prefix) {
                         return $node->namespaceURI();
                 }
                 foreach ($node->attributes as $a) {
                         if ($a->namespaceURI() === NAMESPACE_XMLNS) {
                                 if (($a->prefix() === 'xmlns' && $a->localName() === $prefix)
-                                ||  ($prefix === NULL && $a->prefix() === NULL && $a->localName() === 'xmlns') {
+                                ||  ($prefix === NULL && $a->prefix() === NULL && $a->localName() === 'xmlns')) {
                                         $val = $a->value();
                                         return ($val === "") ? NULL : $val;
                                 }
                         }
                 }
                 break;
-        case DOCUMENT_NODE:
+        case \domo\DOCUMENT_NODE:
                 if ($this->_documentElement) {
                         return locate_namespace($this->_documentElement, $prefix);
                 }
                 break;
-        case ATTRIBUTE_NODE:
+        case \domo\ATTRIBUTE_NODE:
                 if ($this->_ownerElement) {
                         return locate_namespace($this->_ownerElement, $prefix);
                 }
@@ -154,19 +160,19 @@ function locate_namespace(Node $node, ?string $prefix): ?string
 }
 
 /* https://dom.spec.whatwg.org/#locate-a-namespace-prefix */
-function locate_prefix(Node $node, ?string $ns): ?string
+function locate_prefix(\domo\Node $node, ?string $ns): ?string
 {
         if ($ns === "" || $ns === NULL) {
                 return NULL;
         }
 
         switch ($node->_nodeType) {
-        case ENTITY_NODE:
-        case NOTATION_NODE:
-        case DOCUMENT_FRAGMENT_NODE:
-        case DOCUMENT_TYPE_NODE:
+        case \domo\ENTITY_NODE:
+        case \domo\NOTATION_NODE:
+        case \domo\DOCUMENT_FRAGMENT_NODE:
+        case \domo\DOCUMENT_TYPE_NODE:
                 break;
-        case ELEMENT_NODE:
+        case \domo\ELEMENT_NODE:
                 if ($node->namespaceURI()!==NULL && $node->namespaceURI()===$ns) {
                         return $node->prefix();
                 }
@@ -176,13 +182,13 @@ function locate_prefix(Node $node, ?string $ns): ?string
                                 return $a->localName();
                         }
                 }
-                break
-        case DOCUMENT_NODE:
+                break;
+        case \domo\DOCUMENT_NODE:
                 if ($node->_documentElement) {
                         return locate_prefix($node->_documentElement, $ns);
                 }
                 break;
-        case  ATTRIBUTE_NODE:
+        case  \domo\ATTRIBUTE_NODE:
                 if ($node->_ownerElement) {
                         return locate_prefix($node->_ownerElement, $ns);
                 }
@@ -199,7 +205,7 @@ function locate_prefix(Node $node, ?string $ns): ?string
 }
 
 
-function insert_before_or_replace(Node $node, Node $parent, ?Node $before, boolean $replace): void
+function insert_before_or_replace(\domo\Node $node, \domo\Node $parent, ?\domo\Node $before, bool $replace): void
 {
         /* 
          * TODO: FACTOR: $ref_node is intended to always be non-NULL 
@@ -212,7 +218,7 @@ function insert_before_or_replace(Node $node, Node $parent, ?Node $before, boole
                 return;
         }
 
-        if ($node instanceof DocumentFragment && $node->__is_rooted()) {
+        if ($node instanceof \domo\DocumentFragment && $node->__is_rooted()) {
                 \domo\error("HierarchyRequestError");
         }
 
@@ -259,7 +265,7 @@ function insert_before_or_replace(Node $node, Node $parent, ?Node $before, boole
 
         $insert = array();
 
-        if ($node instanceof DocumentFragment) {
+        if ($node instanceof \domo\DocumentFragment) {
                 for ($n=$node->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
                         $insert[] = $n; /* TODO: Needs to clone? */
                         $n->_parentNode = $parent;
@@ -272,7 +278,7 @@ function insert_before_or_replace(Node $node, Node $parent, ?Node $before, boole
         if (empty($insert)) {
                 if ($replace) {
                         if ($ref_node !== NULL /* If you work it out, you'll find that this condition is equivalent to 'if $parent has children' */) {
-                                LinkedList\replace($ref_node, NULL);
+                                \domo\LinkedList\replace($ref_node, NULL);
                         }
                         if ($parent->_childNodes === NULL && $parent->_firstChild === $before) {
                                 $parent->_firstChild = NULL;
@@ -281,9 +287,9 @@ function insert_before_or_replace(Node $node, Node $parent, ?Node $before, boole
         } else {
                 if ($ref_node !== NULL) {
                         if ($replace) {
-                                LinkedList\replace($ref_node, $insert[0]);
+                                \domo\LinkedList\replace($ref_node, $insert[0]);
                         } else {
-                                LinkedList\insertBefore($insert[0], $ref_node);
+                                \domo\LinkedList\insertBefore($insert[0], $ref_node);
                         }
                 }
                 if ($parent->_childNodes !== NULL) {
@@ -302,7 +308,7 @@ function insert_before_or_replace(Node $node, Node $parent, ?Node $before, boole
 
         /*********** EMPTY OUT THE DOCUMENT FRAGMENT ************/
 
-        if ($node instanceof DocumentFragment) {
+        if ($node instanceof \domo\DocumentFragment) {
                 /* 
                  * TODO: Why? SPEC SAYS SO!
                  */
@@ -316,7 +322,7 @@ function insert_before_or_replace(Node $node, Node $parent, ?Node $before, boole
 
         /************ ROOT NODES AND FIRE MUTATION HANDLERS *************/
 
-        $d = $parent->nodeDocument();
+        $d = $parent->__node_document();
 
         if ($bothWereRooted) {
                 $parent->__lastmod_update(); 
@@ -337,16 +343,16 @@ TODO: Look at the way these were implemented in the original;
 there are some speedups esp in the way that you implement
 things like "node has a doctype child that is not child
 */
-function ensure_insert_valid(Node $node, Node $parent, ?Node $child): void
+function ensure_insert_valid(\domo\Node $node, \domo\Node $parent, ?\domo\Node $child): void
 {
         /*
          * DOM-LS: #1: If parent is not a Document, DocumentFragment,
          * or Element node, throw a HierarchyRequestError.
          */
         switch ($parent->_nodeType) {
-        case DOCUMENT_NODE:
-        case DOCUMENT_FRAGMENT_NODE:
-        case ELEMENT_NODE:
+        case \domo\DOCUMENT_NODE:
+        case \domo\DOCUMENT_FRAGMENT_NODE:
+        case \domo\ELEMENT_NODE:
                 break;
         default:
                 \domo\error("HierarchyRequestError");
@@ -385,15 +391,15 @@ function ensure_insert_valid(Node $node, Node $parent, ?Node $child): void
          * throw a HierarchyRequestError.
          */
         switch ($node->_nodeType) {
-        case DOCUMENT_FRAGMENT_NODE:
-        case DOCUMENT_TYPE_NODE:
-        case ELEMENT_NODE:
-        case TEXT_NODE:
-        case PROCESSING_INSTRUCTION_NODE:
-        case COMMENT_NODE:
+        case \domo\DOCUMENT_FRAGMENT_NODE:
+        case \domo\DOCUMENT_TYPE_NODE:
+        case \domo\ELEMENT_NODE:
+        case \domo\TEXT_NODE:
+        case \domo\PROCESSING_INSTRUCTION_NODE:
+        case \domo\COMMENT_NODE:
                 break;
         default:
-                error("HierarchyRequestError");
+                \domo\error("HierarchyRequestError");
         }
 
         /*
@@ -402,8 +408,8 @@ function ensure_insert_valid(Node $node, Node $parent, ?Node $child): void
          *      -node is a DocumentType and parent is not a Document
          * throw a HierarchyRequestError
          */
-        if (($node->_nodeType === TEXT_NODE          && $parent->_nodeType === DOCUMENT_NODE)
-        ||  ($node->_nodeType === DOCUMENT_TYPE_NODE && $parent->_nodeType !== DOCUMENT_NODE)) {
+        if (($node->_nodeType === \domo\TEXT_NODE          && $parent->_nodeType === \domo\DOCUMENT_NODE)
+        ||  ($node->_nodeType === \domo\DOCUMENT_TYPE_NODE && $parent->_nodeType !== \domo\DOCUMENT_NODE)) {
                 \domo\error("HierarchyRequestError");
         }
 
@@ -412,12 +418,12 @@ function ensure_insert_valid(Node $node, Node $parent, ?Node $child): void
          * statements below, switched on node, are true, throw a
          * HierarchyRequestError.
          */
-        if ($parent->_nodeType !== DOCUMENT_NODE) {
+        if ($parent->_nodeType !== \domo\DOCUMENT_NODE) {
                 return;
         }
 
         switch ($node->_nodeType) {
-        case DOCUMENT_FRAGMENT_NODE:
+        case \domo\DOCUMENT_FRAGMENT_NODE:
                 /*
                  * DOM-LS #6a-1: If node has more than one
                  * Element child or has a Text child.
@@ -426,10 +432,10 @@ function ensure_insert_valid(Node $node, Node $parent, ?Node $child): void
                 $count_element = 0;
 
                 for ($n=$node->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
-                        if ($n->_nodeType === TEXT_NODE) {
+                        if ($n->_nodeType === \domo\TEXT_NODE) {
                                 $count_text++;
                         }
-                        if ($n->_nodeType === ELEMENT_NODE) {
+                        if ($n->_nodeType === \domo\ELEMENT_NODE) {
                                 $count_element++;
                         }
                         if ($count_text > 0 && $count_element > 1) {
@@ -443,7 +449,7 @@ function ensure_insert_valid(Node $node, Node $parent, ?Node $child): void
                  */
                 if ($count_element === 1) {
                         /* DOM-LS #6a-2a: child is a DocumentType */
-                        if ($child !== NULL && $child->_nodeType === DOCUMENT_TYPE_NODE) {
+                        if ($child !== NULL && $child->_nodeType === \domo\DOCUMENT_TYPE_NODE) {
                                \domo\error("HierarchyRequestError");
                         }
                         /*
@@ -452,43 +458,43 @@ function ensure_insert_valid(Node $node, Node $parent, ?Node $child): void
                          */
                         if ($child !== NULL) {
                                 for ($n=$child->nextSibling(); $n!==NULL; $n=$n->nextSibling()) {
-                                        if ($n->_nodeType === DOCUMENT_TYPE_NODE) {
+                                        if ($n->_nodeType === \domo\DOCUMENT_TYPE_NODE) {
                                                 \domo\error("HierarchyRequestError");
                                         }
                                 }
                         }
                         /* DOM-LS #6a-2c: parent has an Element child */
                         for ($n=$parent->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
-                                if ($n->_nodeType === ELEMENT_NODE) {
+                                if ($n->_nodeType === \domo\ELEMENT_NODE) {
                                         \domo\error("HierarchyRequestError");
                                 }
                         }
                 }
                 break;
-        case ELEMENT_NODE:
+        case \domo\ELEMENT_NODE:
                 /* DOM-LS #6b-1: child is a DocumentType */
-                if ($child !== NULL && $child->_nodeType === DOCUMENT_TYPE_NODE) {
+                if ($child !== NULL && $child->_nodeType === \domo\DOCUMENT_TYPE_NODE) {
                        \domo\error("HierarchyRequestError");
                 }
                 /* DOM-LS #6b-2: child not NULL and DocumentType is following child. */
                 if ($child !== NULL) {
                         for ($n=$child->nextSibling(); $n!==NULL; $n=$n->nextSibling()) {
-                                if ($n->_nodeType === DOCUMENT_TYPE_NODE) {
+                                if ($n->_nodeType === \domo\DOCUMENT_TYPE_NODE) {
                                         \domo\error("HierarchyRequestError");
                                 }
                         }
                 }
                 /* DOM-LS #6b-3: parent has an Element child */
                 for ($n=$parent->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
-                        if ($n->_nodeType === ELEMENT_NODE) {
+                        if ($n->_nodeType === \domo\ELEMENT_NODE) {
                                 \domo\error("HierarchyRequestError");
                         }
                 }
                 break;
-        case DOCUMENT_TYPE_NODE:
+        case \domo\DOCUMENT_TYPE_NODE:
                 /* DOM-LS #6c-1: parent has a DocumentType child */
                 for ($n=$parent->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
-                        if ($n->_nodeType === DOCUMENT_TYPE_NODE) {
+                        if ($n->_nodeType === \domo\DOCUMENT_TYPE_NODE) {
                                 \domo\error("HierarchyRequestError");
                         }
                 }
@@ -498,7 +504,7 @@ function ensure_insert_valid(Node $node, Node $parent, ?Node $child): void
                  */
                 if ($child !== NULL) {
                         for ($n=$child->previousSibling(); $n!==NULL; $n=$n->previousSibling()) {
-                                if ($n->_nodeType === ELEMENT_NODE) {
+                                if ($n->_nodeType === \domo\ELEMENT_NODE) {
                                         \domo\error("HierarchyRequestError");
                                 }
                         }
@@ -509,7 +515,7 @@ function ensure_insert_valid(Node $node, Node $parent, ?Node $child): void
                  */
                 if ($child === NULL) {
                         for ($n=$parent->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
-                                if ($n->_nodeType === ELEMENT_NODE) {
+                                if ($n->_nodeType === \domo\ELEMENT_NODE) {
                                         \domo\error("HierarchyRequestError");
                                 }
                         }
@@ -519,19 +525,19 @@ function ensure_insert_valid(Node $node, Node $parent, ?Node $child): void
         }
 }
 
-function ensure_replace_valid(Node $node, Node $parent, Node $child): void
+function ensure_replace_valid(\domo\Node $node, \domo\Node $parent, \domo\Node $child): void
 {
         /*
          * DOM-LS: #1: If parent is not a Document, DocumentFragment,
          * or Element node, throw a HierarchyRequestError.
          */
         switch ($parent->nodeType) {
-        case DOCUMENT_NODE:
-        case DOCUMENT_FRAGMENT_NODE:
-        case ELEMENT_NODE:
+        case \domo\DOCUMENT_NODE:
+        case \domo\DOCUMENT_FRAGMENT_NODE:
+        case \domo\ELEMENT_NODE:
                 break;
         default:
-                error("HierarchyRequestError");
+                \domo\error("HierarchyRequestError");
         }
 
         /*
@@ -558,7 +564,7 @@ function ensure_replace_valid(Node $node, Node $parent, Node $child): void
          * throw a NotFoundError
          */
         if ($child->_parentNode !== $parent) {
-                error("NotFoundError");
+                \domo\error("NotFoundError");
         }
 
         /*
@@ -567,12 +573,12 @@ function ensure_replace_valid(Node $node, Node $parent, Node $child): void
          * throw a HierarchyRequestError.
          */
         switch ($node->_nodeType) {
-        case DOCUMENT_FRAGMENT_NODE:
-        case DOCUMENT_TYPE_NODE:
-        case ELEMENT_NODE:
-        case TEXT_NODE:
-        case PROCESSING_INSTRUCTION_NODE:
-        case COMMENT_NODE:
+        case \domo\DOCUMENT_FRAGMENT_NODE:
+        case \domo\DOCUMENT_TYPE_NODE:
+        case \domo\ELEMENT_NODE:
+        case \domo\TEXT_NODE:
+        case \domo\PROCESSING_INSTRUCTION_NODE:
+        case \domo\COMMENT_NODE:
                 break;
         default:
                 \domo\error("HierarchyRequestError");
@@ -584,8 +590,8 @@ function ensure_replace_valid(Node $node, Node $parent, Node $child): void
          *      -node is a DocumentType and parent is not a Document
          * throw a HierarchyRequestError
          */
-        if (($node->_nodeType === TEXT_NODE          && $parent->_nodeType === DOCUMENT_NODE)
-        ||  ($node->_nodeType === DOCUMENT_TYPE_NODE && $parent->_nodeType !== DOCUMENT_NODE)) {
+        if (($node->_nodeType === \domo\TEXT_NODE          && $parent->_nodeType === \domo\DOCUMENT_NODE)
+        ||  ($node->_nodeType === \domo\DOCUMENT_TYPE_NODE && $parent->_nodeType !== \domo\DOCUMENT_NODE)) {
                 \domo\error("HierarchyRequestError");
         }
 
@@ -594,12 +600,12 @@ function ensure_replace_valid(Node $node, Node $parent, Node $child): void
          * statements below, switched on node, are true, throw a
          * HierarchyRequestError.
          */
-        if ($parent->_nodeType !== DOCUMENT_NODE) {
+        if ($parent->_nodeType !== \domo\DOCUMENT_NODE) {
                 return;
         }
 
         switch ($node->_nodeType) {
-        case DOCUMENT_FRAGMENT_NODE:
+        case \domo\DOCUMENT_FRAGMENT_NODE:
                 /*
                  * #6a-1: If node has more than one Element child
                  * or has a Text child.
@@ -608,10 +614,10 @@ function ensure_replace_valid(Node $node, Node $parent, Node $child): void
                 $count_element = 0;
 
                 for ($n=$node->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
-                        if ($n->_nodeType === TEXT_NODE) {
+                        if ($n->_nodeType === \domo\TEXT_NODE) {
                                 $count_text++;
                         }
-                        if ($n->_nodeType === ELEMENT_NODE) {
+                        if ($n->_nodeType === \domo\ELEMENT_NODE) {
                                 $count_element++;
                         }
                         if ($count_text > 0 && $count_element > 1) {
@@ -622,42 +628,42 @@ function ensure_replace_valid(Node $node, Node $parent, Node $child): void
                 if ($count_element === 1) {
                         /* #6a-2a: parent has an Element child that is not child */
                         for ($n=$parent->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
-                                if ($n->_nodeType === ELEMENT_NODE && $n !== $child) {
+                                if ($n->_nodeType === \domo\ELEMENT_NODE && $n !== $child) {
                                         \domo\error("HierarchyRequestError");
                                 }
                         }
                         /* #6a-2b: a DocumentType is following child. */
                         for ($n=$child->nextSibling(); $n!==NULL; $n=$n->nextSibling()) {
-                                if ($n->_nodeType === DOCUMENT_TYPE_NODE) {
+                                if ($n->_nodeType === \domo\DOCUMENT_TYPE_NODE) {
                                         \domo\error("HierarchyRequestError");
                                 }
                         }
                 }
                 break;
-        case ELEMENT_NODE:
+        case \domo\ELEMENT_NODE:
                 /* #6b-1: parent has an Element child that is not child */
                 for ($n=$parent->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
-                        if ($n->_nodeType === ELEMENT_NODE && $n !== $child) {
+                        if ($n->_nodeType === \domo\ELEMENT_NODE && $n !== $child) {
                                 \domo\error("HierarchyRequestError");
                         }
                 }
                 /* #6b-2: DocumentType is following child. */
                 for ($n=$child->nextSibling(); $n!==NULL; $n=$n->nextSibling()) {
-                        if ($n->nodeType === DOCUMENT_TYPE_NODE) {
+                        if ($n->nodeType === \domo\DOCUMENT_TYPE_NODE) {
                                 \domo\error("HierarchyRequestError");
                         }
                 }
                 break;
-        case DOCUMENT_TYPE_NODE:
+        case \domo\DOCUMENT_TYPE_NODE:
                 /* #6c-1: parent has a DocumentType child */
                 for ($n=$parent->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
-                        if ($n->_nodeType === DOCUMENT_TYPE_NODE) {
+                        if ($n->_nodeType === \domo\DOCUMENT_TYPE_NODE) {
                                 \domo\error("HierarchyRequestError");
                         }
                 }
                 /* #6c-2: an Element is preceding child */
                 for ($n=$child->previousSibling(); $n!==NULL; $n=$n->previousSibling()) {
-                        if ($n->_nodeType === ELEMENT_NODE) {
+                        if ($n->_nodeType === \domo\ELEMENT_NODE) {
                                 \domo\error("HierarchyRequestError");
                         }
                 }
@@ -746,7 +752,7 @@ function _helper_escapeAttr($s)
         /* TODO: Is there still a fast path in PHP? (see NodeUtils.js) */
 }
 
-function _helper_attrname($a)
+function _helper_attrname(\domo\Attr $a)
 {
         $ns = $a->namespaceURI();
 
@@ -754,13 +760,13 @@ function _helper_attrname($a)
                 return $a->localName();
         }
 
-        if ($ns === NAMESPACE_XML) {
+        if ($ns === \domo\NAMESPACE_XML) {
                 return 'xml:'.$a->localName();
         }
-        if ($ns === NAMESPACE_XLINK) {
+        if ($ns === \domo\NAMESPACE_XLINK) {
                 return 'xlink:'.$a->localName();
         }
-        if ($ns === NAMESPACE_XMLNS) {
+        if ($ns === \domo\NAMESPACE_XMLNS) {
                 if ($a->localName() === 'xmlns') {
                         return 'xmlns';
                 } else {
@@ -771,90 +777,90 @@ function _helper_attrname($a)
         return $a->name();
 }
 
-function serialize_node($child, $parent)
+function serialize_node(\domo\Node $child, \domo\Node $parent)
 {
         $s = "";
 
         switch ($child->_nodeType) {
-        case ELEMENT_NODE: 
+        case \domo\ELEMENT_NODE: 
                 $ns = $child->namespaceURI();
-                $html = ($ns === NAMESPACE_HTML);
+                $html = ($ns === \domo\NAMESPACE_HTML);
 
-                if ($html || $ns === NAMESPACE_SVG || $ns === NAMESPACE_MATHML) {
+                if ($html || $ns === \domo\NAMESPACE_SVG || $ns === \domo\NAMESPACE_MATHML) {
                         $tagname = $child->localName();
                 } else {
                         $tagname = $child->tagName();
                 }
 
-                $s += "<" + $tagname;
+                $s .= '<' . $tagname;
 
-                foreach ($child->attributes) {
-                        $s += " " + _helper_attrname($a);
+                foreach ($child->attributes as $a) {
+                        $s .= ' ' . _helper_attrname($a);
 
                         /*
                          * PORT: TODO: Need to ensure this value is NULL
                          * rather than undefined?
                          */
                         if ($a->value() !== NULL) {
-                                $s += '="' + _helper_escapeAttr($a->value()) + '"';
+                                $s .= '="' . _helper_escapeAttr($a->value()) + '"';
                         }
                 }
 
-                $s += '>';
+                $s .= '>';
 
                 if (!($html && isset($emptyElements[$tagname]))) {
                         /* PORT: TODO: Check this serialize function */
                         $ss = serialize_node($child, NULL);
                         if ($html && isset($extraNewLine[$tagname]) && $ss[0]==='\n') {
-                                $s += '\n';
+                                $s .= '\n';
                         }
                         /* Serialize children and add end tag for all others */
-                        $s += $ss;
-                        $s += '</' + $tagname + '>';
+                        $s .= $ss;
+                        $s .= '</' . $tagname . '>';
                 }
                 break;
 
-        case TEXT_NODE:
-        case CDATA_SECTION_NODE: 
-                if ($parent->_nodeType === ELEMENT_NODE && $parent->namespaceURI() === NAMESPACE_HTML) {
+        case \domo\TEXT_NODE:
+        case \domo\CDATA_SECTION_NODE: 
+                if ($parent->_nodeType === \domo\ELEMENT_NODE && $parent->namespaceURI() === \domo\NAMESPACE_HTML) {
                         $parenttag = $parent->tagName();
                 } else {
                         $parenttag = '';
                 }
 
                 if ($hasRawContent[$parenttag] || ($parenttag==='NOSCRIPT' && $parent->ownerDocument()->_scripting_enabled)) {
-                        $s += $child->data();
+                        $s .= $child->data();
                 } else {
-                        $s += _helper_escape($child->data());
+                        $s .= _helper_escape($child->data());
                 }
                 break;
 
-        case COMMENT_NODE:
-                $s += '<!--' + $child->data() + '-->';
+        case \domo\COMMENT_NODE:
+                $s .= '<!--' . $child->data() . '-->';
                 break;
 
-        case PROCESSING_INSTRUCTION_NODE: 
-                $s += '<?' + $child->target() + ' ' + $kid->data() + '?>';
+        case \domo\PROCESSING_INSTRUCTION_NODE: 
+                $s .= '<?' . $child->target() . ' ' . $child->data() . '?>';
                 break;
 
-        case DOCUMENT_TYPE_NODE:
-                $s += '<!DOCTYPE ' + $child->name();
+        case \domo\DOCUMENT_TYPE_NODE:
+                $s .= '<!DOCTYPE ' . $child->name();
 
                 if (false) {
                         // Latest HTML serialization spec omits the public/system ID
                         if ($child->_publicID) {
-                                $s += ' PUBLIC "' + $child->_publicId + '"';
+                                $s .= ' PUBLIC "' . $child->_publicId . '"';
                         }
 
                         if ($child->_systemId) {
-                                $s += ' "' + $child->_systemId + '"';
+                                $s .= ' "' . $child->_systemId . '"';
                         }
                 }
 
-                $s += '>';
+                $s .= '>';
                 break;
         default:
-                \domo\error("InvalidState");
+                \domo\error("InvalidStateError");
         }
 
         return $s;
@@ -1025,7 +1031,7 @@ function validate_and_extract(?string $ns, string $qname, string &$prefix, strin
          * See https://github.com/whatwg/dom/issues/671
          * and https://github.com/whatwg/dom/issues/319
          */
-        if (!\domo\whatwg\is_valid_xml_qname($qname)) {
+        if (!is_valid_xml_qname($qname)) {
                 \domo\error("InvalidCharacterError");
         }
 
@@ -1044,13 +1050,13 @@ function validate_and_extract(?string $ns, string $qname, string &$prefix, strin
         if ($prefix !== NULL && $ns === NULL) {
                 \domo\error("NamespaceError");
         }
-        if ($prefix === "xml" && $namespace !== NAMESPACE_XML) {
+        if ($prefix === "xml" && $namespace !== \domo\NAMESPACE_XML) {
                 \domo\error("NamespaceError");
         }
-        if (($prefix==="xmlns" || $qname==="xmlns") && $ns!==NAMESPACE_XMLNS) {
+        if (($prefix==="xmlns" || $qname==="xmlns") && $ns!==\domo\NAMESPACE_XMLNS) {
                 \domo\error("NamespaceError");
         }
-        if ($ns===NAMESPACE_XMLNS && !($prefix==="xmlns" || $qname==="xmlns")) {
+        if ($ns===\domo\NAMESPACE_XMLNS && !($prefix==="xmlns" || $qname==="xmlns")) {
                 \domo\error("NamespaceError");
         }
 }

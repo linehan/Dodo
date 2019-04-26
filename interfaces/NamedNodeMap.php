@@ -1,5 +1,7 @@
 <?php
-require_once("utils.php");
+namespace domo;
+
+require_once(__DIR__.'/../lib/util.php');
 
 /*
  * History: NamedNodeMap has nothing to do with Nodes, it's a collection
@@ -22,7 +24,7 @@ require_once("utils.php");
  * of its internal storage caches.
  */
 
-class NamedNodeMap extends ArrayObject
+class NamedNodeMap extends \ArrayObject
 {
         private $__qname_to_attr = array(); /* qname => Attr */
         private $__lname_to_attr = array(); /* ns|lname => Attr */
@@ -98,7 +100,7 @@ class NamedNodeMap extends ArrayObject
                 $key = $a->namespaceURI() . '|' . $a->localName();
 
                 unset($this->__lname_to_attr[$key]);
-                $i = $this->__lname_to_index[$key]);
+                $i = $this->__lname_to_index[$key];
                 unset($this->__lname_to_index[$key]);
 
                 array_splice($this, $i, 1);
@@ -119,7 +121,7 @@ class NamedNodeMap extends ArrayObject
          * DOM-LS Methods
          **********************************************************************/
 
-        public function length(void): int
+        public function length(): int
         {
                 return count($this);
         }
@@ -130,7 +132,7 @@ class NamedNodeMap extends ArrayObject
         }
 
         /* DOMO */
-        public function hasNamedItem(string $qname): boolean
+        public function hasNamedItem(string $qname): bool 
         {
                 /*
                  * Per HTML spec, we normalize qname before lookup,
@@ -140,11 +142,11 @@ class NamedNodeMap extends ArrayObject
                         $qname = \domo\to_ascii_lower_case($qname);
                 }
 
-                return isset($this->__qname_to_attr[$qname];
+                return isset($this->__qname_to_attr[$qname]);
         }
 
         /* DOMO */
-        public function hasNamedItemNS(?string $ns, string $lname): boolean
+        public function hasNamedItemNS(?string $ns, string $lname): bool 
         {
                 $ns = $ns ?? "";
                 return isset($this->__lname_to_attr["$ns|$lname"]);

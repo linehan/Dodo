@@ -69,15 +69,15 @@ namespace domo;
 require_once(__DIR__.'/../lib/LinkedList.php');
 require_once(__DIR__.'/../lib/util.php');
 require_once("NodeList.php");
-require_once("algorithms.php");
+require_once("whatwg.php");
 
 abstract class Node /* extends EventTarget // try factoring events out? */
 {
         /* Delegated subclass method called by Node::isEqualNode() */
-        abstract protected function _subclass_isEqualNode();
+        abstract protected function _subclass_isEqualNode(Node $node): bool;
 
         /* Delegated subclass method called by Node::cloneNode() */
-        abstract protected function _subclass_cloneNodeShallow();
+        abstract protected function _subclass_cloneNodeShallow(): ?Node;
 
         /**********************************************************************
          * DOMO internal book-keeping layer
@@ -120,6 +120,9 @@ abstract class Node /* extends EventTarget // try factoring events out? */
 
         /* DOMO: Array form of childNodes (NULL if no children or using LL) */
         public $_childNodes;
+
+
+        public $_roothook;
 
         /**********************************************************************
          * BOOK-KEEPING: What Node knows about itself
@@ -402,7 +405,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          * Despite its weird syntax (blame the spec) this is a real workhorse,
          * used to implement all of the insertion mutations.
          */
-        public function insertBefore(Node $node, ?Node $refChild): Node
+        public function insertBefore(Node $node, ?Node $refChild): ?Node
         {
                 /* DOM-LS #1. Ensure pre-insertion validity */
                 \domo\whatwg\ensure_insert_valid($node, $this, $refChild);
@@ -430,7 +433,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          * @spec DOM-LS
          * @throw DOMException "HierarchyRequestError", "NotFoundError"
          */
-        public function appendChild(Node $node): Node
+        public function appendChild(Node $node): ?Node
         {
                 return $this->insertBefore($node, NULL);
         }
@@ -486,7 +489,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          * NOTE
          * It must be the case that the returned value === $node
          */
-        public function removeChild(ChildNode $node): Node
+        public function removeChild(ChildNode $node): ?Node
         {
                 if ($this !== $node->_parentNode) {
                         \domo\error("NotFoundError");
@@ -604,7 +607,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          *
          * Yes, we realize it's a bit weird.
          */
-        public function isEqualNode(?Node $node = NULL): boolean
+        public function isEqualNode(?Node $node = NULL): bool 
         {
                 if ($node === NULL) {
                         /* We're not equal to NULL */
@@ -657,7 +660,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          *    the tree structure, so this suffices to capture subclass-specific
          *    behavior.
          */
-        public function cloneNode(bool $deep = false): Node
+        public function cloneNode(bool $deep = false): ?Node
         {
                 /* Make a shallow clone using the delegated method */
                 $clone = $this->_subclass_cloneNodeShallow();
@@ -722,7 +725,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
 	 * UTILITY METHODS AND DOMO EXTENSIONS
 	 *********************************************************************/
         /* Called by Document::adoptNode */
-        protected function __set_owner(Document $doc)
+        public function __set_owner(Document $doc)
         {
                 $this->_ownerDocument = $doc;
 
@@ -754,13 +757,13 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          *
          * TODO: This should be Node::isConnected(), see spec.
          */
-        public function __is_rooted(): boolean
+        public function __is_rooted(): bool 
         {
                 return !!$this->__nid;
         }
 
         /* Called by \domo\whatwg\insert_before_or_replace */
-        protected function __root(): void
+        public function __root(): void
         {
                 $doc = $this->ownerDocument();
 
@@ -789,7 +792,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
                 }
         }
 
-        protected function __uproot(): void
+        public function __uproot(): void
         {
                 $doc = $this->ownerDocument();
 
@@ -928,12 +931,12 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          * Convert the children of a node to an HTML string.
          * This is used by the innerHTML getter
          */
-        public function serialize()
+        public function __serialize()
         {
                 $s = "";
 
                 for ($n=$this->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
-                        $s += \domo\whatwg\serialize_node($n, $this);
+                        $s .= \domo\whatwg\serialize_node($n, $this);
                 }
 
                 return $s;

@@ -5,8 +5,8 @@ require_once('CharacterData.php');
 
 class Text extends CharacterData
 {
-        protected const _nodeType = TEXT_NODE;
-        protected const _nodeName = '#text';
+        protected $_nodeType = TEXT_NODE;
+        protected $_nodeName = '#text';
 
         public function __construct(Document $doc, $data)
         {
@@ -41,6 +41,17 @@ class Text extends CharacterData
                 }
         }
 
+        public function _subclass_isEqualNode(Node $node): bool
+        {
+                return ($this->_data === $node->_data);
+        }
+
+        public function _subclass_cloneNodeShallow(): ?Node
+        {
+                return new Text($this->_ownerDocument, $this->_data);
+        }
+
+
         /* Per spec */
         public function textContent($value = NULL)
         {
@@ -70,7 +81,7 @@ class Text extends CharacterData
                 return $newnode;
         }
 
-        public function wholeText(void)
+        public function wholeText()
         {
                 $result = $this->textContent();
 
@@ -81,15 +92,6 @@ class Text extends CharacterData
                         $result .= $n->textContent();
                 }
                 return $result;
-        }
-
-        /*
-         * TODO: Does this override directly?
-         * Or should we use _subclass_clone_shallow?
-         */
-        public function clone(void)
-        {
-                return new Text($this->_ownerDocument, $this->_data);
         }
 }
 

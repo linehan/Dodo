@@ -114,14 +114,6 @@ abstract class CharacterData extends NonDocumentTypeChildNodeLeaf
                 $this->_data = $prefix + $data + $suffix;
         }
 
-        // Utility method that Node.isEqualNode() calls to test Text and
-        // Comment nodes for equality.  It is okay to put it here, since
-        // Node will have already verified that nodeType is equal
-        public function _subclass_isEqual(Node $node): boolean
-        {
-                return $this->_data === $node->_data;
-        }
-
         public function length(): integer
         {
                 strlen($this->_data);

@@ -5,14 +5,24 @@ require_once('CharacterData.php');
 
 class Comment extends CharacterData
 {
-        protected const _nodeType = COMMENT_NODE:
-        protected const _nodeName = '#comment';
+        public $_nodeType = COMMENT_NODE;
+        public $_nodeName = '#comment';
 
         public function __construct(Document $doc, $data)
         {
                 parent::__construct();
                 $this->_ownerDocument = $doc;
                 $this->_data = $data;
+        }
+
+        public function _subclass_cloneNodeShallow(): ?Node
+        {
+                return new Comment($this->_ownerDocument, $this->_data);
+        }
+
+        public function _subclass_isEqualNode(Node $node): bool
+        {
+                return ($this->_data === $node->_data);
         }
 
         public function nodeValue($value = NULL)
@@ -44,7 +54,7 @@ class Comment extends CharacterData
          * TODO: Does this override directly?
          * Or should we use _subclass_clone_shallow?
          */
-        public function clone(void): Comment
+        public function clone(): Comment
         {
                 return new Comment($this->_ownerDocument, $this->_data);
         }

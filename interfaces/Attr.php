@@ -30,6 +30,9 @@ REMOVED:
                 textContent()
 
 */
+namespace domo;
+
+require_once('Node.php');
 
 /*
  * The fact that
@@ -70,7 +73,8 @@ class Attr extends Node
         protected $_ownerElement = NULL;
         protected $_namespaceURI = NULL;
         protected $_prefix = NULL;
-        protected $_value = "";
+        protected $_value = '';
+        protected $_localName = NULL;
 
         /* 
         * TODO: Re-order these arguments because you can make an Attr with
@@ -98,7 +102,7 @@ class Attr extends Node
                 $this->_ownerElement = $elt;
         }
 
-        public function _subclass_cloneNodeShallow(): ?Attr
+        public function _subclass_cloneNodeShallow(): ?Node
         {
                 return new Attr(
                         NULL, 
@@ -106,7 +110,19 @@ class Attr extends Node
                         $this->_prefix, 
                         $this->_namespaceURI, 
                         $this->_value
-                )
+                );
+        }
+
+        public function _subclass_isEqualNode(Node $node): bool
+        {
+                return ($this->_namespaceURI === $node->_namespaceURI 
+                && $this->_localName === $node->_localName
+                && $this->_value === $node->_value);
+        }
+
+        public function textContent($value = NULL)
+        {
+                return $this->value($value);
         }
         public function namespaceURI(): ?string
         {
@@ -179,8 +195,8 @@ class Attr extends Node
                         }
 
                         /* Generate a mutation event if the element is rooted */
-                        if ($this->_ownerElement->rooted()) {
-                                $this->_ownerElement->ownerDocument()->mutateAttr($this, $old);
+                        if ($this->_ownerElement->__is_rooted()) {
+                                $this->_ownerElement->ownerDocument()->__mutate_attr($this, $old);
                         }
                 }
         }

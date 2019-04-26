@@ -2,9 +2,9 @@
 namespace domo;
 
 require_once('Node.php');
-require_once('../lib/LinkedList.php');
+require_once(__DIR__.'/../lib/LinkedList.php');
 
-static function _fragment_from_arguments($document, $args)
+function _fragment_from_arguments($document, $args)
 {
         $fragment = $document->createDocumentFragment();
 
@@ -207,23 +207,23 @@ abstract class ChildNodeLeaf extends ChildNode
         {
                 return false;
         }
-        public final function firstChild()
+        public final function firstChild(): ?Node
         {
                 return NULL;
         }
-        public final function lastChild()
+        public final function lastChild(): ?Node
         {
                 return NULL;
         }
-        public final function insertBefore(Node $node, ?Node $refChild)
+        public final function insertBefore(Node $node, ?Node $refChild):?Node
         {
                 \domo\error("NotFoundError");
         }
-        public final function replaceChild(Node $node, ?Node $refChild)
+        public final function replaceChild(Node $node, ?Node $refChild):?Node
         {
                 \domo\error("HierarchyRequestError");
         }
-        public final function removeChild(Node $node)
+        public final function removeChild(ChildNode $node):?Node
         {
                 \domo\error("NotFoundError");
         }
@@ -231,7 +231,7 @@ abstract class ChildNodeLeaf extends ChildNode
         {
                 /* no-op */
         }
-        public final function childNodes()
+        public final function childNodes(): ?NodeList
         {
                 if ($this->_childNodes === NULL) {
                         $this->_childNodes = new NodeList();

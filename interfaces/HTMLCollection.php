@@ -19,7 +19,7 @@ class HTMLCollection extends ArrayObject
                 $this->updateCache();
         }
 
-        public function length
+        public function length()
         {
                 $this->updateCache();
                 return count($this);

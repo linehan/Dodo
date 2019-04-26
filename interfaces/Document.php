@@ -44,10 +44,15 @@
  *****************************************************************************/
 namespace domo;
 
-require_once("Node.php");
-require_once("NodeList.php");
-require_once("Element.php");
-require_once("../lib/utils.php");
+require_once('DOMImplementation.php');
+require_once('Node.php');
+require_once('NodeList.php');
+require_once('Element.php');
+require_once('Comment.php');
+require_once('Text.php');
+require_once('ProcessingInstruction.php');
+require_once('DocumentType.php');
+require_once(__DIR__.'/../lib/util.php');
 
 
 class MultiId
@@ -183,24 +188,26 @@ class Document extends Node
         protected $__nid_next = 2;
 
         /* Required by Node */
-        protected const _nodeType = DOCUMENT_NODE; /* see Node::nodeType */
-        protected const _nodeName = '#document';   /* see Node::nodeName */
-        protected const _ownerDocument = NULL;     /* see Node::ownerDocument */
-        protected const _nodeValue = NULL;         /* see Node::nodeValue */
+        public $_nodeType = DOCUMENT_NODE; /* see Node::nodeType */
+        public $_nodeName = '#document';   /* see Node::nodeName */
+        public $_ownerDocument = NULL;     /* see Node::ownerDocument */
+        public $_nodeValue = NULL;         /* see Node::nodeValue */
 
         /* Required by Document */
-        protected const _characterSet = 'UTF-8';
-        protected $_encoding = 'UTF-8';
-        protected $_type = 'xml';
-        protected $_contentType = 'application/xml';
-        protected $_URL = 'about:blank';
-        protected $_origin = NULL;
-        protected $_compatMode = 'no-quirks';
+        public const _characterSet = 'UTF-8';
+        public $_encoding = 'UTF-8';
+        public $_type = 'xml';
+        public $_contentType = 'application/xml';
+        public $_URL = 'about:blank';
+        public $_origin = NULL;
+        public $_compatMode = 'no-quirks';
 
         /* Assigned on mutation to the first DocumentType child */
-        protected $_doctype = NULL;
+        public $_doctype = NULL;
         /* Assigned on mutation to the first Element child */
-        protected $_documentElement = NULL;
+        public $_documentElement = NULL;
+
+        public $__mutation_handler = NULL;
 
         /* Used to mutate the above */
         private function __update_document_state(): void
@@ -340,6 +347,10 @@ class Document extends Node
         {
                 return $this->_documentElement;
         }
+        public function textContent(?string $value = NULL)
+        {
+                /* HTML-LS: no-op */
+        }
 
         /*********************************************************************
          * NODE CREATION
@@ -361,54 +372,45 @@ class Document extends Node
 
         public function createProcessingInstruction($target, $data)
         {
-                /* TODO: STUB */
                 /* TODO PORT: Wait, is this a bug? Should it be !== -1, or === -1 ? */
-                /*
-                if (!domo\xml\isValidName($target) || strpos($data, "?".">") !== false) {
-                        domo\utils\InvalidCharacterError();
+                if (!\domo\whatwg\is_valid_xml_name($target) || strpos($data, '?'.'>') !== false) {
+                        \domo\error('InvalidCharacterError');
                 }
                 return new ProcessingInstruction($this, $target, $data);
-                */
         }
 
         public function createAttribute($localName)
         {
-                /* TODO: STUB
                 $localName = strval($localName);
 
-                if (!domo\xml\isValidName($localName)) {
-                        domo\utils\InvalidCharacterError();
+                if (!\domo\whatwg\is_valid_xml_name($localName)) {
+                        \domo\error('InvalidCharacterError');
                 }
-                if ($this->isHTMLDocument) {
-                        $localName = \domo\toASCIILowerCase($localName);
+                if ($this->isHTMLDocument()) {
+                        $localName = \domo\to_ascii_lowercase($localName);
                 }
-                return new Element->_Attr(null, $localName, null, null, "");
-                */
+                return new Attr(NULL, $localName, NULL, NULL, '');
         }
 
-        public function createAttributeNS($namespace, $qualifiedName)
+        public function createAttributeNS(?string $ns, string $qname)
         {
-                /* Convert parameter types according to WebIDL */
-                /* TODO: STUB
-                if ($namespace === NULL || $namespace === "") {
-                        $namespace = NULL;
-                } else {
-                        $namespace = strval($namespace);
+                if ($ns === '') {
+                        $ns = NULL; /* spec */
                 }
 
-                $qualifiedName = strval($qualifiedName);
+                $lname = NULL;
+                $prefix = NULL;
 
-                $ve = validateAndExtract($namespace, $qualifiedName);
+                \domo\whatwg\validate_and_extract($ns, $qname, $prefix, $lname);
 
-                return new Element->_Attr(NULL, $ve["localName"], $ve["prefix"], $ve["namespace"], "");
-                */
+                return new Attr(NULL, $lname, $prefix, $ns, '');
         }
 
         public function createElement($lname)
         {
                 $lname = strval($lname);
 
-                if (!\domo\is_valid_xml_name($lname)) {
+                if (!\domo\whatwg\is_valid_xml_name($lname)) {
                         error("InvalidCharacterError");
                 }
 
@@ -418,15 +420,18 @@ class Document extends Node
                  * object's content type is "application/xhtml+xml",
                  * and null otherwise.
                  */
+                return new Element($this, $lname, NULL, NULL);
                 if ($this->_contentType === 'text/html') {
                         if (!ctype_lower($lname)) {
                                 $lname = \domo\ascii_to_lowercase($lname);
                         }
 
-                        return domo\html\createElement($this, $lname, NULL);
+                        /* TODO STUB */
+                        //return domo\html\createElement($this, $lname, NULL);
 
-                } else if ($this->contentType === 'application/xhtml+xml') {
-                        return domo\html\createElement($this, $lname, NULL);
+                } else if ($this->_contentType === 'application/xhtml+xml') {
+                        /* TODO STUB */
+                        //return domo\html\createElement($this, $lname, NULL);
                 } else {
                         return new Element($this, $lname, NULL, NULL);
                 }
@@ -458,9 +463,11 @@ class Document extends Node
         public function _createElementNS($lname, $ns, $prefix)
         {
                 if ($ns === NAMESPACE_HTML) {
-                        return domo\html\createElement($this, $lname, $prefix);
+                        /* TODO STUB */
+                        //return domo\html\createElement($this, $lname, $prefix);
                 } else if ($ns === NAMESPACE_SVG) {
-                        return svg\createElement($this, $lname, $prefix);
+                        /* TODO STUB */
+                        //return svg\createElement($this, $lname, $prefix);
                 } else {
                         return new Element($this, $lname, $ns, $prefix);
                 }
@@ -533,7 +540,7 @@ class Document extends Node
         /**
          * Extends Node::removeChild to update documentElement and doctype
          */
-        public function removeChild(Node $child): ?Node
+        public function removeChild(ChildNode $child): ?Node
         {
                 $ret = parent::removeChild($child);
                 $this->__update_document_state();
@@ -756,7 +763,7 @@ class Document extends Node
          * @return Document with same invocation as $this
          * @spec DOMO
          */
-        protected function _subclass_cloneNodeShallow(): Document
+        protected function _subclass_cloneNodeShallow(): Node 
         {
                 $shallow = new Document($this->isHTMLDocument(), $this->_address);
                 $shallow->_mode = $this->_mode;
@@ -767,8 +774,8 @@ class Document extends Node
         /**
          * Delegated method called by Node::isEqualNode()
          *
-         * @param Document $other to compare
-         * @return boolean True (two Documents are always equal)
+         * @param Node $other to compare
+         * @return bool True (two Documents are always equal)
          * @spec DOM-LS
          *
          * NOTE:
@@ -776,7 +783,7 @@ class Document extends Node
          * is determined by their children; this will be tested by
          * Node::isEqualNode(), so just return true.
          */
-        protected function _subclass_isEqualNode(Document $other = NULL): boolean
+        protected function _subclass_isEqualNode(Node $other = NULL): bool 
         {
                 return true;
         }
@@ -791,7 +798,7 @@ class Document extends Node
          * Called by Node::__root() and Node::__uproot()
          *********************************************************************/
 
-        protected function __add_to_node_table(Node $node): integer
+        protected function __add_to_node_table(Node $node): void 
         {
                 $node->__nid = $this->__nid_next++;
                 $this->__nid_to_node[$node->__nid] = $node;

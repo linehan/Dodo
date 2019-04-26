@@ -14,7 +14,7 @@ abstract class NonDocumentTypeChildNode extends ChildNode
                 parent::__construct();
         }
 
-        public function nextElementSibling(void): ?Element
+        public function nextElementSibling(): ?Element
         {
                 if ($this->_parentNode === NULL) {
                         return NULL;
@@ -28,7 +28,7 @@ abstract class NonDocumentTypeChildNode extends ChildNode
                 return NULL;
         }
 
-        public function previousElementSibling(void): ?Element
+        public function previousElementSibling(): ?Element
         {
                 if ($this->_parentNode === NULL) {
                         return NULL;
@@ -61,35 +61,35 @@ abstract class NonDocumentTypeChildNodeLeaf extends NonDocumentTypeChildNode
                 parent::__construct();
         }
 
-        public final function hasChildNodes(void): boolean
+        public final function hasChildNodes(): boolean
         {
                 return false;
         }
-        public final function firstChild(void)
+        public final function firstChild(): ?Node
         {
                 return NULL;
         }
-        public final function lastChild(void)
+        public final function lastChild(): ?Node
         {
                 return NULL;
         }
-        public final function insertBefore(Node $node, ?Node $refChild)
+        public final function insertBefore(Node $node, ?Node $refChild):?Node
         {
                 \domo\error("NotFoundError");
         }
-        public final function replaceChild(Node $node, ?Node $refChild)
+        public final function replaceChild(Node $node, ?Node $refChild):?Node
         {
                 \domo\error("HierarchyRequestError");
         }
-        public final function removeChild(Node $node)
+        public final function removeChild(ChildNode $node):?Node
         {
                 \domo\error("NotFoundError");
         }
-        public final function __remove_children(void)
+        public final function __remove_children()
         {
                 /* no-op */
         }
-        public final function childNodes(void)
+        public final function childNodes(): ?NodeList
         {
                 if ($this->_childNodes === NULL) {
                         $this->_childNodes = new NodeList();

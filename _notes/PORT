@@ -1,3 +1,9 @@
+OTHER TODO
+---
+
+change all type hints of boolean -> bool
+                         integer -> int
+
 ISSUES THAT REMAIN
 -------------------
 1.

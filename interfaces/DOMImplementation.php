@@ -23,7 +23,8 @@
 
 namespace domo;
 
-require_once("Document.php");
+/* circular dependency, meh... */
+require_once('Document.php');
 //require_once("interfaces/Document.php");
 //require_once("interfaces/DocumentType.php");
 //require_once("parsers/HTMLParser.php");

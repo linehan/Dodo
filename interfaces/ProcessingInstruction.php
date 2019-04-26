@@ -24,7 +24,7 @@ class ProcessingInstruction extends CharacterData
                 if ($value === NULL) {
                         return $this->_data;
                 } else {
-                        $this->_data = strval($value); }
+                        $this->_data = strval($value);
                         if ($this->__is_rooted) {
                                 $this->_ownerDocument->__mutate_value($this);
                         }
@@ -42,12 +42,12 @@ class ProcessingInstruction extends CharacterData
         }
 
         /* Delegated methods from Node */
-        public function _subclass_cloneNodeShallow(void)
+        public function _subclass_cloneNodeShallow(): ?Node
         {
                 return new ProcessingInstruction($this->_ownerDocument, $this->_target, $this->_data);
         }
-        public function _subclass_isEqual(Node $node)
+        public function _subclass_isEqualNode(Node $node): bool
         {
-                return $this->_target === $node->_target && $this->_data === $node->_data;
+                return ($this->_target === $node->_target && $this->_data === $node->_data);
         }
 }
