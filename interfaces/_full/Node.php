@@ -173,7 +173,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
          */
         public function parentElement(): ?Element
         {
-                if ($this->_parentNode === NULL 
+                if ($this->_parentNode === NULL
                 || $this->_parentNode->nodeType !== ELEMENT_NODE) {
                         return NULL;
                 }
@@ -182,7 +182,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
 
         public function previousSibling(): ?Node
         {
-                if ($this->_parentNode === NULL 
+                if ($this->_parentNode === NULL
                 || $this === $this->_parentNode->firstChild) {
                         return NULL;
                 }
@@ -190,7 +190,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */ {
         }
         public function nextSibling(): ?Node
         {
-                if ($this->_parentNode === NULL 
+                if ($this->_parentNode === NULL
                 || $this->_nextSibling === $this->_parentNode->_firstChild) {
                         return NULL;
                 }

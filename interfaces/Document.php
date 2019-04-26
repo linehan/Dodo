@@ -42,14 +42,15 @@
  * nodes, just not *Element* nodes, e.g. a DocumentType node.
  *
  *****************************************************************************/
+namespace domo;
 
 require_once("Node.php");
 require_once("NodeList.php");
 require_once("Element.php");
-require_once("utils.php");
+require_once("../lib/utils.php");
 
 
-class MultiId 
+class MultiId
 {
         public $table = array();
 
@@ -119,30 +120,30 @@ class MultiId
  * things easier.
  */
 
-/* 
- * Each document has an associated 
- *      encoding (an encoding), 
- *      content type (a string), 
- *      URL (a URL), 
- *      origin (an origin), 
+/*
+ * Each document has an associated
+ *      encoding (an encoding),
+ *      content type (a string),
+ *      URL (a URL),
+ *      origin (an origin),
  *      type ("xml" or "html"), and
- *      mode ("no-quirks", "quirks", or "limited-quirks"). 
+ *      mode ("no-quirks", "quirks", or "limited-quirks").
  */
-/* 
- * Each document has an associated encoding (an encoding), content type 
- * (a string), URL (a URL), origin (an origin), type ("xml" or "html"), 
- * and mode ("no-quirks", "quirks", or "limited-quirks"). 
+/*
+ * Each document has an associated encoding (an encoding), content type
+ * (a string), URL (a URL), origin (an origin), type ("xml" or "html"),
+ * and mode ("no-quirks", "quirks", or "limited-quirks").
  *
- * Unless stated otherwise, a document’s encoding is the utf-8 encoding, 
- * content type is "application/xml", URL is "about:blank", origin is an 
+ * Unless stated otherwise, a document’s encoding is the utf-8 encoding,
+ * content type is "application/xml", URL is "about:blank", origin is an
  * opaque origin, type is "xml", and its mode is "no-quirks".
  *
- * A document is said to be an XML document if its type is "xml", and an 
- * HTML document otherwise. Whether a document is an HTML document or an 
+ * A document is said to be an XML document if its type is "xml", and an
+ * HTML document otherwise. Whether a document is an HTML document or an
  * XML document affects the behavior of certain APIs.
  *
- * A document is said to be in no-quirks mode if its mode is "no-quirks", 
- * quirks mode if its mode is "quirks", and limited-quirks mode if its mode 
+ * A document is said to be in no-quirks mode if its mode is "no-quirks",
+ * quirks mode if its mode is "quirks", and limited-quirks mode if its mode
  * is "limited-quirks".
  */
 class Document extends Node
@@ -181,17 +182,14 @@ class Document extends Node
         protected $__nid = 1;
         protected $__nid_next = 2;
 
-        /**********************************************************************
-         * DOM-LS Document constants for Node property values 
-         **********************************************************************/
-        protected const _nodeType = DOCUMENT_NODE;
-        protected const _nodeName = '#document';
-        protected const _characterSet = 'UTF-8';
-        protected const _ownerDocument = NULL;
+        /* Required by Node */
+        protected const _nodeType = DOCUMENT_NODE; /* see Node::nodeType */
+        protected const _nodeName = '#document';   /* see Node::nodeName */
+        protected const _ownerDocument = NULL;     /* see Node::ownerDocument */
+        protected const _nodeValue = NULL;         /* see Node::nodeValue */
 
-        /**********************************************************************
-         * DOM-LS defaults for the DOM-LS constructor arguments 
-         **********************************************************************/
+        /* Required by Document */
+        protected const _characterSet = 'UTF-8';
         protected $_encoding = 'UTF-8';
         protected $_type = 'xml';
         protected $_contentType = 'application/xml';
@@ -199,12 +197,8 @@ class Document extends Node
         protected $_origin = NULL;
         protected $_compatMode = 'no-quirks';
 
-        /**********************************************************************
-         * Mutable references
-         **********************************************************************/
-
         /* Assigned on mutation to the first DocumentType child */
-        protected $_doctype = NULL; 
+        protected $_doctype = NULL;
         /* Assigned on mutation to the first Element child */
         protected $_documentElement = NULL;
 
@@ -225,6 +219,8 @@ class Document extends Node
 
         public function __construct(string $type="xml", ?string $url=NULL)
         {
+                parent::__construct();
+
                 /******** DOM-LS ********/
 
                 /* Having an HTML Document affects some APIs */
@@ -304,18 +300,6 @@ class Document extends Node
         /*********************************************************************
          * Accessors for read-only properties defined in Document
          *********************************************************************/
-        public function ownerDocument(void): ?Document
-        {
-                return $this->_ownerDocument;
-        }
-        public function nodeType(void): integer
-        {
-                return $this->_nodeType;;
-        }
-        public function nodeName(void): string
-        {
-                return $this->_nodeName;
-        }
         public function characterSet(void): string
         {
                 return $this->_characterSet;
@@ -326,7 +310,7 @@ class Document extends Node
         }
         public function inputEncoding(void): string
         {
-                return $this->characterSet(); /* historical alias */ 
+                return $this->characterSet(); /* historical alias */
         }
         public function implementation(void): DOMImplementation
         {
@@ -358,7 +342,7 @@ class Document extends Node
         }
 
         /*********************************************************************
-         * NODE CREATION 
+         * NODE CREATION
          *********************************************************************/
         public function createTextNode($data)
         {
@@ -483,11 +467,11 @@ class Document extends Node
         }
 
         /*********************************************************************
-         * MUTATION 
+         * MUTATION
          *********************************************************************/
 
         /**
-         * Set the ownerDocument of a Node and its subtree to $this. 
+         * Set the ownerDocument of a Node and its subtree to $this.
          *
          * @param Node $node
          * @return Node
@@ -529,7 +513,7 @@ class Document extends Node
          * Extends Node::insertBefore to update documentElement and doctype
          *
          * NOTE
-         * Node::appendChild is not extended, because it calls insertBefore. 
+         * Node::appendChild is not extended, because it calls insertBefore.
          */
         public function insertBefore(Node $node, ?Node $refChild): Node
         {
@@ -557,7 +541,7 @@ class Document extends Node
         }
 
         /**
-         * Clone this Document, import nodes, and call __update_document_state 
+         * Clone this Document, import nodes, and call __update_document_state
          *
          * @deep  : if true, clone entire subtree
          * Returns: Clone of $this.
@@ -603,7 +587,7 @@ class Document extends Node
          * @spec DOM-LS
          *
          * NOTE
-         * In the spec, this is actually the sole method of the 
+         * In the spec, this is actually the sole method of the
          * NonElementParentNode mixin.
          */
         public function getElementById($id)
@@ -656,7 +640,7 @@ class Document extends Node
          * NOTE
          * In the standard, this is actually a read-write property,
          * but we don't implement that here because it's madness.
-         */ 
+         */
         public function body(void): ?Element
         {
                 $elt = $this->_documentElement;
@@ -665,7 +649,7 @@ class Document extends Node
                         return NULL;
                 }
                 for ($n=$elt->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
-                        if ($n->_nodeType === ELEMENT_NODE 
+                        if ($n->_nodeType === ELEMENT_NODE
                         &&  $n->localName() === 'body'
                         &&  $n->namespaceURI() === NAMESPACE_HTML) {
                                 return $n;
@@ -687,7 +671,7 @@ class Document extends Node
                         return NULL;
                 }
                 for ($n=$elt->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
-                        if ($n->_nodeType === ELEMENT_NODE 
+                        if ($n->_nodeType === ELEMENT_NODE
                         &&  $n->localName() === 'head'
                         &&  $n->namespaceURI() === NAMESPACE_HTML) {
                                 return $n;
@@ -696,15 +680,15 @@ class Document extends Node
         }
 
         /**
-         * Get or set the title of the Document. 
+         * Get or set the title of the Document.
          *
-         * @param string $value 
-         * @return string that is the Document's title 
+         * @param string $value
+         * @return string that is the Document's title
          * @spec HTML-LS
-         * 
+         *
          * If the <TITLE> was overridden by calling Document::title,
          * it contains that value. Otherwise, it contains the title
-         * specified in the markup 
+         * specified in the markup
          *
          * Follows spec quite closely, see:
          * https://html.spec.whatwg.org/multipage/dom.html#document.title
@@ -770,7 +754,7 @@ class Document extends Node
          * Performs the shallow clone branch.
          *
          * @return Document with same invocation as $this
-         * @spec DOMO 
+         * @spec DOMO
          */
         protected function _subclass_cloneNodeShallow(): Document
         {
@@ -813,7 +797,7 @@ class Document extends Node
                 $this->__nid_to_node[$node->__nid] = $node;
         }
 
-        protected function __remove_from_node_table(Node $node): void 
+        protected function __remove_from_node_table(Node $node): void
         {
                 unset($this->__nid_to_node[$node->__nid]);
                 $node->__nid = 0;
@@ -841,9 +825,9 @@ class Document extends Node
                         if ($this->__id_to_element[$id] instanceof MultiId) {
                                 $item = $this->__id_to_element[$id];
                                 $item->del($elt);
-                        
+
                                 // convert back to a single node
-                                if ($item->length === 1) { 
+                                if ($item->length === 1) {
                                         $this->__id_to_element[$id] = $item->downgrade();
                                 }
                         } else {

@@ -46,10 +46,10 @@
  *          I changed the behavior to conform with spec.
  *
  *        - _lookupNamespacePrefix has a bizarre prototype and used a
- *          context object ($this) and the same thing given as an arg, 
+ *          context object ($this) and the same thing given as an arg,
  *          was only ever called in one place (on Node class), and there
  *          with a bizarre call structure that did not match spec.
- *          It was factored out and fixed up here and in Node 
+ *          It was factored out and fixed up here and in Node
  *
  * REMOVED:
  *        - mutation of prefix in _setAttributeNS() since DOM4 eliminates
@@ -61,7 +61,7 @@
  *	  insertAdjacentElement after it's created a text node.
  *        - The code in setAttributeNS doing validation was literally a
  *          re-written version of the validate-and-extract algorithm from
- *          the whatwg spec, already implemented as the function 
+ *          the whatwg spec, already implemented as the function
  *          validateAndExtract, which I relocated to lib/xmlnames.php, the
  *          same file that handles validation of XML names and qnames.
  *
@@ -147,76 +147,187 @@
  * http://www.whatwg.org/specs/web-apps/current-work/multipage/urls.html#reflect
  * for rules on how attributes are reflected.
  */
+namespace domo;
 
-require_once("xmlnames");
-require_once("utils");
-require_once("attributes.php");
-require_once("NodeList.php");
-require_once("FilteredElementList.php");
-require_once("DOMException.php");
-require_once("DOMTokenList.php");
-require_once("NonDocumentTypeChildNode.php");
+require_once('../lib/utils.php');
+require_once('NonDocumentTypeChildNode.php');
 require_once("NamedNodeMap.php");
-require_once("select.php");
 
 
-$UC_Tagname_Cache = array();
+/*
+ * Qualified Names, Local Names, and Namespace Prefixes
+ *
+ * An Element or Attribute's qualified name is its local name if its
+ * namespace prefix is null, and its namespace prefix, followed by ":",
+ * followed by its local name, otherwise.
+ */
 
+/*
+ * OPTIMIZATION: When we create a DOM tree, we will likely create many
+ * elements with the same tag name / qualified name, and thus need to
+ * repeatedly convert those strings to ASCII uppercase to form the
+ * HTML-uppercased qualified name.
+ *
+ * This table caches the results of that ASCII uppercase conversion,
+ * turning subsequent calls into O(1) table lookups.
+ */
+$UC_Cache = array();
 
-function recursiveGetText($node, $a)
-{
-        /*
-         * TODO PORT:
-         * Wow! This will trigger switches from LL to array on all children
-         * Is that okay?
-         */
-        if ($node->nodeType === TEXT_NODE) {
-                $a[]= $node->_data;
-        } else {
-                for ($i=0, $n=count($node->childNodes()); $i<$n; $i++) {
-                        recursiveGetText($node->childNodes()[$i], $a);
-                }
-        }
-}
 
 class Element extends NonDocumentTypeChildNode
 {
+	/* Required by Node */
+        protected const _nodeType = ELEMENT_NODE;
+        protected const _nodeValue = NULL;
+	protected $_nodeName = NULL; /* HTML-uppercased qualified name */
+        protected $_ownerDocument = NULL;
+
+	/* Required by Element */
+        protected $_namespaceURI = NULL;
+        protected $_localName = NULL;
+        protected $_prefix = NULL;
+
+	/* Actually attached without an accessor */
         public $attributes = NULL;
 
-        public $_nodeType = ELEMENT_NODE;
-        public $_ownerDocument = NULL;
-        public $_localName = NULL;
-        public $_namespaceURI = NULL;
-        public $_prefix = NULL;
-        public $_tagName = NULL;
-        public $_nodeName = NULL;
-        public $_nodeValue = NULL;
-
-        public function __construct($document, $localName, $namespaceURI, $prefix)
+        /**
+         * Element constructor
+         *
+         * @param Document $doc
+	 * @param string $lname
+	 * @param string $ns
+	 * @param ?string $ns
+	 * @return void
+	 */
+        public function __construct(Document $doc, string $lname, string $ns, ?string $prefix)
         {
-                /* Calls NonDocumentTypeChildNode and so on */
+		global $UC_Cache; /* See declaration, above */
+
                 parent::__construct();
 
-                $this->_ownerDocument = $document;
-                $this->_localName     = $localName;
-                $this->_namespaceURI  = $namespaceURI;
+		/*
+		 * TODO
+		 * DOM-LS: "Elements have an associated namespace, namespace
+		 * prefix, local name, custom element state, custom element
+		 * definition, is value. When an element is created, all of
+		 * these values are initialized.
+		 */
+                $this->_namespaceURI  = $ns;
                 $this->_prefix        = $prefix;
+                $this->_localName     = $lname;
+                $this->_ownerDocument = $doc;
 
-                /* Set tag name */
-                $tagname = ($prefix === NULL) ? $localName : "$prefix:$localName";
+		/*
+		 * DOM-LS: "An Element's qualified name is its local name
+		 * if its namespace prefix is null, and its namespace prefix,
+		 * followed by ":", followed by its local name, otherwise."
+		 */
+		$qname = ($prefix) ? $lname : "$prefix:$lname";
+
+		/*
+		 * DOM-LS: "An element's tagName is its HTML-uppercased
+		 * qualified name".
+		 *
+		 * DOM-LS: "If an Element is in the HTML namespace and its node
+		 * document is an HTML document, then its HTML-uppercased
+		 * qualified name is its qualified name in ASCII uppercase.
+		 * Otherwise, its HTML-uppercased qualified name is its
+		 * qualified name."
+		 */
                 if ($this->isHTMLElement()) {
-                        if (!isset($UC_Tagname_Cache[$tagname])) {
-                                $uc_tagname = \domo\ascii_to_uppercase($tagname);
-                                $UC_Tagname_Cache[$tagname] = $uc_tagname;
+                        if (!isset($UC_Cache[$qname])) {
+                                $uc_qname = \domo\ascii_to_uppercase($qname);
+                                $UC_Cache[$qname] = $uc_qname;
                         } else {
-                                $uc_tagname = $UC_Tagname_Cache[$tagname];
+                                $uc_qname = $UC_Cache[$qname];
+                        }
+                } else {
+			/* If not an HTML element, don't uppercase. */
+			$uc_qname = $qname;
+		}
+
+		/*
+		 * DOM-LS: "User agents could optimize qualified name and
+		 * HTML-uppercased qualified name by storing them in internal
+		 * slots."
+		 */
+                $this->_nodeValue = $uc_qname;
+
+		/*
+		 * DOM-LS: "Elements also have an attribute list, which is
+		 * a list exposed through a NamedNodeMap. Unless explicitly
+		 * given when an element is created, its attribute list is
+		 * empty."
+		 */
+                $this->attributes = new NamedNodeMap($this);
+        }
+
+        /**********************************************************************
+         * ACCESSORS
+         **********************************************************************/
+
+        public function prefix(void): ?string
+        {
+                return $this->_prefix;
+        }
+        public function localName(void): string
+        {
+                return $this->_localName;
+        }
+        public function namespaceURI(void): ?string
+        {
+                return $this->_namespaceURI;
+        }
+        public function tagName(void): string
+        {
+                return $this->_nodeName;
+        }
+	public function nodeName(void): string
+	{
+		return $this->_nodeName;
+	}
+	public function nodeValue(void): string
+	{
+		return $this->_nodeValue;
+	}
+
+	/**
+	 * Get or set the text content of an Element.
+	 *
+	 * @param string $value
+	 * @return ?string
+	 * @spec DOM-LS
+	 * @implements abstract public Node::textContent
+	 */
+        public function textContent(?string $value = NULL)
+        {
+                /* GET */
+                if ($value === NULL) {
+                        $text = array();
+                        \domo\algorithm\descendant_text_content($this, $text);
+                        return implode("", $text);
+                /* SET */
+                } else {
+                        $this->__remove_children();
+                        if ($value !== "") {
+                                /* Equivalent to Node:: appendChild without checks! */
+                                \domo\algorithm\insert_before_or_replace($node, $this->_ownerDocument->createTextNode($value), NULL);
                         }
                 }
-                $this->_tagName = $uc_tagname;
-                $this->_nodeName = $uc_tagname; /* per spec */
-                $this->_nodeValue = NULL;    /* TODO spec or stub? */
+        }
 
-                $this->attributes = new NamedNodeMap($this);
+        public function innerHTML(string $value = NULL)
+        {
+                if ($value === NULL) {
+                        return $this->__serialize();
+                } else {
+                        /* NYI */
+                }
+        }
+
+        public function outerHTML(string $value = NULL)
+        {
+                /* NOT IMPLEMENTED ANYMORE */
         }
 
         /**********************************************************************
@@ -248,8 +359,8 @@ class Element extends NonDocumentTypeChildNode
                  * error checking in some other way. In case we try
                  * to clone an invalid node that the parser inserted.
                  */
-                if ($this->namespaceURI() !== NAMESPACE_HTML 
-                || $this->prefix() 
+                if ($this->namespaceURI() !== NAMESPACE_HTML
+                || $this->prefix()
                 || !$this->ownerDocument()->isHTMLDocument()) {
                         if ($this->prefix() === NULL) {
                                 $name = $this->localName();
@@ -257,7 +368,7 @@ class Element extends NonDocumentTypeChildNode
                                 $name = $this->prefix().':'.$this->localName();
                         }
                         $clone = $this->ownerDocument()->createElementNS(
-                                $this->namespaceURI(), 
+                                $this->namespaceURI(),
                                 $name
                         );
                 } else {
@@ -275,9 +386,9 @@ class Element extends NonDocumentTypeChildNode
 
         public function _subclass_isEqual(Element $elt): boolean
         {
-                if ($this->localName() !== $elt->localName() 
-                || $this->namespaceURI() !== $elt->namespaceURI() 
-                || $this->prefix() !== $elt->prefix() 
+                if ($this->localName() !== $elt->localName()
+                || $this->namespaceURI() !== $elt->namespaceURI()
+                || $this->prefix() !== $elt->prefix()
                 || count($this->attributes) !== count($elt->attributes)) {
                         return false;
                 }
@@ -297,57 +408,9 @@ class Element extends NonDocumentTypeChildNode
                 return true;
         }
 
-        /**********************************************************************
-         * ACCESSORS 
-         **********************************************************************/
-
-        public function prefix(): ?string
-        {
-                return $this->_prefix;
-        }
-        public function localName(): ?string
-        {
-                return $this->_localName;
-        }
-
-        public function tagName(): string
-        {
-                return $this->_tagName;
-        }
-
-        /* TODO This is defined on Node in the spec! */
-        public function textContent(string $newtext = NULL)
-        {
-                if ($newtext === NULL) {
-                        /* GET */
-                        $strings = array();
-                        recursiveGetText($this, $strings);
-                        return implode("", $strings);
-                } else {
-                        /* SET */
-                        $this->removeChildren();
-                        if ($newtext !== "") {
-                                $this->_appendChild($this->ownerDocument->createTextNode($newtext));
-                        }
-                }
-        }
-
-        public function innerHTML(string $value = NULL)
-        {
-                if ($value === NULL) {
-                        return $this->serialize();
-                } else {
-                        /* NYI */
-                }
-        }
-
-        public function outerHTML(string $value = NULL)
-        {
-                /* NOT IMPLEMENTED ANYMORE */
-        }
 
         /**********************************************************************
-         * ParentNode MIXIN 
+         * ParentNode MIXIN
          **********************************************************************/
 
         public function append() {}
@@ -483,8 +546,8 @@ class Element extends NonDocumentTypeChildNode
         /**
          * Fetch value of attribute with the given namespace and localName
          *
-         * @param ?string $ns The attribute's namespace 
-         * @param string $lname The attribute's local name 
+         * @param ?string $ns The attribute's namespace
+         * @param string $lname The attribute's local name
          * @return ?string the value of the attribute
          * @spec DOM-LS
          */
@@ -497,7 +560,7 @@ class Element extends NonDocumentTypeChildNode
         /**
          * Fetch the Attr node with the given qualifiedName
          *
-         * @param string $lname The attribute's local name 
+         * @param string $lname The attribute's local name
          * @return ?Attr the attribute node, or NULL
          * @spec DOM-LS
          */
@@ -507,9 +570,9 @@ class Element extends NonDocumentTypeChildNode
         }
 
         /**
-         * Fetch the Attr node with the given namespace and localName 
+         * Fetch the Attr node with the given namespace and localName
          *
-         * @param string $lname The attribute's local name 
+         * @param string $lname The attribute's local name
          * @return ?Attr the attribute node, or NULL
          * @spec DOM-LS
          */
@@ -523,7 +586,7 @@ class Element extends NonDocumentTypeChildNode
         /**
          * Set the value of first attribute with a particular qualifiedName
          *
-         * @param string $qname 
+         * @param string $qname
          * @param $value
          * @return void
          * @spec DOM-LS
@@ -554,7 +617,7 @@ class Element extends NonDocumentTypeChildNode
          * Set value of attribute with a particular namespace and localName
          *
          * @param string $ns
-         * @param string $qname 
+         * @param string $qname
          * @param $value
          * @return void
          * @spec DOM-LS
@@ -582,7 +645,7 @@ class Element extends NonDocumentTypeChildNode
          * Add an Attr node to an Element node
          *
          * @param Attr $attr
-         * @return ?Attr 
+         * @return ?Attr
          */
         public function setAttributeNode(Attr $attr): ?Attr
         {
@@ -593,7 +656,7 @@ class Element extends NonDocumentTypeChildNode
          * Add a namespace-aware Attr node to an Element node
          *
          * @param Attr $attr
-         * @return ?Attr 
+         * @return ?Attr
          */
         public function setAttributeNodeNS($attr)
         {
@@ -603,10 +666,10 @@ class Element extends NonDocumentTypeChildNode
 	/* REMOVE *************************************************************/
 
         /**
-         * Remove the first attribute given a particular qualifiedName 
+         * Remove the first attribute given a particular qualifiedName
          *
-         * @param string $qname 
-         * @return Attr or NULL the removed attribute node 
+         * @param string $qname
+         * @return Attr or NULL the removed attribute node
          * @spec DOM-LS
          */
         public function removeAttribute(string $qname): ?Attr
@@ -615,10 +678,10 @@ class Element extends NonDocumentTypeChildNode
         }
 
         /**
-         * Remove attribute given a particular namespace and localName 
+         * Remove attribute given a particular namespace and localName
          *
-         * @param string $ns namespace 
-         * @param string $lname localName 
+         * @param string $ns namespace
+         * @param string $lname localName
          * @return Attr or NULL the removed attribute node
          * @spec DOM-LS
          */
@@ -628,9 +691,9 @@ class Element extends NonDocumentTypeChildNode
         }
 
         /**
-         * Remove the given attribute node from this Element 
+         * Remove the given attribute node from this Element
          *
-         * @param Attr $attr attribute node to remove 
+         * @param Attr $attr attribute node to remove
          * @return Attr or NULL the removed attribute node
          * @spec DOM-LS
          */
@@ -657,7 +720,7 @@ class Element extends NonDocumentTypeChildNode
         /**
          * Test Element for attribute with the given namespace and localName
          *
-         * @param ?string $ns the namespace 
+         * @param ?string $ns the namespace
          * @param string $lname the localName
          * @return boolean
          * @spec DOM-LS
@@ -673,7 +736,7 @@ class Element extends NonDocumentTypeChildNode
          * Toggle the first attribute with the given qualified name
          *
          * @param string $qname qualified name
-         * @param boolean $force whether to set if no attribute exists 
+         * @param boolean $force whether to set if no attribute exists
          * @return boolean whether we set or removed an attribute
          * @spec DOM-LS
          */
@@ -703,7 +766,7 @@ class Element extends NonDocumentTypeChildNode
         /**
          * Test whether this Element has any attributes
          *
-         * @return boolean 
+         * @return boolean
          * @spec DOM-LS
          */
         public function hasAttributes(void): boolean
@@ -712,13 +775,13 @@ class Element extends NonDocumentTypeChildNode
         }
 
         /**
-         * Fetch the qualified names of all attributes on this Element 
+         * Fetch the qualified names of all attributes on this Element
          *
          * @return array of strings, or empty array if no attributes.
          * @spec DOM-LS
          *
          * NOTE
-         * The names are *not* guaranteed to be unique. 
+         * The names are *not* guaranteed to be unique.
          */
         public function getAttributeNames(): array
         {
@@ -737,7 +800,7 @@ class Element extends NonDocumentTypeChildNode
 
 
         /*********************************************************************
-         * OTHER 
+         * OTHER
          ********************************************************************/
 
         /* TODO TODO TODO */
@@ -786,14 +849,15 @@ class Element extends NonDocumentTypeChildNode
         }
 
         /*********************************************************************
-         * DOMO EXTENSIONS 
+         * DOMO EXTENSIONS
          ********************************************************************/
 
+        /* Calls isHTMLDocument() on ownerDocument */
         public function isHTMLElement()
         {
-                /* DOMO Convenience function to test if HTMLElement */
-                /* (See Document->isHTMLDocument()) */
-                if ($this->namespaceURI === NAMESPACE_HTML && $this->ownerDocument && $this->ownerDocument->isHTMLDocument()) {
+                if ($this->_namespaceURI === NAMESPACE_HTML
+                && $this->_ownerDocument
+                && $this->_ownerDocument->isHTMLDocument()) {
                         return true;
                 }
                 return false;

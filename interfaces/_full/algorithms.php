@@ -198,10 +198,10 @@ static function _DOM_locate_prefix(Node $node, ?string $ns): ?string
 }
 
 
-static function _DOM_insertBeforeOrReplace(Node $node, Node $parent, ?Node $before, boolean $replace): void
+static function insert_before_or_replace(Node $node, Node $parent, ?Node $before, boolean $replace): void
 {
-        /* 
-         * TODO: FACTOR: $ref_node is intended to always be non-NULL 
+        /*
+         * TODO: FACTOR: $ref_node is intended to always be non-NULL
          * if $isReplace is true, but I think that could fail.
          */
 
@@ -301,7 +301,7 @@ static function _DOM_insertBeforeOrReplace(Node $node, Node $parent, ?Node $befo
         /*********** EMPTY OUT THE DOCUMENT FRAGMENT ************/
 
         if ($node instanceof DocumentFragment) {
-                /* 
+                /*
                  * TODO: Why? SPEC SAYS SO!
                  */
                 if ($node->_childNodes) {
@@ -323,6 +323,35 @@ static function _DOM_insertBeforeOrReplace(Node $node, Node $parent, ?Node $befo
                         foreach ($insert as $n) {
                                 $parent->doc()->mutateInsert($n);
                         }
+                }
+        }
+}
+
+/* The descendant text content of a Node node is the
+ * concatenation of the data of all the Text node
+ * descendants of node.
+ *
+ * https://dom.spec.whatwg.org/#concept-descendant-text-content
+ *
+ * NOTE
+ * I assume we pass the array by reference because it's cheaper
+ * than passing a string (which we concatenate at each recursion)
+ * which PHP will copy to the function stack each call.
+ */
+static function descendant_text_content(Node $node, array &$a)
+{
+        if ($node->_nodeType === TEXT_NODE) {
+                $a[] = $node->nodeValue();
+        } else {
+        	/*
+         	 * TODO
+         	 * Why are we not using the linked list loop?
+	 	 * This will switch on the array mode for this
+		 * node and all children. Is that okay?
+		 */
+		$children = $node->childNodes();
+                foreach ($children as $c) {
+                        descendant_text_content($c, $a);
                 }
         }
 }
@@ -355,9 +384,9 @@ static function _DOM_ensureInsertValid(Node $node, Node $parent, ?Node $child): 
                 \domo\error("HierarchyRequestError");
         }
         if ($node->doc() === $parent->doc() && $node->rooted() === $parent->rooted()) {
-                /* 
+                /*
                  * If the conditions didn't figure it out, then check
-                 * by traversing parentNode chain. 
+                 * by traversing parentNode chain.
                  */
                 for ($n=$parent; $n!==NULL; $n=$n->parentNode()) {
                         if ($n === $node) {
@@ -537,9 +566,9 @@ static function _DOM_ensureReplaceValid(Node $node, Node $parent, Node $child): 
                 \domo\error("HierarchyRequestError");
         }
         if ($node->doc() === $parent->doc() && $node->rooted() === $parent->rooted()) {
-                /* 
+                /*
                  * If the conditions didn't figure it out, then check
-                 * by traversing parentNode chain. 
+                 * by traversing parentNode chain.
                  */
                 for ($n=$parent; $n!==NULL; $n=$n->parentNode()) {
                         if ($n === $node) {

@@ -42,4 +42,60 @@ abstract class NonDocumentTypeChildNode extends ChildNode
         }
 }
 
+/*
+ * We have to use this because PHP is single-inheritance, so CharacterData
+ * can't inherit from NonDocumentTypeChildNode and Leaf at once.
+ *
+ * We could use traits...................
+ *
+*
+ * This class selectively overrides Node, providing an alternative
+ * (more performant) base class for Node subclasses that can never
+ * have children, such as those derived from the abstract CharacterData
+ * class.
+ */
+abstract class NonDocumentTypeChildNodeLeaf extends NonDocumentTypeChildNode
+{
+        public function __construct()
+        {
+                parent::__construct();
+        }
+
+        public final function hasChildNodes(void): boolean
+        {
+                return false;
+        }
+        public final function firstChild(void)
+        {
+                return NULL;
+        }
+        public final function lastChild(void)
+        {
+                return NULL;
+        }
+        public final function insertBefore(Node $node, ?Node $refChild)
+        {
+                \domo\error("NotFoundError");
+        }
+        public final function replaceChild(Node $node, ?Node $refChild)
+        {
+                \domo\error("HierarchyRequestError");
+        }
+        public final function removeChild(Node $node)
+        {
+                \domo\error("NotFoundError");
+        }
+        public final function __remove_children(void)
+        {
+                /* no-op */
+        }
+        public final function childNodes(void)
+        {
+                if ($this->_childNodes === NULL) {
+                        $this->_childNodes = new NodeList();
+                }
+                return $this->_childNodes;
+        }
+}
+
 ?>

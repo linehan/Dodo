@@ -44,7 +44,10 @@
  *
  *      ensureSameDoc wasn't even being called anywhere...
  *
- *      doc() => nodeDocument(), mirroring spec: https://dom.spec.whatwg.org/#concept-node-document 
+ *      doc() => nodeDocument(), mirroring spec: https://dom.spec.whatwg.org/#concept-node-document
+ *
+ *      __ for our functions
+ *      removeChildren => __remove_children, and so on.
  *
  * NOT CHANGED:
  *      Node.parentNode         => Node->parentNode
@@ -68,9 +71,8 @@ require_once("NodeList.php");
 require_once("utils.php");
 require_once("algorithms.php");
 
-abstract class Node /* extends EventTarget // try factoring events out? */ 
+abstract class Node /* extends EventTarget // try factoring events out? */
 {
-        abstract public function textContent(string $value=NULL);       /* Should override for DocumentFragment/Element/Attr/Text/ProcessingInstruction/Comment */
 
         /* Delegated subclass method called by Node::isEqualNode() */
         abstract protected function _subclass_isEqualNode();
@@ -79,7 +81,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
         abstract protected function _subclass_cloneNodeShallow();
 
         /**********************************************************************
-         * DOMO internal book-keeping layer 
+         * DOMO internal book-keeping layer
          **********************************************************************/
         /* Used for caching (Node::__lastmod_update, Node::__lastmod) */
         protected $___lastmod = 0;
@@ -88,7 +90,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
         protected $__nid;
 
         /**********************************************************************
-         * BOOK-KEEPING: What Node knows about its ancestors 
+         * BOOK-KEEPING: What Node knows about its ancestors
          **********************************************************************/
 
         /* DOMO: Top-level Document object of the Node */
@@ -98,7 +100,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
         public $_parentNode;
 
         /**********************************************************************
-         * BOOK-KEEPING: What Node knows about the childNodes of its parent 
+         * BOOK-KEEPING: What Node knows about the childNodes of its parent
          **********************************************************************/
 
         /* DOMO: Node's index in childNodes of parent (NULL if no parent) */
@@ -111,7 +113,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
         public $_previousSibling;
 
         /**********************************************************************
-         * BOOK-KEEPING: What Node knows about its own childNodes 
+         * BOOK-KEEPING: What Node knows about its own childNodes
          **********************************************************************/
 
         /* DOMO: Reference to first child Node (NULL if no children) */
@@ -121,18 +123,8 @@ abstract class Node /* extends EventTarget // try factoring events out? */
         public $_childNodes;
 
         /**********************************************************************
-         * BOOK-KEEPING: What Node knows about itself 
+         * BOOK-KEEPING: What Node knows about itself
          **********************************************************************/
-
-        /* DOMO: For HTMLElement, will contain name of the tag */
-        public $_nodeName;
-
-        /* DOMO: Integer enumerating node type. See constants. */
-        public $_nodeType;
-
-        public $_nodeValue;
-
-        public $_textContent;
 
         public function __construct()
         {
@@ -153,36 +145,40 @@ abstract class Node /* extends EventTarget // try factoring events out? */
         /**********************************************************************
          * UNSUPPORTED
          **********************************************************************/
-
-        /* Not implemented */
         public function baseURI(){}
         public function baseURIObject(){}
-        /* DOM-LS: Obsolete */
-        public function localName(){}
-        public function prefix(){}              // then how do you do this??
-        public function namespaceURI(){}        // then how do you do this??
-        public function nodePrincipal(){}
-        public function rootNode() }
 
         /**********************************************************************
-         * ACCESSORS 
+         * ACCESSORS
          **********************************************************************/
 
+        /*
+         * TODO: These accessors rely on subclasses to set values on
+         * the properties _nodeType, _nodeName, and _nodeValue, _ownerDocument,
+         * and so on, in order to function.
+         *
+         * However sometimes the subclasses simply override/extend these
+         * methods when it suits them. This is a bit confusing.
+         *
+         * This could perhaps better be done by declaring them abstract
+         * methods and asking the subclasses to implement the accessors
+         * there, like how textContent is done now.
+         */
         public function nodeType(void): integer
         {
-                /* TODO: rules about node type baked into constructors */
                 return $this->_nodeType;
         }
         public function nodeName(void)
         {
-                /* TODO: rules about naming baked into constructors */
                 return $this->_nodeName;
         }
-        public function nodeValue(void) 
+        public function nodeValue(void)
         {
-                /* TODO: This can take a setter too and has a lot of stuff */
-                return $this->_nodeType;
+                return $this->_nodeValue;
         }
+
+        /* TODO: Hmm. */
+        abstract public function textContent(string $value=NULL);
 
         /**
          * Document that this node belongs to, or NULL if node is a Document
@@ -222,11 +218,11 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          * @spec DOM-LS
          *
          * NOTE
-         * Computed from _parentNode, has no state of its own to mutate. 
+         * Computed from _parentNode, has no state of its own to mutate.
          */
         public function parentElement(void): ?Element
         {
-                if ($this->_parentNode === NULL 
+                if ($this->_parentNode === NULL
                 || $this->_parentNode->_nodeType !== ELEMENT_NODE) {
                         return NULL;
                 }
@@ -234,19 +230,19 @@ abstract class Node /* extends EventTarget // try factoring events out? */
         }
 
         /**
-         * Node representing previous sibling, or NULL if DNE. 
+         * Node representing previous sibling, or NULL if DNE.
          *
          * @return Node or NULL
          * @spec DOM-LS
          *
-         * CAUTION 
-         * Directly accessing _previousSibling is NOT a substitute 
-         * for this method. When Node is an only child, _previousSibling 
-         * is set to $this, but DOM-LS needs it to be NULL. 
+         * CAUTION
+         * Directly accessing _previousSibling is NOT a substitute
+         * for this method. When Node is an only child, _previousSibling
+         * is set to $this, but DOM-LS needs it to be NULL.
          */
         public function previousSibling(void): ?Node
         {
-                if ($this->_parentNode === NULL 
+                if ($this->_parentNode === NULL
                 || $this === $this->_parentNode->firstChild()) {
                         return NULL;
                 }
@@ -254,19 +250,19 @@ abstract class Node /* extends EventTarget // try factoring events out? */
         }
 
         /**
-         * Node representing next sibling, or NULL if DNE. 
+         * Node representing next sibling, or NULL if DNE.
          *
          * @return Node or NULL
          * @spec DOM-LS
          *
-         * CAUTION 
-         * Directly accessing _nextSibling is NOT a substitute 
-         * for this method. When Node is an only child, _nextSibling 
-         * is set to $this, but DOM-LS needs it to be NULL. 
+         * CAUTION
+         * Directly accessing _nextSibling is NOT a substitute
+         * for this method. When Node is an only child, _nextSibling
+         * is set to $this, but DOM-LS needs it to be NULL.
          */
         public function nextSibling(void): ?Node
         {
-                if ($this->_parentNode === NULL 
+                if ($this->_parentNode === NULL
                 || $this->_nextSibling === $this->_parentNode->_firstChild) {
                         return NULL;
                 }
@@ -275,7 +271,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
 
         /**
          * Live NodeList containing this Node's children (NULL if no children)
-         * 
+         *
          * @return NodeList or NULL
          * @spec DOM-LS
          *
@@ -287,6 +283,10 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          *
          * So when we test if ($this->_childNodes), we are testing to see
          * if we have to mutate or work with a live NodeList.
+         *
+         * TODO
+         * It's annoying how we can do foreach (Document::attributes as $a)
+         * but not foreach (Node::childNodes as $c).
          */
         public function childNodes(void): ?NodeList
         {
@@ -294,7 +294,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
                         return $this->_childNodes; /* memoization */
                 }
 
-                /* Lazy evaluation to build the child nodes */ 
+                /* Lazy evaluation to build the child nodes */
                 $this->_childNodes = new NodeList();
 
                 for ($n=$this->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
@@ -306,12 +306,12 @@ abstract class Node /* extends EventTarget // try factoring events out? */
         }
 
         /**
-         * Determine if the Node has any children 
+         * Determine if the Node has any children
          *
          * @return boolean
          * @spec DOM-LS
          *
-         * CAUTION 
+         * CAUTION
          * Testing _firstChild or _childNodes alone is *not* a shortcut
          * for this method. Depending on whether we are in NodeList or
          * LinkedList mode, one or the other or both may be NULL.
@@ -327,11 +327,11 @@ abstract class Node /* extends EventTarget // try factoring events out? */
 
         /**
          * Node representing the Node's first child node, or NULL if DNE
-         * 
+         *
          * @return Node or NULL
          * @spec DOM-LS
          *
-         * CAUTION 
+         * CAUTION
          * Directly accessing _firstChild is *not* a substitute for this
          * method. Where to find the first child depends on whether we
          * are in NodeList or LinkedList mode.
@@ -387,23 +387,23 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          * @spec DOM-LS
          *
          * NOTES
-         * DOM-LS: If $node already exists in this Document, this function 
-         * moves it from its current position to its new position ('move' 
+         * DOM-LS: If $node already exists in this Document, this function
+         * moves it from its current position to its new position ('move'
          * means 'remove' followed by 're-insert').
          *
-         * DOM-LS: If $refNode is NULL, then $node is added to the end of the 
-         * list of children of $this. In other words, insertBefore($node, NULL) 
+         * DOM-LS: If $refNode is NULL, then $node is added to the end of the
+         * list of children of $this. In other words, insertBefore($node, NULL)
          * is equivalent to appendChild($node).
          *
-         * DOM-LS: If $node is a DocumentFragment, the children of the 
-         * DocumentFragment are moved into the child list of $this, and the 
+         * DOM-LS: If $node is a DocumentFragment, the children of the
+         * DocumentFragment are moved into the child list of $this, and the
          * empty DocumentFragment is returned.
          *
-         * SORRY 
-         * Despite its weird syntax (blame the spec) this is a real workhorse, 
+         * SORRY
+         * Despite its weird syntax (blame the spec) this is a real workhorse,
          * used to implement all of the insertion mutations.
          */
-        public function insertBefore(Node $node, ?Node $refChild): Node 
+        public function insertBefore(Node $node, ?Node $refChild): Node
         {
                 /* DOM-LS #1. Ensure pre-insertion validity */
                 \domo\algorithm\_DOM_ensureInsertValid($node, $this, $refChild);
@@ -417,14 +417,14 @@ abstract class Node /* extends EventTarget // try factoring events out? */
                 $this->__node_document()->adoptNode($node);
 
                 /* DOM-LS #5. Insert $node into parent before $refChild . */
-                \domo\algorithm\_DOM_insertBeforeOrReplace($node, $this, $refChild, false);
+                \domo\algorithm\insert_before_or_replace($node, $this, $refChild, false);
 
                 /* DOM-LS #6. Return $node */
                 return $node;
         }
 
         /**
-         * Append the given Node to the child list of this one 
+         * Append the given Node to the child list of this one
          *
          * @param Node $node
          * @return Newly inserted Node or empty DocumentFragment
@@ -437,9 +437,17 @@ abstract class Node /* extends EventTarget // try factoring events out? */
         }
 
         /**
+         * NO CHECKS!
+         * See
+        public function __unsafe_appendChild(Node $node): Node
+        {
+                return \domo\algorithm\insert_before_or_replace($node, $this, NULL);
+        }
+
+        /**
          * Replaces a given child Node with another Node
          *
-         * @param Node $newChild to be inserted 
+         * @param Node $newChild to be inserted
          * @param Node $oldChild to be replaced
          * @return Reference to $oldChild
          * @throw DOMException "HierarchyRequestError", "NotFoundError"
@@ -453,17 +461,17 @@ abstract class Node /* extends EventTarget // try factoring events out? */
                 if ($newChild->__node_document() !== $this->__node_document()) {
                         /*
                          * XXX adoptNode has side-effect of removing node from
-                         * its parent and generating a mutation event, causing 
-                         * _insertOrReplace to generate 2 deletes and 1 insert 
-                         * instead of a 'move' event.  It looks like the new 
-                         * MutationObserver stuff avoids this problem, but for 
-                         * now let's only adopt (ie, remove 'node' from its 
+                         * its parent and generating a mutation event, causing
+                         * _insertOrReplace to generate 2 deletes and 1 insert
+                         * instead of a 'move' event.  It looks like the new
+                         * MutationObserver stuff avoids this problem, but for
+                         * now let's only adopt (ie, remove 'node' from its
                          * parent) here if we need to.
                          */
                         $this->__node_document()->adoptNode($newChild);
                 }
 
-                \domo\algorithm\_DOM_insertBeforeOrReplace($newChild, $this, $oldChild, true);
+                \domo\algorithm\insert_before_or_replace($newChild, $this, $oldChild, true);
 
                 return $oldChild;
         }
@@ -472,7 +480,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          * Removes a child node from the DOM and returns it.
          *
          * @param ChildNode $node
-         * @return ChildNode 
+         * @return ChildNode
          * @throw DOMException "NotFoundError"
          * @spec DOM-LS
          *
@@ -533,12 +541,12 @@ abstract class Node /* extends EventTarget // try factoring events out? */
 	 *********************************************************************/
 
         /**
-         * Indicates whether a node is a descendant of this one 
+         * Indicates whether a node is a descendant of this one
          *
          * @param Node $node
          * @returns boolean
          * @spec DOM-LS
-         * 
+         *
          * NOTE: see http://ejohn.org/blog/comparing-document-position/
          */
         public function contains(?Node $node): boolean
@@ -555,7 +563,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
 
         /**
          * Compares position of this Node against another (in any Document)
-         * 
+         *
          * @param Node $that
          * @return One of the document position constants
          * @spec DOM-LS
@@ -569,7 +577,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
         /**
          * Whether this node and another are the same one in the same DOM
          *
-         * @param Node $node to compare to this one 
+         * @param Node $node to compare to this one
          * @return boolean
          * @spec DOM-LS
          */
@@ -630,7 +638,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
 
 
         /**
-         * Clone this Node 
+         * Clone this Node
          *
          * @param Boolean $deep - if true, clone entire subtree
          * @return Node (clone of $this)
@@ -663,7 +671,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
                 /* Otherwise, recurse on the children */
                 for ($n=$this->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
                         /* APPEND DIRECTLY; NO CHECKINSERTVALID */
-                        \domo\algorithm\_DOM_insertBeforeOrReplace($clone, $n->cloneNode(true), NULL, false);
+                        \domo\algorithm\insert_before_or_replace($clone, $n->cloneNode(true), NULL, false);
                 }
 
                 return $clone;
@@ -676,7 +684,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          * @return string or NULL
          * @spec DOM-LS
          *
-         * NOTE 
+         * NOTE
          * Think this function looks weird? It's actually spec:
          * https://dom.spec.whatwg.org/#locate-a-namespace
          */
@@ -712,7 +720,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
 
 
 	/**********************************************************************
-	 * UTILITY METHODS AND DOMO EXTENSIONS 
+	 * UTILITY METHODS AND DOMO EXTENSIONS
 	 *********************************************************************/
         /* Called by Document::adoptNode */
         protected function __set_owner(Document $doc)
@@ -720,11 +728,11 @@ abstract class Node /* extends EventTarget // try factoring events out? */
                 $this->_ownerDocument = $doc;
 
                 /* lastmod is based on owner document */
-                $this->__lastmod_zero(); 
+                $this->__lastmod_zero();
 
                 if (method_exists($this, "tagName")) {
                         /* Element subclasses might need to change case */
-                        $this->_tagName = NULL; 
+                        $this->_tagName = NULL;
                 }
 
                 for ($n=$this->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
@@ -733,14 +741,14 @@ abstract class Node /* extends EventTarget // try factoring events out? */
         }
 
         /**
-         * Determine whether this Node is rooted (belongs to a tree) 
+         * Determine whether this Node is rooted (belongs to a tree)
          *
          * return: boolean
          *
          * NOTE
          * A Node is rooted if it belongs to a tree, in which case it will
          * have an ownerDocument. Document nodes maintain a list of all the
-         * nodes inside their tree, assigning each an index, Node::_nid. 
+         * nodes inside their tree, assigning each an index, Node::_nid.
          *
          * Therefore if we are currently rooted, we can tell by checking that
          * we have one of these.
@@ -760,7 +768,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
                 $doc->__add_to_node_table($this);
 
                 if ($this->_nodeType === ELEMENT_NODE) {
-                        /* getElementById table */ 
+                        /* getElementById table */
                         if (NULL !== ($id = $this->getAttribute('id'))) {
                                 $doc->__add_to_id_table($id, $this);
                         }
@@ -770,7 +778,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
                                 $this->_roothook();
                         }
 
-                        /* 
+                        /*
                          * TODO: Why do we only do this for Element?
                          * This is how it was written in Domino. Is this
                          * a bug?
@@ -794,7 +802,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
                 }
 
                 /*
-                 * TODO: And here we don't restrict to ELEMENT_NODE. 
+                 * TODO: And here we don't restrict to ELEMENT_NODE.
                  * Why not? I think this is the intended behavior, no?
                  * Then does that make the behavior in root() a bug?
                  * Go over with Scott.
@@ -815,19 +823,19 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          * NOTE
          * How is this different from ownerDocument? According to DOM-LS,
          * Document::ownerDocument() must equal NULL, even though it's often
-         * more convenient if a document is its own owner. 
+         * more convenient if a document is its own owner.
          *
          * What we're looking for is the "node document" concept, as laid
-         * out in the DOM-LS spec: 
+         * out in the DOM-LS spec:
          *
-         *      -"Each node has an associated node document, set upon creation, 
+         *      -"Each node has an associated node document, set upon creation,
          *       that is a document."
-         * 
-         *      -"A node's node document can be changed by the 'adopt' 
-         *       algorithm." 
+         *
+         *      -"A node's node document can be changed by the 'adopt'
+         *       algorithm."
          *
          *      -"The node document of a document is that document itself."
-         * 
+         *
          *      -"All nodes have a node document at all times."
          *
          * TODO
@@ -842,10 +850,10 @@ abstract class Node /* extends EventTarget // try factoring events out? */
 
 
         /**
-         * The index of this Node in its parent's childNodes list 
-         * 
+         * The index of this Node in its parent's childNodes list
+         *
          * @return integer index
-         * @throw Something if we have no parent 
+         * @throw Something if we have no parent
          *
          * NOTE
          * Calling Node::index() will automatically trigger a switch
@@ -858,7 +866,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
                 }
 
                 if ($this === $this->_parentNode->firstChild()) {
-                        return 0; 
+                        return 0;
                 }
 
                 /* We fire up the NodeList mode */
@@ -885,12 +893,12 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          * Remove all of the Node's children.
          *
          * NOTE
-         * Provides minor optimization over iterative calls to 
+         * Provides minor optimization over iterative calls to
          * Node::removeChild(), since it calls Node::modify() once.
          */
-        public function removeChildren()
+        public function __remove_children()
         {
-                if ($this->rooted()) {
+                if ($this->__is_rooted()) {
                         $root = $this->_ownerDocument;
                 } else {
                         $root = NULL;
@@ -900,7 +908,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
                 for ($n=$this->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
                         if ($root !== NULL) {
                                 /* If we're rooted, mutate */
-                                $root->mutateRemove($n);
+                                $root->__mutate_remove($n);
                         }
                         $n->_parentNode = NULL;
                 }
@@ -915,7 +923,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
                 }
 
                 /* Update last modified type once only (minor optimization) */
-                $this->modify();
+                $this->__lastmod_update();
         }
 
 
@@ -948,10 +956,10 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          *
          * @return integer
          *
-         * NOTE The _lastModTime value is used as a cache invalidation 
+         * NOTE The _lastModTime value is used as a cache invalidation
          * mechanism. If the node does not already have one, it will be
-         * initialized from the owner document's modclock property. 
-         * (modclock does not return the actual time; it is simply a 
+         * initialized from the owner document's modclock property.
+         * (modclock does not return the actual time; it is simply a
          * counter incremented on each document modification)
          */
         public function __lastmod(void): integer
@@ -962,8 +970,8 @@ abstract class Node /* extends EventTarget // try factoring events out? */
                 return $this->___lastmod;
         }
 
-        /* Called when being adopted into a new owner document, since 
-         * the modtimes are by-owner. 
+        /* Called when being adopted into a new owner document, since
+         * the modtimes are by-owner.
          */
         public function __lastmod_zero(void): void
         {
@@ -973,17 +981,17 @@ abstract class Node /* extends EventTarget // try factoring events out? */
         /**
          * Assigns a new _lastModTime to this Node and all ancestors.
          *
-         * @return void 
+         * @return void
          *
          * NOTE
          * Increments the owner document's modclock and uses the new
          * value to update the lastModTime value for this node and
-         * all of its ancestors. 
+         * all of its ancestors.
          *
-         * Nodes that have never had their lastModTime value queried 
-         * do not need to have a lastModTime property set on them since 
-         * there is no previously queried value to ever compare the new 
-         * value against, so this will only update nodes that already 
+         * Nodes that have never had their lastModTime value queried
+         * do not need to have a lastModTime property set on them since
+         * there is no previously queried value to ever compare the new
+         * value against, so this will only update nodes that already
          * have a _lastModTime property.
          */
         public function __lastmod_update(void): void
