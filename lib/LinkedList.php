@@ -57,10 +57,12 @@ namespace domo\LinkedList;
  */
 function valid($a)
 {
-        \domo\assert($a, "list is falsy");
-        \domo\assert($a->_previousSibling, "previous is falsy");
-        \domo\assert($a->_nextSibling, "next is falsy");
-        /* TODO: Check that list is actually circular */
+        \domo\assert(NULL!==$a, "list is falsy");
+        \domo\assert(NULL!==$a->_previousSibling, "previous is falsy");
+        \domo\assert(NULL!==$a->_nextSibling, "next is falsy");
+
+        /* TODO: Check that list is actually circular? */
+
         return true;
 }
 
@@ -89,7 +91,7 @@ function insertBefore($a, $b)
         $b_last->_nextSibling      = $a_first;
         $b_first->_previousSibling = $a_last;
 
-        domo\assert(valid($a) && valid($b));
+        \domo\assert(valid($a) && valid($b));
 }
 
 /* TODO: Rename 'unlink' */
@@ -104,7 +106,8 @@ function insertBefore($a, $b)
  */
 function remove($a)
 {
-        domo\assert(valid($a));
+        \domo\assert(valid($a));
+
         $prev = $a->_previousSibling;
 
         if ($prev === $a) {
@@ -116,7 +119,7 @@ function remove($a)
         $next->_previousSibling = $prev;
         $a->_previousSibling = $a->_nextSibling = $a;
 
-        domo\assert(valid($a));
+        \domo\assert(valid($a));
 }
 
 /**
@@ -132,6 +135,10 @@ function remove($a)
 function replace($a, $b)
 {
         \domo\assert(valid($a) && ($b==NULL || valid($b)));
+
+        if ($b !== NULL) {
+                valid($b);
+        }
 
         if ($b !== NULL) {
                 insertBefore($b, $a);

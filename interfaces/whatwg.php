@@ -779,6 +779,10 @@ function _helper_attrname(\domo\Attr $a)
 
 function serialize_node(\domo\Node $child, \domo\Node $parent)
 {
+        global $hasRawContent;
+        global $emptyElements;
+        global $extraNewLine;
+
         $s = "";
 
         switch ($child->_nodeType) {
@@ -802,7 +806,7 @@ function serialize_node(\domo\Node $child, \domo\Node $parent)
                          * rather than undefined?
                          */
                         if ($a->value() !== NULL) {
-                                $s .= '="' . _helper_escapeAttr($a->value()) + '"';
+                                $s .= '="' . _helper_escapeAttr($a->value()) . '"';
                         }
                 }
 
@@ -810,7 +814,7 @@ function serialize_node(\domo\Node $child, \domo\Node $parent)
 
                 if (!($html && isset($emptyElements[$tagname]))) {
                         /* PORT: TODO: Check this serialize function */
-                        $ss = serialize_node($child, NULL);
+                        $ss = $child->__serialize();
                         if ($html && isset($extraNewLine[$tagname]) && $ss[0]==='\n') {
                                 $s .= '\n';
                         }
@@ -828,7 +832,7 @@ function serialize_node(\domo\Node $child, \domo\Node $parent)
                         $parenttag = '';
                 }
 
-                if ($hasRawContent[$parenttag] || ($parenttag==='NOSCRIPT' && $parent->ownerDocument()->_scripting_enabled)) {
+                if (isset($hasRawContent[$parenttag]) || ($parenttag==='NOSCRIPT' && $parent->ownerDocument()->_scripting_enabled)) {
                         $s .= $child->data();
                 } else {
                         $s .= _helper_escape($child->data());

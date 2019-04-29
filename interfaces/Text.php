@@ -5,8 +5,8 @@ require_once('CharacterData.php');
 
 class Text extends CharacterData
 {
-        protected $_nodeType = TEXT_NODE;
-        protected $_nodeName = '#text';
+        public $_nodeType = TEXT_NODE;
+        public $_nodeName = '#text';
 
         public function __construct(Document $doc, $data)
         {

@@ -200,7 +200,7 @@ class Element extends NonDocumentTypeChildNode
 	 * @param ?string $ns
 	 * @return void
 	 */
-        public function __construct(Document $doc, string $lname, ?string $ns, ?string $prefix)
+        public function __construct(Document $doc, string $lname, ?string $ns, ?string $prefix=NULL)
         {
 		global $UC_Cache; /* See declaration, above */
 
@@ -223,7 +223,7 @@ class Element extends NonDocumentTypeChildNode
 		 * if its namespace prefix is null, and its namespace prefix,
 		 * followed by ":", followed by its local name, otherwise."
 		 */
-		$qname = ($prefix) ? $lname : "$prefix:$lname";
+		$qname = ($prefix === NULL) ? $lname : "$prefix:$lname";
 
 		/*
 		 * DOM-LS: "An element's tagName is its HTML-uppercased

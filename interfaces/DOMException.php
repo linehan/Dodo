@@ -34,7 +34,7 @@ const TIMEOUT_ERR = 23;
 const INVALID_NODE_TYPE_ERR = 24;
 const DATA_CLONE_ERR = 25;
 
-const $ERROR_NAME_TO_CODE = array(
+const ERROR_NAME_TO_CODE = array(
 	'IndexSizeError' => INDEX_SIZE_ERR,
 	'HierarchyRequestError' => HIERARCHY_REQUEST_ERR,
 	'WrongDocumentError' => WRONG_DOCUMENT_ERR,
@@ -67,7 +67,7 @@ const $ERROR_NAME_TO_CODE = array(
 	'OperationError' => ERR_CODE_DOES_NOT_EXIST
 );
 
-const $ERROR_NAME_TO_MESSAGE = array(
+const ERROR_NAME_TO_MESSAGE = array(
 	'IndexSizeError' => 'INDEX_SIZE_ERR (1): the index is not in the allowed range',
 	'HierarchyRequestError' => 'HIERARCHY_REQUEST_ERR (3): the operation would yield an incorrect nodes model',
 	'WrongDocumentError' => 'WRONG_DOCUMENT_ERR (4): the object is in the wrong Document, a call to importNode is required',
@@ -88,7 +88,7 @@ const $ERROR_NAME_TO_MESSAGE = array(
   	'QuotaExceededError' => 'QUOTA_EXCEEDED_ERR (22): the quota has been exceeded',
   	'TimeoutError' => 'TIMEOUT_ERR (23): a timeout occurred',
   	'InvalidNodeTypeError' => 'INVALID_NODE_TYPE_ERR (24): the supplied node is invalid or has an invalid ancestor for this operation',
-  	'DataCloneError' => 'DATA_CLONE_ERR (25): the object can not be cloned.'
+  	'DataCloneError' => 'DATA_CLONE_ERR (25): the object can not be cloned.',
 	'EncodingError' => 'The encoding operation (either encoding or decoding) failed.',
 	'NotReadableError' => 'The I/O read operation failed.',
 	'UnknownError' => 'The operation failed for an unknown transient reason (e.g. out of memory)',
@@ -100,7 +100,7 @@ const $ERROR_NAME_TO_MESSAGE = array(
 	'OperationError' => 'The operation failed for an operation-specific reason.'
 );
 
-class DOMException extends Exception
+class DOMException extends \Exception
 {
 	/*
 	 * [WEB-IDL-1] This is the actual constructor prototype.
@@ -110,8 +110,8 @@ class DOMException extends Exception
 	public function __construct(?string $message, ?string $name)
 	{
 		$this->name = $name ?? "";
-		$this->err_msg  = $ERROR_NAME_TO_MESSAGE[$this->name] ?? "";
-		$this->err_code = $ERROR_NAME_TO_CODE[$this->name] ?? -1;
+		$this->err_msg  = ERROR_NAME_TO_MESSAGE[$this->name] ?? "";
+		$this->err_code = ERROR_NAME_TO_CODE[$this->name] ?? -1;
 		$this->usr_msg  = $message ?? $this->err_msg;
 
 		parent::__construct($this->err_msg, $this->err_code);

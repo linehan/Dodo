@@ -1,6 +1,8 @@
 <?php
 namespace domo;
 
+require_once(__DIR__.'/../interfaces/DOMException.php');
+
 /******************************************************************************
  * CONSTANTS
  * ---------
@@ -74,7 +76,7 @@ const DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC = 32;
  *
  * TODO: Make this a true assert()?
  */
-function assert(boolean $condition, ?string $message="")
+function assert(bool $condition, ?string $message="")
 {
         if (!$condition) {
                 throw new Exception("Assert failed: $message");
