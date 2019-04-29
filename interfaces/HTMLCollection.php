@@ -2,10 +2,12 @@
 
 /*
  * Element::children will be an instance of this class.
- * It defines length, item() and namedItem(). 
- * 
- * Compare the similar NamedNodeMap, used to implement 
+ * It defines length, item() and namedItem().
+ *
+ * Compare the similar NamedNodeMap, used to implement
  * Element::attributes.
+ *
+ * TODO: Clean up to bring in line with style guidelines used elsewhere.
  */
 class HTMLCollection extends ArrayObject
 {

@@ -19,7 +19,7 @@ decide on one way to do it (e.g. abstract methods) or just leave it.
 For now, i'm leaving it.
 
 2.
-Confusing indexes. 
+Confusing indexes.
 
 Node::__index() / _index is the index of a node
 in its parent's childNodes list (i.e. it's sibling index).
@@ -89,6 +89,20 @@ CONVENTIONS:
 * If a method or property is not supported in the latest DOM4-LS spec,
   remove it. This is a clean start.
 
+* UNFORTUNATELY the spec defines the use of getters and setters, implicit
+  access to object members like Element.id, and so on.
+
+  In JavaScript and Java, the two official implementations, this is a
+  language feature, however in PHP7 it is a little bit more complicated.
+
+  PHP7 also does not support read-only property values, making the use
+  of accessors even more necessary.
+
+  For both of these reasons, we have chosen the non-performant use of
+  the magic methods __get() and __set() for these properties. We will
+  evaluate and see if we should deviate from spec after measuring the
+  performance. Hopefully in the future PHP will have support for either
+  read-only attributes or performant accessors.
 
 ==============================================================================
 
@@ -124,6 +138,17 @@ Interesting!
 
 POTENTIAL UPSTREAM BUGS:
 ----------------------
+        (xmlnames.js)
+        var simplename = /^[_:A-Za-z][-.:\w]+$/;
+
+        According to the spec, rather than a '+' there should be a '*',
+        since we do not necessarily have to follow the initial character.
+
+        The reason nobody has noticed this is that in JS, the \w is matching
+        the string terminating \n character, but we should not rely on this.
+
+        ---
+
         in Document._recursiveRoot, why are we only recursing on
         Element nodes? In Document._recursiveUproot, why are we
         not recursing on only Element nodes?

@@ -76,7 +76,7 @@ class Attr extends Node
         protected $_value = '';
         protected $_localName = NULL;
 
-        /* 
+        /*
         * TODO: Re-order these arguments because you can make an Attr with
          * just an lname, and the defaults are spec'd as
          *      ownerElement = NULL
@@ -105,17 +105,17 @@ class Attr extends Node
         public function _subclass_cloneNodeShallow(): ?Node
         {
                 return new Attr(
-                        NULL, 
-                        $this->_localName, 
-                        $this->_prefix, 
-                        $this->_namespaceURI, 
+                        NULL,
+                        $this->_localName,
+                        $this->_prefix,
+                        $this->_namespaceURI,
                         $this->_value
                 );
         }
 
         public function _subclass_isEqualNode(Node $node): bool
         {
-                return ($this->_namespaceURI === $node->_namespaceURI 
+                return ($this->_namespaceURI === $node->_namespaceURI
                 && $this->_localName === $node->_localName
                 && $this->_value === $node->_value);
         }
