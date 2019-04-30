@@ -133,4 +133,10 @@ function ascii_to_uppercase(string $s): string
       	}, $s);
 }
 
+
+  _resolve: { value: function(href) {
+    //XXX: Cache the URL
+    return new URL(this._documentBaseURL).resolve(href);
+  }},
+
 ?>

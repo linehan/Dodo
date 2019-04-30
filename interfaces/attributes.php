@@ -16,6 +16,7 @@
  *
  * This family of classes allows us to implement these reflected attributes.
  ******************************************************************************/
+namespace domo;
 
 
 /*
@@ -33,13 +34,14 @@
  * Element::$__attr_<attrname>.
  */
 
-
-function build_reflected($owner, $spec)
+function reflected_attribute($owner, $spec)
 {
         if (is_array($spec['type'])) {
                 return new IDLReflectedAttributeEnumerated($owner, $spec);
         } else {
                 switch ($spec['type']) {
+                case 'url':
+                        return new IDLReflectedAttributeURL($owner, $spec);
                 case 'boolean':
                         return new IDLReflectedAttributeBoolean($owner, $spec);
                 case 'number':
@@ -82,6 +84,58 @@ class IDLReflectedAttributeBoolean
                 }
         }
 }
+
+/*
+ * If a reflecting IDL attribute is a USVString attribute whose content
+ * attribute is defined to contain a URL, then on getting, if the content
+ * attribute is absent, the IDL attribute must return the empty string.
+ * Otherwise, the IDL attribute must parse the value of the content attribute
+ * relative to the element's node document and if that is successful, return
+ * the resulting URL string. If parsing fails, then the value of the content
+ * attribute must be returned instead, converted to a USVString. On setting,
+ * the content attribute must be set to the specified new value.
+ */
+class IDLReflectedAttributeURL
+{
+        protected $_elem = NULL;
+        protected $_name = NULL;
+
+        public function __construct(Element $elem, $spec)
+        {
+                $this->_elem = $owner;
+                $this->_name = $spec['name'];
+        }
+
+        public function get()
+        {
+                return $this->_elem->getAttribute($this->_name) ?? '';
+                $v = $this->_elem->getAttribute($this->_name) ?? '';
+                var url = this.doc._resolve(v);
+      return (url === null) ? v : url;
+        }
+
+        public function set($value)
+        {
+                if ($value === NULL && $this->_treat_null_as_empty) {
+                        $value = '';
+                }
+                return $this->_elem->setAttribute($this->_name, $value);
+        }
+function URL(attr) {
+  return {
+    get: function() {
+      var v = this._getattr(attr);
+      if (v === null) { return ''; }
+      var url = this.doc._resolve(v);
+      return (url === null) ? v : url;
+    },
+    set: function(value) {
+      this._setattr(attr, value);
+    }
+  };
+}
+}
+
 
 class IDLReflectedAttributeString
 {

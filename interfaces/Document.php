@@ -425,6 +425,8 @@ class Document extends Node
                         if (!ctype_lower($lname)) {
                                 $lname = \domo\ascii_to_lowercase($lname);
                         }
+                        if ($lname === 'body') {
+                                return
 
                         /* TODO STUB */
                         //return domo\html\createElement($this, $lname, NULL);
@@ -553,7 +555,7 @@ class Document extends Node
          * @param bool $deep - if true, clone entire subtree
          * @return Clone of $this.
          * @extends Node::cloneNode()
-         * @spec DOM-LS 
+         * @spec DOM-LS
          *
          * NOTE:
          * 1. What a tangled web we weave
@@ -763,7 +765,7 @@ class Document extends Node
          * @return Document with same invocation as $this
          * @spec DOMO
          */
-        protected function _subclass_cloneNodeShallow(): Node 
+        protected function _subclass_cloneNodeShallow(): Node
         {
                 $shallow = new Document($this->isHTMLDocument(), $this->_address);
                 $shallow->_mode = $this->_mode;
@@ -783,7 +785,7 @@ class Document extends Node
          * is determined by their children; this will be tested by
          * Node::isEqualNode(), so just return true.
          */
-        protected function _subclass_isEqualNode(Node $other = NULL): bool 
+        protected function _subclass_isEqualNode(Node $other = NULL): bool
         {
                 return true;
         }
@@ -798,7 +800,7 @@ class Document extends Node
          * Called by Node::__root() and Node::__uproot()
          *********************************************************************/
 
-        protected function __add_to_node_table(Node $node): void 
+        protected function __add_to_node_table(Node $node): void
         {
                 $node->__nid = $this->__nid_next++;
                 $this->__nid_to_node[$node->__nid] = $node;
