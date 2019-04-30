@@ -40,7 +40,9 @@ function reflected_attribute($owner, $spec)
                 return new IDLReflectedAttributeEnumerated($owner, $spec);
         } else {
                 switch ($spec['type']) {
-                case 'url':
+                case 'CORS':
+                        return new IDLReflectedAttributeCORS($owner, $spec);
+                case 'URL':
                         return new IDLReflectedAttributeURL($owner, $spec);
                 case 'boolean':
                         return new IDLReflectedAttributeBoolean($owner, $spec);
@@ -102,7 +104,7 @@ class IDLReflectedAttributeURL
 
         public function __construct(Element $elem, $spec)
         {
-                $this->_elem = $owner;
+                $this->_elem = $elem;
                 $this->_name = $spec['name'];
         }
 
@@ -128,6 +130,39 @@ class IDLReflectedAttributeURL
         }
 }
 
+class IDLReflectedAttributeCORS
+{
+        protected $_elem = NULL;
+        protected $_name = NULL;
+
+        public function __construct(Element $elem, $spec)
+        {
+                $this->_elem = $elem;
+                $this->_name = $spec['name'];
+        }
+
+        public function get()
+        {
+                $v = $this->_elem->getAttribute($this->_name);
+                if ($v === NULL) { 
+                        return NULL; 
+                }
+                if (strtolower($v) === 'use-credentials') { 
+                        return 'use-credentials'; 
+                }
+                return 'anonymous';
+        }
+
+        public function set($value=NULL)
+        {
+                if ($value === NULL) {
+                        $this->_elem->removeAttribute($this->_name);
+                } else {
+                        $this->_elem->setAttribute($this->_name, $value);
+                }
+        }
+}
+
 
 class IDLReflectedAttributeString
 {
@@ -137,9 +172,12 @@ class IDLReflectedAttributeString
 
         public function __construct(Element $elem, $spec)
         {
-                $this->_elem = $owner;
+                $this->_elem = $elem;
                 $this->_name = $spec['name'];
-                $this->_treat_null_as_empty = $spec['treatNullAsEmptyString'];
+
+                if (isset($spec['is_nullable'])) {
+                        $this->_treat_null_as_empty = $spec['is_nullable'];
+                }
         }
 
         public function get()
@@ -198,7 +236,7 @@ class IDLReflectedAttributeEnumerated
 
         public function __construct(Element $elem, $spec)
         {
-                $this->_elem = $owner;
+                $this->_elem = $elem;
                 $this->_name = $spec['name'];
                 $this->_is_nullable = $spec['is_nullable'] ?? false;
 

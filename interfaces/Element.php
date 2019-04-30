@@ -608,9 +608,9 @@ class Element extends NonDocumentTypeChildNode
 
                 $attr = $this->attributes->getNamedItem($qname);
                 if ($attr === NULL) {
-                        $attr = new Attr($this, $name, NULL, NULL);
+                        $attr = new Attr($this, $qname, NULL, NULL);
                 }
-                $attr->value = $value;
+                $attr->value($value);
                 $this->attributes->setNamedItem($attr);
         }
 
@@ -638,7 +638,7 @@ class Element extends NonDocumentTypeChildNode
                 if ($attr === NULL) {
                         $attr = new Attr($this, $lname, $prefix, $ns);
                 }
-                $attr->value = $value;
+                $attr->value($value);
                 $this->attributes->setNamedItemNS($attr);
         }
 

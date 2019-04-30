@@ -1,27 +1,10 @@
 <?php
 namespace domo;
 
-require_once('attributes.php');
+require_once('_reflected_attributes.php');
 
-//function CORS(attr) {
-  //return {
-    //get: function() {
-      //var v = this._getattr(attr);
-      //if (v === null) { return null; }
-      //if (v.toLowerCase() === 'use-credentials') { return 'use-credentials'; }
-      //return 'anonymous';
-    //},
-    //set: function(value) {
-      //if (value===null || value===undefined) {
-        //this.removeAttribute(attr);
-      //} else {
-        //this._setattr(attr, value);
-      //}
-    //}
-  //};
-//}
 
-$REFERRER = array(
+const REFERRER = array(
         'type' => array(
                 "", 
                 "no-referrer", 
@@ -42,13 +25,19 @@ function build_attributes($owner, $spec_array)
         $ret = array();
 
         foreach ($spec_array as $name => $spec) {
+                if (!is_array($spec)) {
+                        $spec = array('type'=>$spec, 'name'=>$name);
+                }
+                if (!isset($spec['name'])) {
+                        $spec['name'] = $name;
+                }
                 $ret[$name] = reflected_attribute($owner, $spec);
         }
 
         return $ret;
 }
 
-class HTMLImgElement extends HTMLElement
+class HTMLImgElement extends Element 
 {
         private $_prop;
         private $_attr;
@@ -56,24 +45,24 @@ class HTMLImgElement extends HTMLElement
         public function __construct ($doc, $lname, $prefix)
         {
                 parent::__construct($doc, $lname, $prefix);
-                $this->_attr = build_attributes(array(
-                        'alt' => string,
-                        'src' => URL,
-                        'srcset' => string,
-                        'crossOrigin' => CORS,
-                        'useMap' => string,
-                        'isMap' => boolean,
+                $this->_attr = build_attributes($this, array(
+                        'alt' => 'string',
+                        'src' => 'URL',
+                        'srcset' => 'string',
+                        'crossOrigin' => 'CORS',
+                        'useMap' => 'string',
+                        'isMap' => 'boolean',
                         'height' => array('type'=>'unsigned long', 'default'=>0),
                         'width' => array('type'=>'unsigned long', 'default'=>0),
-                        'referrerPolicy' => $REFERRER,
+                        'referrerPolicy' => REFERRER,
                         /* obsolete */
-                        'name' => string,
-                        'lowsrc' => URL
-                        'align' => string,
+                        'name' => 'string',
+                        'lowsrc' => 'URL',
+                        'align' => 'string',
                         'hspace' => array('type'=>'unsigned long', 'default'=>0),
                         'vspace' => array('type'=>'unsigned long', 'default'=>0),
-                        'longDesc'=> URL,
-                        'border' => array('type'=>string, 'is_nullable'=>true)
+                        'longDesc'=> 'URL',
+                        'border' => array('type'=>'string', 'is_nullable'=>true)
                 ));
         }
         public function __get($name)
@@ -90,45 +79,45 @@ class HTMLImgElement extends HTMLElement
         }
 }
 
-class HTMLIFrameElement extends HTMLElement
-{
-        private $_attr;
+//class HTMLIFrameElement extends HTMLElement
+//{
+        //private $_attr;
 
-        public function __construct ($doc, $lname, $prefix)
-        {
-                parent::__construct($doc, $lname, $prefix);
-                $this->_attr = build_attributes(array(
-                        'src' => 'URL',
-                        'srcdoc' => 'string',
-                        'name' => 'string',
-                        'width' => 'string',
-                        'height' => 'string',
-                        'seamless' => 'boolean',
-                        'allowFullscreen' => 'boolean',
-                        'allowUserMedia' => 'boolean',
-                        'allowPaymentRequest' => 'boolean',
-                        'referrerPolicy' => REFERRER,
-                        'align' => 'string',
-                        'scrolling' => 'string',
-                        'frameBorder' => 'string',
-                        'longDesc' => 'URL',
-                        'marginHeight' => array('type'=>'string', 'is_nullable'=>true),
-                        'marginWidth' => array('type'=>'string', 'is_nullable'=>true)
-                ));
-        }
+        //public function __construct ($doc, $lname, $prefix)
+        //{
+                //parent::__construct($doc, $lname, $prefix);
+                //$this->_attr = build_attributes(array(
+                        //'src' => 'URL',
+                        //'srcdoc' => 'string',
+                        //'name' => 'string',
+                        //'width' => 'string',
+                        //'height' => 'string',
+                        //'seamless' => 'boolean',
+                        //'allowFullscreen' => 'boolean',
+                        //'allowUserMedia' => 'boolean',
+                        //'allowPaymentRequest' => 'boolean',
+                        //'referrerPolicy' => REFERRER,
+                        //'align' => 'string',
+                        //'scrolling' => 'string',
+                        //'frameBorder' => 'string',
+                        //'longDesc' => 'URL',
+                        //'marginHeight' => array('type'=>'string', 'is_nullable'=>true),
+                        //'marginWidth' => array('type'=>'string', 'is_nullable'=>true)
+                //));
+        //}
 
-        public function __get($name)
-        {
-                if (isset($this->_attr[$name])) {
-                        return $this->_attr[$name]->get();
-                }
-        }
-        public function __set($name, $value)
-        {
-                if (isset($this->_attr[$name])) {
-                        $this->_attr[$name]->set($value);
-                }
-        }
-}
+        //public function __get($name)
+        //{
+                //if (isset($this->_attr[$name])) {
+                        //return $this->_attr[$name]->get();
+                //}
+        //}
+        //public function __set($name, $value)
+        //{
+                //if (isset($this->_attr[$name])) {
+                        //$this->_attr[$name]->set($value);
+                //}
+        //}
+//}
 
 ?>

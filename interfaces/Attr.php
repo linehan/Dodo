@@ -84,7 +84,7 @@ class Attr extends Node
          *      prefix = NULL
          *      value = ""
          */
-        public function __construct(?Element $elt, string $lname, string $prefix, string $ns, string $value)
+        public function __construct(?Element $elt, string $lname, ?string $prefix=NULL, ?string $ns=NULL, ?string $value="")
         {
                 /* DOM4: (readonly) non-empty string */
                 $this->_localName = $lname;
@@ -155,7 +155,7 @@ class Attr extends Node
                 }
         }
         /* NOTE: You can unset an attribute by calling Attr::value(""); */
-        public function value(string $v = NULL)
+        public function value(?string $v = NULL)
         {
                 if ($v === NULL) {
                         /* GET */
