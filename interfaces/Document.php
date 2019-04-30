@@ -425,8 +425,6 @@ class Document extends Node
                         if (!ctype_lower($lname)) {
                                 $lname = \domo\ascii_to_lowercase($lname);
                         }
-                        if ($lname === 'body') {
-                                return
 
                         /* TODO STUB */
                         //return domo\html\createElement($this, $lname, NULL);

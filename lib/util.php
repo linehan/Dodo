@@ -134,9 +134,4 @@ function ascii_to_uppercase(string $s): string
 }
 
 
-  _resolve: { value: function(href) {
-    //XXX: Cache the URL
-    return new URL(this._documentBaseURL).resolve(href);
-  }},
-
 ?>
