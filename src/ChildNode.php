@@ -2,7 +2,7 @@
 namespace domo;
 
 require_once('Node.php');
-require_once(__DIR__.'/../lib/LinkedList.php');
+require_once('LinkedList.php');
 
 function _fragment_from_arguments($document, $args)
 {

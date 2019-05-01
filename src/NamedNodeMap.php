@@ -1,7 +1,7 @@
 <?php
 namespace domo;
 
-require_once(__DIR__.'/../lib/util.php');
+require_once('util.php');
 
 /*
  * History: NamedNodeMap has nothing to do with Nodes, it's a collection
@@ -56,7 +56,7 @@ class NamedNodeMap extends \ArrayObject
                                 $this->__qname_to_attr[$qname][] = $a;
                         } else {
                                 $this->__qname_to_attr[$qname] = array(
-                                        $this->__qname_to_attr[$qname], 
+                                        $this->__qname_to_attr[$qname],
                                         $a
                                 );
                         }
@@ -82,7 +82,7 @@ class NamedNodeMap extends \ArrayObject
                                 $this->__qname_to_attr[$qname][] = $a;
                         } else {
                                 $this->__qname_to_attr[$qname] = array(
-                                        $this->__qname_to_attr[$qname], 
+                                        $this->__qname_to_attr[$qname],
                                         $a
                                 );
                         }
@@ -132,7 +132,7 @@ class NamedNodeMap extends \ArrayObject
         }
 
         /* DOMO */
-        public function hasNamedItem(string $qname): bool 
+        public function hasNamedItem(string $qname): bool
         {
                 /*
                  * Per HTML spec, we normalize qname before lookup,
@@ -146,7 +146,7 @@ class NamedNodeMap extends \ArrayObject
         }
 
         /* DOMO */
-        public function hasNamedItemNS(?string $ns, string $lname): bool 
+        public function hasNamedItemNS(?string $ns, string $lname): bool
         {
                 $ns = $ns ?? "";
                 return isset($this->__lname_to_attr["$ns|$lname"]);

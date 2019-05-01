@@ -52,7 +52,7 @@ require_once('Comment.php');
 require_once('Text.php');
 require_once('ProcessingInstruction.php');
 require_once('DocumentType.php');
-require_once(__DIR__.'/../lib/util.php');
+require_once('util.php');
 
 
 class MultiId
