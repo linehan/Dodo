@@ -28,7 +28,7 @@ class HTMLCollection extends \ArrayObject
                 return count($this);
         }
 
-        public function item(integer $i): ?Element
+        public function item(int $i): ?Element
         {
                 $this->updateCache();
                 return $this[$i] ?? NULL;

@@ -710,10 +710,10 @@ class Element extends NonDocumentTypeChildNode
          * Test Element for attribute with the given qualified name
          *
          * @param string $qname Qualified name of attribute
-         * @return boolean
+         * @return bool 
          * @spec DOM-LS
          */
-        public function hasAttribute(string $qname): boolean
+        public function hasAttribute(string $qname): bool 
         {
                 return $this->attributes->hasNamedItem($qname);
         }
@@ -723,10 +723,10 @@ class Element extends NonDocumentTypeChildNode
          *
          * @param ?string $ns the namespace
          * @param string $lname the localName
-         * @return boolean
+         * @return bool 
          * @spec DOM-LS
          */
-        public function hasAttributeNS(?string $ns, string $lname): boolean
+        public function hasAttributeNS(?string $ns, string $lname): bool 
         {
                 return $this->attributes->hasNamedItemNS($ns, $lname);
         }
@@ -737,11 +737,11 @@ class Element extends NonDocumentTypeChildNode
          * Toggle the first attribute with the given qualified name
          *
          * @param string $qname qualified name
-         * @param boolean $force whether to set if no attribute exists
-         * @return boolean whether we set or removed an attribute
+         * @param bool $force whether to set if no attribute exists
+         * @return bool whether we set or removed an attribute
          * @spec DOM-LS
          */
-        public function toggleAttribute(string $qname, ?boolean $force=NULL): boolean
+        public function toggleAttribute(string $qname, ?bool $force=NULL): bool 
         {
                 if (!\domo\whatwg\is_valid_xml_name($qname)) {
                         \domo\error("InvalidCharacterError");
@@ -767,10 +767,10 @@ class Element extends NonDocumentTypeChildNode
         /**
          * Test whether this Element has any attributes
          *
-         * @return boolean
+         * @return bool 
          * @spec DOM-LS
          */
-        public function hasAttributes(): boolean
+        public function hasAttributes(): bool 
         {
                 return !empty($this->attributes->index_to_attr);
         }

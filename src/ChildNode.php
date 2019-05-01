@@ -203,7 +203,7 @@ abstract class ChildNodeLeaf extends ChildNode
                 parent::__construct();
         }
 
-        public final function hasChildNodes(): boolean
+        public final function hasChildNodes(): bool 
         {
                 return false;
         }

@@ -56,7 +56,7 @@ class DOMImplementation
          *      defensive programming.
          */
         public
-        function hasFeature(string $feature="", string $version="") : boolean
+        function hasFeature(string $feature="", string $version="") : bool 
         {
                 /*
                  * Feature/version pairs that DOMImplementation->hasFeature()

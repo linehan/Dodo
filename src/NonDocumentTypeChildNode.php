@@ -61,7 +61,7 @@ abstract class NonDocumentTypeChildNodeLeaf extends NonDocumentTypeChildNode
                 parent::__construct();
         }
 
-        public final function hasChildNodes(): boolean
+        public final function hasChildNodes(): bool 
         {
                 return false;
         }

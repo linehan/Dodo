@@ -17,7 +17,7 @@ require_once('util.php');
  */
 
 /* https://dom.spec.whatwg.org/#dom-node-comparedocumentposition */
-function compare_document_position(\domo\Node $node1, \domo\Node $node2): integer
+function compare_document_position(\domo\Node $node1, \domo\Node $node2): int 
 {
         /* #1-#2 */
         if ($node1 === $node2) {
@@ -916,8 +916,24 @@ function serialize_node(\domo\Node $child, \domo\Node $parent)
  * Recall:
  *      \w matches any alphanumeric character A-Za-z0-9
  */
-define('pattern_ascii_name', '/^[_:A-Za-z][-.:\w]+$/');
-define('pattern_ascii_qname', '/^([_A-Za-z][-.\w]+|[_A-Za-z][-.\w]+:[_A-Za-z][-.\w]+)$/');
+/* 
+ * TODO: PORT NOTE: in Domino, this pattern was '/^[_:A-Za-z][-.:\w]+$/', 
+ * which fails for one-letter tagnames (e.g. <p>). This was not a problem
+ * because <p> is an HTML element and is thus instantiated differently, but
+ * I think one-letter tagnames is still valid, right?
+ *
+ * Also, in PHP, sending 'p' as the name will not add '\n' to the end of
+ * the string, while sending "p" DOES add the newline. The newline is 
+ * matched by \w and will thus allow a match, but it depends on whether
+ * the string was single or double-quoted. 
+ *
+ * To avoid this complication, we switched the '+' to a '*'.
+ *
+ * Interestingly, in the regex patterns in the next section, it seems that
+ * we do indeed use '*' in Domino, so why was '+' being preferred here? 
+ */
+define('pattern_ascii_name', '/^[_:A-Za-z][-.:\w]*$/');
+define('pattern_ascii_qname', '/^([_A-Za-z][-.\w]*|[_A-Za-z][-.\w]*:[_A-Za-z][-.\w]*)$/');
 
 /*
  * If the regular expressions above fail, try more complex ones that work

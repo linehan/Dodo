@@ -747,7 +747,7 @@ class Document extends Node
         /*********** Utility methods extending normal DOM behavior ***********/
 
         /* TODO Where does this fit in */
-        public function isHTMLDocument(): boolean
+        public function isHTMLDocument(): bool 
         {
                 if ($this->_type === 'html') {
                         $elt = $this->documentElement();

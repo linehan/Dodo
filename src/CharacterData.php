@@ -31,7 +31,7 @@ abstract class CharacterData extends NonDocumentTypeChildNodeLeaf
          * In Domino.js, checking was done to ensure $offset and $count
          * were integers and not-undefined. Here we just use type hints.
          */
-        public function substringData(integer $offset, integer $count)
+        public function substringData(int $offset, int $count)
         {
                 if ($offset > strlen($this->_data) || $offset < 0 || count < 0) {
                         \domo\error("IndexSizeError");
@@ -61,7 +61,7 @@ abstract class CharacterData extends NonDocumentTypeChildNodeLeaf
         //     Insert data into the context object's data after
         //     offset UTF-16 code units.
         //
-        public function insertData(integer $offset, $data)
+        public function insertData(int $offset, $data)
         {
                 return $this->replaceData($offset, 0, $data);
         }
@@ -79,7 +79,7 @@ abstract class CharacterData extends NonDocumentTypeChildNodeLeaf
         //
         //     Starting from offset UTF-16 code units remove count
         //     UTF-16 code units from the context object's data.
-        public function deleteData(integer $offset, integer $count)
+        public function deleteData(int $offset, int $count)
         {
                 return $this->replaceData($offset, $count, '');
         }
@@ -93,7 +93,7 @@ abstract class CharacterData extends NonDocumentTypeChildNodeLeaf
         // count as arguments followed by the insertData() method
         // with offset and data as arguments and re-throw any
         // exceptions these methods might have thrown.
-        public function replaceData(integer $offset, integer $count, $data)
+        public function replaceData(int $offset, int $count, $data)
         {
                 $curtext = $this->_data;
                 $len = strlen($curtext);
@@ -114,7 +114,7 @@ abstract class CharacterData extends NonDocumentTypeChildNodeLeaf
                 $this->_data = $prefix + $data + $suffix;
         }
 
-        public function length(): integer
+        public function length(): int 
         {
                 strlen($this->_data);
         }
