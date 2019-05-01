@@ -4,7 +4,7 @@ Domo is an effort to port [Domino.js](https://github.com/fgnass/domino) to PHP 7
 
 ## Usage
 
-A better example and set of tests is coming. For an extremely basic usage, see `test/demo.php`.
+A better set of examples and tests is coming. For an extremely basic usage, see `test/demo.php`.
 
 Change directories to `test` and run:
 ```
