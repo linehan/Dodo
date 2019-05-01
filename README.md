@@ -1,6 +1,6 @@
-# DOMOperator (DOMO)
+# DOMO (DOM Operator)
 
-DOMOperator is an effort to port [Domino.js](https://github.com/fgnass/domino) to PHP, in order to provide a more performant and spec-compliant DOM library than the DOMDocument PHP extension, which is built on [libxml2](www.xmlsoft.org).
+Domo is an effort to port [Domino.js](https://github.com/fgnass/domino) to PHP, in order to provide a more performant and spec-compliant DOM library than the DOMDocument PHP extension, which is built on [libxml2](www.xmlsoft.org).
 
 ## Status
 
