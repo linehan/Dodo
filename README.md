@@ -14,11 +14,9 @@ participate in its implementation.
    using their (Document-assigned) unique `Node::__nid` values.
 
 * `Document::__id_to_element`
-.. Hash table which indexes a Document's child Nodes by their "id" content
+.. Hash table which indexes a document's child nodes by their "id" content
    attribute. In the event of a collision, the hash bucket is converted
-   to an object of class MultiId.
-
-   Used by Document::getElementById().
+   to an object of class `MultiId`. Used by `Document::getElementById()`.
 
 * `MultiId` (defined in `/src/Document.php`).
 .. Maintains an array of `Node`s, indexed by their (internal-use)
