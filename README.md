@@ -20,7 +20,7 @@ This software is a work in progress. Prioritized *TODO*s:
 4. Integration with [RemexHtml](https://gerrit.wikimedia.org/g/mediawiki/libs/RemexHtml/)
 5. Integration with [zest.php](https://github.com/cscott/zest.php/tree/master)
 6. Performance benchmarks
-7. Cutting out things (even if they're in the spec) that are irrelevant to Parsoid
+7. Cutting out things (even if they're in the spec) that are irrelevant to [Parsoid](https://www.mediawiki.org/wiki/Parsoid)
 
 ## Background
 
