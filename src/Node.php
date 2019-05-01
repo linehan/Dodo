@@ -64,10 +64,8 @@
  *****************************************************************************/
 namespace domo;
 
-//require_once("EventTarget.php");
-//require_once("NodeUtils.php");
-require_once(__DIR__.'/../lib/LinkedList.php');
-require_once(__DIR__.'/../lib/util.php');
+require_once('LinkedList.php');
+require_once('util.php');
 require_once("NodeList.php");
 require_once("whatwg.php");
 
@@ -88,6 +86,10 @@ abstract class Node /* extends EventTarget // try factoring events out? */
         /* Assigned by Document::adopt() as a node index in the Document */
         protected $__nid;
 
+        /* Node's index in childNodes of parent (NULL if no parent) */
+        /* TODO: Make it more obvious, like sibling_index */
+        public $___index;
+
         /**********************************************************************
          * BOOK-KEEPING: What Node knows about its ancestors
          **********************************************************************/
@@ -101,9 +103,6 @@ abstract class Node /* extends EventTarget // try factoring events out? */
         /**********************************************************************
          * BOOK-KEEPING: What Node knows about the childNodes of its parent
          **********************************************************************/
-
-        /* DOMO: Node's index in childNodes of parent (NULL if no parent) */
-        public $_siblingIndex;
 
         /* DOMO: Next sibling in childNodes of parent ($this if none) */
         public $_nextSibling;
@@ -121,7 +120,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
         /* DOMO: Array form of childNodes (NULL if no children or using LL) */
         public $_childNodes;
 
-
+        /* TODO: Unused */
         public $_roothook;
 
         /**********************************************************************
@@ -141,7 +140,6 @@ abstract class Node /* extends EventTarget // try factoring events out? */
                 /* Our siblings */
                 $this->_nextSibling = $this; // for LL
                 $this->_previousSibling = $this; // for LL
-                $this->_siblingIndex = NULL;
         }
 
         /**********************************************************************
@@ -166,7 +164,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          * methods and asking the subclasses to implement the accessors
          * there, like how textContent is done now.
          */
-        public function nodeType(): integer
+        public function nodeType(): int
         {
                 return $this->_nodeType;
         }
@@ -310,7 +308,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
         /**
          * Determine if the Node has any children
          *
-         * @return boolean
+         * @return bool
          * @spec DOM-LS
          *
          * CAUTION
@@ -318,7 +316,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          * for this method. Depending on whether we are in NodeList or
          * LinkedList mode, one or the other or both may be NULL.
          */
-        public function hasChildNodes(): boolean
+        public function hasChildNodes(): bool
         {
                 if ($this->_childNodes !== NULL) {
                         return !empty($this->_childNodes); /* NodeList */
@@ -546,12 +544,12 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          * Indicates whether a node is a descendant of this one
          *
          * @param Node $node
-         * @returns boolean
+         * @return bool
          * @spec DOM-LS
          *
          * NOTE: see http://ejohn.org/blog/comparing-document-position/
          */
-        public function contains(?Node $node): boolean
+        public function contains(?Node $node): bool
         {
                 if ($node === NULL) {
                         return false;
@@ -570,7 +568,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          * @return One of the document position constants
          * @spec DOM-LS
          */
-        public function compareDocumentPosition(Node $that): integer
+        public function compareDocumentPosition(Node $that): int
         {
                 /* CAUTION: The order of these args matters */
                 return \domo\whatwg\compare_document_position($that, $this);
@@ -580,10 +578,10 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          * Whether this node and another are the same one in the same DOM
          *
          * @param Node $node to compare to this one
-         * @return boolean
+         * @return bool
          * @spec DOM-LS
          */
-        public function isSameNode(Node $node): boolean
+        public function isSameNode(Node $node): bool
         {
                 return $this === $node;
         }
@@ -592,7 +590,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          * Determine whether this node and $other are equal
          *
          * @param Node $other - will be compared to $this
-         * @return boolean
+         * @return bool
          * @spec: DOM-LS
          *
          * NOTE:
@@ -607,7 +605,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          *
          * Yes, we realize it's a bit weird.
          */
-        public function isEqualNode(?Node $node = NULL): bool 
+        public function isEqualNode(?Node $node = NULL): bool
         {
                 if ($node === NULL) {
                         /* We're not equal to NULL */
@@ -713,9 +711,9 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          * Determine whether this is the default namespace
          *
          * @param string $ns
-         * @return boolean
+         * @return bool
          */
-        public function isDefaultNamespace(?string $ns): boolean
+        public function isDefaultNamespace(?string $ns): bool
         {
                 return ($ns ?? NULL) === $this->lookupNamespaceURI(NULL);
         }
@@ -745,7 +743,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
         /**
          * Determine whether this Node is rooted (belongs to a tree)
          *
-         * return: boolean
+         * return: bool
          *
          * NOTE
          * A Node is rooted if it belongs to a tree, in which case it will
@@ -757,7 +755,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          *
          * TODO: This should be Node::isConnected(), see spec.
          */
-        public function __is_rooted(): bool 
+        public function __is_rooted(): bool
         {
                 return !!$this->__nid;
         }
@@ -852,14 +850,14 @@ abstract class Node /* extends EventTarget // try factoring events out? */
         /**
          * The index of this Node in its parent's childNodes list
          *
-         * @return integer index
+         * @return int index
          * @throw Something if we have no parent
          *
          * NOTE
          * Calling Node::__index() will automatically trigger a switch
          * to the NodeList representation (see Node::childNodes()).
          */
-        public function __index(): integer
+        public function __index(): int
         {
                 if ($this->_parentNode === NULL) {
                         return 0; /* ??? TODO: throw or make an error ??? */
@@ -873,7 +871,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
                 $childNodes = $this->_parentNode->childNodes();
 
                 /* We end up re-indexing here if we ever run into trouble */
-                if ($this->_index === NULL || $childNodes[$this->_index] !== $this) {
+                if ($this->___index === NULL || $childNodes[$this->___index] !== $this) {
                         /*
                          * Ensure that we don't have an O(N^2) blowup
                          * if none of the kids have defined indices yet
@@ -881,12 +879,12 @@ abstract class Node /* extends EventTarget // try factoring events out? */
                          * previousSibling
                          */
                         foreach ($childNodes as $i => $child) {
-                                $child->_index = $i;
+                                $child->___index = $i;
                         }
 
-                        \domo\assert($childNodes[$this->_index] === $this);
+                        \domo\assert($childNodes[$this->___index] === $this);
                 }
-                return $this->_index;
+                return $this->___index;
         }
 
         /**
@@ -956,7 +954,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
         /**
          * Return lastModTime value for this Node
          *
-         * @return integer
+         * @return int
          *
          * NOTE The _lastModTime value is used as a cache invalidation
          * mechanism. If the node does not already have one, it will be
@@ -964,7 +962,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          * (modclock does not return the actual time; it is simply a
          * counter incremented on each document modification)
          */
-        public function __lastmod(): integer
+        public function __lastmod(): int
         {
                 if (!$this->___lastmod) {
                         $this->___lastmod = $this->__node_document()->__modclock;

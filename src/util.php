@@ -1,7 +1,7 @@
 <?php
 namespace domo;
 
-require_once(__DIR__.'/../interfaces/DOMException.php');
+require_once('DOMException.php');
 
 /******************************************************************************
  * CONSTANTS

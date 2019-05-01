@@ -149,7 +149,7 @@
  */
 namespace domo;
 
-require_once(__DIR__.'/../lib/util.php');
+require_once('util.php');
 require_once('NonDocumentTypeChildNode.php');
 require_once('Attr.php');
 require_once('NamedNodeMap.php');
@@ -352,7 +352,7 @@ class Element extends NonDocumentTypeChildNode
          * METHODS DELEGATED FROM NODE
          **********************************************************************/
 
-        public function _subclass_cloneNodeShallow(): ?Node 
+        public function _subclass_cloneNodeShallow(): ?Node
         {
                 /*
                  * XXX:
@@ -385,7 +385,7 @@ class Element extends NonDocumentTypeChildNode
                 return $clone;
         }
 
-        public function _subclass_isEqualNode(Node $node): bool 
+        public function _subclass_isEqualNode(Node $node): bool
         {
                 if ($this->localName() !== $node->localName()
                 || $this->namespaceURI() !== $node->namespaceURI()

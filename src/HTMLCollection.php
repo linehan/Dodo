@@ -1,4 +1,5 @@
 <?php
+namespace domo;
 
 /*
  * Element::children will be an instance of this class.
@@ -9,7 +10,7 @@
  *
  * TODO: Clean up to bring in line with style guidelines used elsewhere.
  */
-class HTMLCollection extends ArrayObject
+class HTMLCollection extends \ArrayObject
 {
         private $name_to_item = array();
         private $lastModTime;
@@ -47,8 +48,8 @@ class HTMLCollection extends ArrayObject
 
         public function updateCache()
         {
-                if ($this->_lastModTime !== $this->owner->lastModTime()) {
-                        $this->_lastModTime = $this->owner->lastModTime();
+                if ($this->_lastModTime !== $this->owner->__lastmod_update()) {
+                        $this->_lastModTime = $this->owner->__lastmod_update();
 
                         foreach ($this as $i => $v) {
                                 unset($this[$i]);

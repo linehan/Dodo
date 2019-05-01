@@ -58,12 +58,14 @@ require_once(__DIR__.'/../lib/util.php');
 class MultiId
 {
         public $table = array();
+        public $length = 0;
+        public $first = NULL;
 
         public function __construct(Node $node)
         {
                 $this->table[$node->__nid] = $node;
                 $this->length = 1;
-                $this->first = NULL;
+                $this->first = NULL; // invalidate cache
         }
 
         // Add a node to the list, with O(1) time
@@ -72,7 +74,7 @@ class MultiId
                 if (!isset($this->table[$node->__nid])) {
                         $this->table[$node->__nid] = $node;
                         $this->length++;
-                        $this->first = NULL;
+                        $this->first = NULL; // invalidate cache
                 }
         }
 
@@ -82,7 +84,7 @@ class MultiId
                 if ($this->table[$node->__nid]) {
                         unset($this->table[$node->__nid]);
                         $this->length--;
-                        $this->first = NULL;
+                        $this->first = NULL; // invalidate cache
                 }
         }
 
@@ -92,8 +94,8 @@ class MultiId
         // (the invalidation is by setting $this->first to NULL in add and del)
         public function get_first()
         {
-                /* jshint bitwise: false */
-                if (!$this->first) {
+                if ($this->first === NULL) {
+                        /* cache is invalid, re-compute */
                         foreach ($this->table as $nid => $node) {
                                 if ($this->first === NULL || $this->first->compareDocumentPosition($node) & DOCUMENT_POSITION_PRECEDING) {
                                         $this->first = $node;

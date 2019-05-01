@@ -6,7 +6,7 @@ require_once('Node.php');
 require_once('Element.php');
 require_once('Document.php');
 require_once('Attr.php');
-require_once(__DIR__.'/../lib/util.php');
+require_once('util.php');
 
 /*
  * Why are these here?
@@ -207,8 +207,8 @@ function locate_prefix(\domo\Node $node, ?string $ns): ?string
 
 function insert_before_or_replace(\domo\Node $node, \domo\Node $parent, ?\domo\Node $before, bool $replace): void
 {
-        /* 
-         * TODO: FACTOR: $ref_node is intended to always be non-NULL 
+        /*
+         * TODO: FACTOR: $ref_node is intended to always be non-NULL
          * if $isReplace is true, but I think that could fail.
          */
 
@@ -309,7 +309,7 @@ function insert_before_or_replace(\domo\Node $node, \domo\Node $parent, ?\domo\N
         /*********** EMPTY OUT THE DOCUMENT FRAGMENT ************/
 
         if ($node instanceof \domo\DocumentFragment) {
-                /* 
+                /*
                  * TODO: Why? SPEC SAYS SO!
                  */
                 if ($node->_childNodes) {
@@ -325,11 +325,11 @@ function insert_before_or_replace(\domo\Node $node, \domo\Node $parent, ?\domo\N
         $d = $parent->__node_document();
 
         if ($bothWereRooted) {
-                $parent->__lastmod_update(); 
-                $d->__mutate_move($insert[0]); 
+                $parent->__lastmod_update();
+                $d->__mutate_move($insert[0]);
         } else {
                 if ($parent->__is_rooted()) {
-                        $parent->__lastmod_update(); 
+                        $parent->__lastmod_update();
                         foreach ($insert as $n) {
                                 $n->__root($d);
                                 $d->__mutate_insert($n);
@@ -366,9 +366,9 @@ function ensure_insert_valid(\domo\Node $node, \domo\Node $parent, ?\domo\Node $
                 \domo\error("HierarchyRequestError");
         }
         if ($node->__node_document() === $parent->__node_document() && $node->__is_rooted() === $parent->__is_rooted()) {
-                /* 
+                /*
                  * If the conditions didn't figure it out, then check
-                 * by traversing parentNode chain. 
+                 * by traversing parentNode chain.
                  */
                 for ($n=$parent; $n!==NULL; $n=$n->parentNode()) {
                         if ($n === $node) {
@@ -548,9 +548,9 @@ function ensure_replace_valid(\domo\Node $node, \domo\Node $parent, \domo\Node $
                 \domo\error("HierarchyRequestError");
         }
         if ($node->__node_document() === $parent->__node_document() && $node->__is_rooted() === $parent->__is_rooted()) {
-                /* 
+                /*
                  * If the conditions didn't figure it out, then check
-                 * by traversing parentNode chain. 
+                 * by traversing parentNode chain.
                  */
                 for ($n=$parent; $n!==NULL; $n=$n->parentNode()) {
                         if ($n === $node) {
@@ -786,7 +786,7 @@ function serialize_node(\domo\Node $child, \domo\Node $parent)
         $s = "";
 
         switch ($child->_nodeType) {
-        case \domo\ELEMENT_NODE: 
+        case \domo\ELEMENT_NODE:
                 $ns = $child->namespaceURI();
                 $html = ($ns === \domo\NAMESPACE_HTML);
 
@@ -825,7 +825,7 @@ function serialize_node(\domo\Node $child, \domo\Node $parent)
                 break;
 
         case \domo\TEXT_NODE:
-        case \domo\CDATA_SECTION_NODE: 
+        case \domo\CDATA_SECTION_NODE:
                 if ($parent->_nodeType === \domo\ELEMENT_NODE && $parent->namespaceURI() === \domo\NAMESPACE_HTML) {
                         $parenttag = $parent->tagName();
                 } else {
@@ -843,7 +843,7 @@ function serialize_node(\domo\Node $child, \domo\Node $parent)
                 $s .= '<!--' . $child->data() . '-->';
                 break;
 
-        case \domo\PROCESSING_INSTRUCTION_NODE: 
+        case \domo\PROCESSING_INSTRUCTION_NODE:
                 $s .= '<?' . $child->target() . ' ' . $child->data() . '?>';
                 break;
 
