@@ -1,24 +1,22 @@
 <?php
 namespace domo;
 
-require_once('_reflected_attributes.php');
-
+require_once('reflected_attributes.php');
 
 const REFERRER = array(
         'type' => array(
-                "", 
-                "no-referrer", 
-                "no-referrer-when-downgrade", 
-                "same-origin", 
-                "origin", 
-                "strict-origin", 
-                "origin-when-cross-origin", 
-                "strict-origin-when-cross-origin", 
+                "",
+                "no-referrer",
+                "no-referrer-when-downgrade",
+                "same-origin",
+                "origin",
+                "strict-origin",
+                "origin-when-cross-origin",
+                "strict-origin-when-cross-origin",
                 "unsafe-url"
         ),
         'missing' => ''
 );
-
 
 function build_attributes($owner, $spec_array)
 {
@@ -37,7 +35,7 @@ function build_attributes($owner, $spec_array)
         return $ret;
 }
 
-class HTMLImgElement extends Element 
+class HTMLImgElement extends Element
 {
         private $_prop;
         private $_attr;

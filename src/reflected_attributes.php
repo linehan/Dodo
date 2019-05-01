@@ -60,7 +60,6 @@ function reflected_attribute($owner, $spec)
         }
 }
 
-
 class IDLReflectedAttributeBoolean
 {
         protected $_elem = NULL;
@@ -110,7 +109,7 @@ class IDLReflectedAttributeURL
 
         public function get()
         {
-                $v = $this->_elem->getAttribute($this->_name); 
+                $v = $this->_elem->getAttribute($this->_name);
 
                 if ($v === NULL) {
                         return '';
@@ -144,11 +143,11 @@ class IDLReflectedAttributeCORS
         public function get()
         {
                 $v = $this->_elem->getAttribute($this->_name);
-                if ($v === NULL) { 
-                        return NULL; 
+                if ($v === NULL) {
+                        return NULL;
                 }
-                if (strtolower($v) === 'use-credentials') { 
-                        return 'use-credentials'; 
+                if (strtolower($v) === 'use-credentials') {
+                        return 'use-credentials';
                 }
                 return 'anonymous';
         }
@@ -162,7 +161,6 @@ class IDLReflectedAttributeCORS
                 }
         }
 }
-
 
 class IDLReflectedAttributeString
 {
