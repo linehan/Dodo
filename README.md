@@ -26,13 +26,7 @@ This software is a work in progress. Prioritized *TODO*s:
 
 (taken from [this page](https://www.mediawiki.org/wiki/Parsoid/PHP/Help_wanted))
 
-The PHP DOM extension is a wrapper around libxml2 with a thin layer of
-DOM-compatibility on top ("To some extent libxml2 provides support for the
-following additional specifications but doesn't claim to implement them
-completely [...] Document Object Model (DOM) Level 2 Core [...] but it doesn't
-implement the API itself, gdome2 does this on top of libxml2").
+> The PHP DOM extension is a wrapper around libxml2 with a thin layer of DOM-compatibility on top ("To some extent libxml2 provides support for the following additional specifications but doesn't claim to implement them completely [...] Document Object Model (DOM) Level 2 Core [...] but it doesn't implement the API itself, gdome2 does this on top of libxml2").
 
-This is not really remotely close to a modern standards-compliant HTML5 DOM
-implementation and is barely maintained, much less kept in sync with the
-WHATWG's pace of change.
+> This is not really remotely close to a modern standards-compliant HTML5 DOM implementation and is barely maintained, much less kept in sync with the WHATWG's pace of change.
 
