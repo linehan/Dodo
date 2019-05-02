@@ -1,4 +1,8 @@
 <?php
+/******************************************************************************
+ * ChildNode.php
+ * -------------
+ ******************************************************************************/
 namespace domo;
 
 require_once('Node.php');
@@ -124,7 +128,7 @@ abstract class ChildNode extends Node
                 $this->_parentNode = NULL;
         }
 
-        /*
+        /**
          * Remove this node w/o uprooting or sending mutation events
          */
         protected function _remove()
@@ -146,7 +150,7 @@ abstract class ChildNode extends Node
                 $parent->__lastmod_update();
         }
 
-        /*
+        /**
          * Replace this node with the nodes or strings provided as arguments.
          */
         public function replaceWith(/* Nodes or DOMStrings */)
@@ -189,7 +193,7 @@ abstract class ChildNode extends Node
  * We have to use this because PHP is single-inheritance, so DocumentType
  * can't inherit from ChildNode and Leaf at once.
  *
- * We could use traits...................
+ * We could use traits...................nah
  *
  * This class selectively overrides Node, providing an alternative
  * (more performant) base class for Node subclasses that can never

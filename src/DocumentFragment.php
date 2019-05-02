@@ -1,8 +1,11 @@
 <?php
-
+/******************************************************************************
+ * DocumentFragment.php
+ * --------------------
+ ******************************************************************************/
 namespace domo;
 
-class DocumentFragment extends Node 
+class DocumentFragment extends Node
 {
         public $_nodeType = DOCUMENT_FRAGMENT_NODE;
         public $_nodeName = '#document-fragment';
@@ -11,7 +14,7 @@ class DocumentFragment extends Node
         public function __construct(Document $doc)
         {
                 parent::__construct($doc);
-        
+
                 $this->_ownerDocument = $doc;
         }
 
@@ -32,7 +35,7 @@ class DocumentFragment extends Node
                         }
                 }
         }
-                
+
         public function querySelector($selector)
         {
                 // implement in terms of querySelectorAll
@@ -40,7 +43,7 @@ class DocumentFragment extends Node
                 $nodes = $this->querySelectorAll($selector);
                 return count($nodes) ? $nodes[0] : NULL;
         }
-  
+
         public function querySelectorAll($selector)
         {
                 /* TODO: Stub */
@@ -74,10 +77,10 @@ class DocumentFragment extends Node
         {
                 return $this->__serialize();
         }
-  
+
         public function outerHTML(?string $value = NULL)
         {
-                return $this->__serialize(); 
+                return $this->__serialize();
         }
 }
 

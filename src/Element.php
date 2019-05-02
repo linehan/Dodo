@@ -1,7 +1,7 @@
 <?php
 /******************************************************************************
  * Element.php
- * ````````````
+ * -----------
  * Defines an "Element"
  ******************************************************************************/
 /******************************************************************************
@@ -18,57 +18,6 @@
  * XML-NS    W3C XML Namespaces		     http://w3.org/TR/xml-names/
  * CSS-OM    CSS Object Model                http://drafts.csswg.org/cssom-view/
  * HTML-LS   HTML Living Standard            https://html.spec.whatwg.org/
- *
- ******************************************************************************/
-/******************************************************************************
- * PORT NOTES
- * ----------
- * CHANGED:
- *        - Element now extends NonDocumentTypeChildNode, as in the spec
- *
- *        - isHTML  => isHTMLElement(),
- *          mirroring the change in Document from isHTML to isHTMLDocument()
- *
- *        - Read-only attributes converted to getter methods backed by
- *          private/protected properties starting with an underscore, per
- *          convention in this port:
- *                nodeType
- *                ownerDocument
- *                localName
- *                namespaceURI
- *                prefix
- *
- *        - setAttributeNode and setAttributeNodeNS were not behaving
- *          according to spec; rather than creating a new Attr if one
- *          already existed, and replacing the old one, they are mutating
- *          the ones that exist.
- *
- *          I changed the behavior to conform with spec.
- *
- *        - _lookupNamespacePrefix has a bizarre prototype and used a
- *          context object ($this) and the same thing given as an arg,
- *          was only ever called in one place (on Node class), and there
- *          with a bizarre call structure that did not match spec.
- *          It was factored out and fixed up here and in Node
- *
- * REMOVED:
- *        - mutation of prefix in _setAttributeNS() since DOM4 eliminates
- *        - 'set' branch of Element::classList(), which is not in spec.
- *        - AttributesArray object; baked it into NamedNodeMap
- *	    _insertAdjacent was the wrong way to factor insertAdjacentElement
- *	   and insertAdjacentText -- the better way puts that functionality
- *         into insertAdjacentElement, and lets insertAdjacentText call
- *	  insertAdjacentElement after it's created a text node.
- *        - The code in setAttributeNS doing validation was literally a
- *          re-written version of the validate-and-extract algorithm from
- *          the whatwg spec, already implemented as the function
- *          validateAndExtract, which I relocated to lib/xmlnames.php, the
- *          same file that handles validation of XML names and qnames.
- *
- * TODO:
- *        - Calls to mozHTMLParser should be replaced by calls to either
- *          Tim's new PHP HTML parser, or to a generic harness that you
- *          can strap an arbitrary HTML parser into.
  *
  ******************************************************************************/
 /*

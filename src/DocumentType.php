@@ -1,7 +1,11 @@
 <?php
+/******************************************************************************
+ * DocumentType.php
+ * ----------------
+ ******************************************************************************/
 namespace domo;
 
-require_once('ChildNode.php');
+require_once('ChildNode.php'); /* also defines ChildNodeLeaf */
 
 class DocumentType extends ChildNodeLeaf
 {
@@ -33,7 +37,7 @@ class DocumentType extends ChildNodeLeaf
         }
 
         /* Methods delegated in Node */
-        public function _subclass_cloneNodeShallow(): ?Node 
+        public function _subclass_cloneNodeShallow(): ?Node
         {
                 return new DocumentType($this->_ownerDocument, $this->_name, $this->_publicId, $this->_systemId);
         }

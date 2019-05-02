@@ -1,7 +1,7 @@
 <?php
 /******************************************************************************
  * DOMImplementation.php
- * `````````````````````
+ * ---------------------
  * The DOMImplementation interface represents an object providing methods
  * which are not dependent on any particular document. Such an object is
  * available in the Document->implementation property.
@@ -20,18 +20,10 @@
  *
  ******************************************************************************/
 //declare( strict_types = 1 );
-
 namespace domo;
 
 /* circular dependency, meh... */
 require_once('Document.php');
-//require_once("interfaces/Document.php");
-//require_once("interfaces/DocumentType.php");
-//require_once("parsers/HTMLParser.php");
-//require_once("parsers/xmlnames.php");
-//require_once("utils.php");
-
-
 
 /*
  * Each Document must have its own instance of
@@ -56,7 +48,7 @@ class DOMImplementation
          *      defensive programming.
          */
         public
-        function hasFeature(string $feature="", string $version="") : bool 
+        function hasFeature(string $feature="", string $version="") : bool
         {
                 /*
                  * Feature/version pairs that DOMImplementation->hasFeature()
@@ -82,7 +74,7 @@ class DOMImplementation
         public
         function createDocumentType($qualifiedName, $publicId, $systemId)
         {
-                /* 
+                /*
                 if (!xmlnames\isValidQName($qualifiedName)) {
                         utils\InvalidCharacterError();
                 }
@@ -155,7 +147,7 @@ class DOMImplementation
                 $html->appendChild($d->createElement("body"));
 
                 /* Start tracking modifications */
-                $d->modclock = 1;
+                $d->__modclock = 1;
 
                 return $d;
         }

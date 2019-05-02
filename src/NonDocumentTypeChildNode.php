@@ -1,4 +1,8 @@
 <?php
+/******************************************************************************
+ * NonDocumentTypeChildNode.php
+ * ----------------------------
+ ******************************************************************************/
 namespace domo;
 
 require_once("ChildNode.php");
@@ -46,9 +50,8 @@ abstract class NonDocumentTypeChildNode extends ChildNode
  * We have to use this because PHP is single-inheritance, so CharacterData
  * can't inherit from NonDocumentTypeChildNode and Leaf at once.
  *
- * We could use traits...................
+ * We could use traits...................nah
  *
-*
  * This class selectively overrides Node, providing an alternative
  * (more performant) base class for Node subclasses that can never
  * have children, such as those derived from the abstract CharacterData
@@ -61,7 +64,7 @@ abstract class NonDocumentTypeChildNodeLeaf extends NonDocumentTypeChildNode
                 parent::__construct();
         }
 
-        public final function hasChildNodes(): bool 
+        public final function hasChildNodes(): bool
         {
                 return false;
         }

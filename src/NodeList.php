@@ -1,6 +1,11 @@
 <?php
+/******************************************************************************
+ * NodeList.php
+ * ------------
+ ******************************************************************************/
 namespace domo;
 
+/* Played fairly straight. Used for Node::childNodes when in "array mode". */
 class NodeList extends \ArrayObject
 {
         public function __construct($input=NULL)

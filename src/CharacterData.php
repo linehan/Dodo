@@ -1,4 +1,8 @@
 <?php
+/******************************************************************************
+ * CharacterData.php
+ * -----------------
+ ******************************************************************************/
 namespace domo;
 
 require_once("NonDocumentTypeChildNode.php");
@@ -114,7 +118,7 @@ abstract class CharacterData extends NonDocumentTypeChildNodeLeaf
                 $this->_data = $prefix + $data + $suffix;
         }
 
-        public function length(): int 
+        public function length(): int
         {
                 strlen($this->_data);
         }

@@ -1,7 +1,7 @@
 <?php
 /******************************************************************************
  * Node.php
- * ````````
+ * --------
  * Defines a "Node", the primary datatype of the W3C Document Object Model.
  *
  * Conforms to W3C Document Object Model (DOM) Level 1 Recommendation
