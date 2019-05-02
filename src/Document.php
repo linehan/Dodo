@@ -1,47 +1,10 @@
 <?php
 /******************************************************************************
- * PORT
- * REMOVED:
- * All event, nodeiterator, and treewalker stuff
- *
- * createEvent
- * createTreeWalker
- * createNodeIterator
- * _attachNodeIterator
- * _detachNodeIterator
- * _preremoveNodeIterators
- * _nodeIterators
- * Silly MirrorAttr code, along with code to set
- *      linkColor, vLinkColor, aLinkColor, fgColor, bgColor
- * applets (deprecated)
- * innerHTML/outerHTML -- not part of Document object in spec
- * dir() -- part of HTMLElement spec
- * activeElement() returned NULL no matter what
- *
- *       public function domain() {}
- *       public function referrer() {}
- *       public function readyState() {}
- *       public function cookie() {}
- *       public function lastModified() {}
- *       public function designMode() {}
- *       public function write()
- *       public function writeln()
- *       public function open()
- *       public function close()
- *
- * _hasMultipleElementsWithId
- *
- * CHANGED:
- * Document second argument '$address' and $_address to $url and $_url,
- * in line with the spec.
- *
- * TODO
- * What on earth is _updateDocTypeElement doing? I think that a Document
- * can only have one child element whose parent is that Document, but
- * here we are looping over several things. AH, I see, there may be other
- * nodes, just not *Element* nodes, e.g. a DocumentType node.
- *
- *****************************************************************************/
+ * Document.php
+ * ------------
+ * Implements a Document. It is a somewhat complicated class,
+ * having a number of internal bookkeeping needs.
+ ******************************************************************************/
 namespace domo;
 
 require_once('DOMImplementation.php');
@@ -52,8 +15,7 @@ require_once('Comment.php');
 require_once('Text.php');
 require_once('ProcessingInstruction.php');
 require_once('DocumentType.php');
-require_once('util.php');
-
+require_once('utilities.php');
 
 class MultiId
 {
@@ -747,7 +709,7 @@ class Document extends Node
         /*********** Utility methods extending normal DOM behavior ***********/
 
         /* TODO Where does this fit in */
-        public function isHTMLDocument(): bool 
+        public function isHTMLDocument(): bool
         {
                 if ($this->_type === 'html') {
                         $elt = $this->documentElement();

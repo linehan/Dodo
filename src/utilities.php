@@ -1,7 +1,10 @@
 <?php
+/******************************************************************************
+ * utilities.php
+ * -------------
+ * Define namespace-global constants and functions (mostly error-handling).
+ ******************************************************************************/
 namespace domo;
-
-require_once('DOMException.php');
 
 /******************************************************************************
  * CONSTANTS
@@ -60,12 +63,11 @@ const DOCUMENT_POSITION_CONTAINED_BY = 16;
 /* whatever you need it to be */
 const DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC = 32;
 
-
-
-
 /*****************************************************************************
  * EXCEPTIONS
  *****************************************************************************/
+
+require_once('DOMException.php');
 
 /*
  * Original:
@@ -74,7 +76,7 @@ const DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC = 32;
  * TODO: Need to add the stack trace info, or advise catchers call
  * Exception::getTraceAsString()
  *
- * TODO: Make this a true assert()?
+ * TODO: Make this a true PHP assert?
  */
 function assert(bool $condition, ?string $message="")
 {
@@ -82,7 +84,6 @@ function assert(bool $condition, ?string $message="")
                 throw new Exception("Assert failed: $message");
         }
 }
-
 
 /**
  * Throw a DOMException
@@ -108,13 +109,12 @@ function error(string $name, ?string $message=NULL)
 	throw new DOMException($message, $name);
 }
 
-
 /******************************************************************************
- * TEXT FORMATTING AND VALIDATORS
+ * TEXT FORMATTING
  *****************************************************************************/
 
 /*
- * Why? I don't know. strtolower()/strtoupper() don't do the right thing
+ * TODO: Why? I don't know. strtolower()/strtoupper() don't do the right thing
  * for non-ASCII characters, and mb_strtolower()/mb_strtoupper() are up
  * to 30x slower. But these are only called on things that should accept
  * only ASCII values to begin with (e.g. attribute names in HTML). So -- why?
@@ -132,6 +132,5 @@ function ascii_to_uppercase(string $s): string
       		return strtoupper($char);
       	}, $s);
 }
-
 
 ?>

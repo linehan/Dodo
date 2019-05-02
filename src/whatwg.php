@@ -1,23 +1,35 @@
 <?php
-
+/******************************************************************************
+ * whatwg.php
+ * ----------
+ * Contains lots of broken-out implementations of algorithms
+ * described in WHATWG and other specifications.
+ *
+ * It was broken out so that the methods in the various classes
+ * could be simpler, and to allow for re-use in other places.
+ *
+ * It also makes it easier to read and understand in isolation from
+ * the context of a class, where there can be many conveniences that
+ * affect the implementation.
+ *
+ * That said, it may be a problem having so much on this one page,
+ * so perhaps we need to re-examine things.
+ *
+ ******************************************************************************/
 namespace domo\whatwg;
 
 require_once('Node.php');
 require_once('Element.php');
 require_once('Document.php');
 require_once('Attr.php');
-require_once('util.php');
+require_once('utilities.php');
 
-/*
- * Why are these here?
- * They're here because this is where they make sense.
- *
- * Each one is named after one of the algorithms in the WHATWG
- * spec.
- */
+/******************************************************************************
+ * TREE PREDICATES AND MUTATION
+ ******************************************************************************/
 
 /* https://dom.spec.whatwg.org/#dom-node-comparedocumentposition */
-function compare_document_position(\domo\Node $node1, \domo\Node $node2): int 
+function compare_document_position(\domo\Node $node1, \domo\Node $node2): int
 {
         /* #1-#2 */
         if ($node1 === $node2) {
@@ -29,12 +41,12 @@ function compare_document_position(\domo\Node $node1, \domo\Node $node2): int
         $attr2 = NULL;
 
         /* #4 */
-        if ($node1->_nodeType === ATTRIBUTE_NODE) {
+        if ($node1->_nodeType === \domo\ATTRIBUTE_NODE) {
                 $attr1 = $node1;
                 $node1 = $attr1->ownerElement();
         }
         /* #5 */
-        if ($node2->_nodeType === ATTRIBUTE_NODE) {
+        if ($node2->_nodeType === \domo\ATTRIBUTE_NODE) {
                 $attr2 = $node2;
                 $node2 = $attr2->ownerElement();
 
@@ -110,7 +122,6 @@ function compare_document_position(\domo\Node $node1, \domo\Node $node2): int
  *
  * Anyway, they operate only on Elements.
  */
-
 /* https://dom.spec.whatwg.org/#locate-a-namespace */
 function locate_namespace(\domo\Node $node, ?string $prefix): ?string
 {
@@ -129,7 +140,7 @@ function locate_namespace(\domo\Node $node, ?string $prefix): ?string
                         return $node->namespaceURI();
                 }
                 foreach ($node->attributes as $a) {
-                        if ($a->namespaceURI() === NAMESPACE_XMLNS) {
+                        if ($a->namespaceURI() === \domo\NAMESPACE_XMLNS) {
                                 if (($a->prefix() === 'xmlns' && $a->localName() === $prefix)
                                 ||  ($prefix === NULL && $a->prefix() === NULL && $a->localName() === 'xmlns')) {
                                         $val = $a->value();
@@ -204,12 +215,13 @@ function locate_prefix(\domo\Node $node, ?string $ns): ?string
         return NULL;
 }
 
-
 function insert_before_or_replace(\domo\Node $node, \domo\Node $parent, ?\domo\Node $before, bool $replace): void
 {
         /*
-         * TODO: FACTOR: $ref_node is intended to always be non-NULL
-         * if $isReplace is true, but I think that could fail.
+         * TODO: FACTOR: $before is intended to always be non-NULL
+         * if $replace is true, but I think that could fail unless
+         * we encode it into the prototype, which is non-standard.
+         * (we are combining the 'insert before' and 'replace' algos)
          */
 
         /******************* PRE-FLIGHT CHECKS *******************/
@@ -278,7 +290,7 @@ function insert_before_or_replace(\domo\Node $node, \domo\Node $parent, ?\domo\N
         if (empty($insert)) {
                 if ($replace) {
                         if ($ref_node !== NULL /* If you work it out, you'll find that this condition is equivalent to 'if $parent has children' */) {
-                                \domo\LinkedList\replace($ref_node, NULL);
+                                \domo\ll_replace($ref_node, NULL);
                         }
                         if ($parent->_childNodes === NULL && $parent->_firstChild === $before) {
                                 $parent->_firstChild = NULL;
@@ -287,9 +299,9 @@ function insert_before_or_replace(\domo\Node $node, \domo\Node $parent, ?\domo\N
         } else {
                 if ($ref_node !== NULL) {
                         if ($replace) {
-                                \domo\LinkedList\replace($ref_node, $insert[0]);
+                                \domo\ll_replace($ref_node, $insert[0]);
                         } else {
-                                \domo\LinkedList\insertBefore($insert[0], $ref_node);
+                                \domo\ll_insert_before($insert[0], $ref_node);
                         }
                 }
                 if ($parent->_childNodes !== NULL) {
@@ -671,7 +683,9 @@ function ensure_replace_valid(\domo\Node $node, \domo\Node $parent, \domo\Node $
         }
 }
 
-
+/******************************************************************************
+ * SERIALIZATION
+ ******************************************************************************/
 
 /**
  * PORT NOTES
@@ -870,7 +884,9 @@ function serialize_node(\domo\Node $child, \domo\Node $parent)
         return $s;
 }
 
-
+/******************************************************************************
+ * XML NAMES
+ ******************************************************************************/
 /******************************************************************************
  * In XML, valid names for Elements or Attributes are governed by a
  * number of overlapping rules, reflecting a gradual standardization
@@ -916,21 +932,21 @@ function serialize_node(\domo\Node $child, \domo\Node $parent)
  * Recall:
  *      \w matches any alphanumeric character A-Za-z0-9
  */
-/* 
- * TODO: PORT NOTE: in Domino, this pattern was '/^[_:A-Za-z][-.:\w]+$/', 
+/*
+ * TODO: PORT NOTE: in Domino, this pattern was '/^[_:A-Za-z][-.:\w]+$/',
  * which fails for one-letter tagnames (e.g. <p>). This was not a problem
  * because <p> is an HTML element and is thus instantiated differently, but
  * I think one-letter tagnames is still valid, right?
  *
  * Also, in PHP, sending 'p' as the name will not add '\n' to the end of
- * the string, while sending "p" DOES add the newline. The newline is 
+ * the string, while sending "p" DOES add the newline. The newline is
  * matched by \w and will thus allow a match, but it depends on whether
- * the string was single or double-quoted. 
+ * the string was single or double-quoted.
  *
  * To avoid this complication, we switched the '+' to a '*'.
  *
  * Interestingly, in the regex patterns in the next section, it seems that
- * we do indeed use '*' in Domino, so why was '+' being preferred here? 
+ * we do indeed use '*' in Domino, so why was '+' being preferred here?
  */
 define('pattern_ascii_name', '/^[_:A-Za-z][-.:\w]*$/');
 define('pattern_ascii_qname', '/^([_A-Za-z][-.\w]*|[_A-Za-z][-.\w]*:[_A-Za-z][-.\w]*)$/');

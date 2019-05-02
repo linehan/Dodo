@@ -8,65 +8,10 @@
  * (see: https://www.w3.org/TR/2000/WD-DOM-Level-1-20000929)
  *
  *****************************************************************************/
-/******************************************************************************
- * PORT NOTES
- * CHANGED:
- *      Attributes had to become functions because PHP does not
- *      support getters and setters for property access.
- *      Node.baseURI            => Node->baseURI()
- *      Node.rooted             => Node->rooted()
- *      Node.outerHTML          => Node->outerHTML()
- *      Node.doc                => Node->doc()
- *      Node.previousSibling    => Node->previousSibling()
- *      Node.nextSibling        => Node->nextSibling()
- *
- *      TODO: The array splicing that happens needs to be cleaned up
- *      TODO: The "private" methods can be made private and static in PHP
- *
- *      Merged ContainerNode with Node to better match spec
- *      Moved _ensureChildNodes() into childNode() as a memoization branch
- *      and re-write do-while loop as for loop to match other traversals.
- *
- *      clone()                 => _subclass_cloneNode()
- *      isEqual()               => _subclass_isEqualNode()
- *      Changed the names of these delegated subclass things to be more
- *      clear about their purpose and role.
- *
- *      _lookupNamespaceURI() => static in algorithms.php
- *      _lookupPrefix()() => static in algorithms.php
- *
- *      compareDocumentPosition() => now includes attribute, bringing up to
- *                                   DOM-LS spec (was not conformant before)
- *
- *      removed isAncestor because it was only used by EnsureInsertValid,
- *      and had a weird 'inclusive ancestor' behavior. Now hard-coded into
- *      the algorithms for ensure_insert_valid, etc.
- *
- *      ensureSameDoc wasn't even being called anywhere...
- *
- *      doc() => nodeDocument(), mirroring spec: https://dom.spec.whatwg.org/#concept-node-document
- *
- *      __ for our functions
- *      removeChildren => __remove_children, and so on.
- *
- * NOT CHANGED:
- *      Node.parentNode         => Node->parentNode
- *      this one is kept as an attribute. Is this wise?
- *
- * TODO
- *      Find a way to signal that methods and properties are part of
- *      our extension, and not the DOM. E.g. removeChildren(), doc(),
- *      and so on.
- *
- *      Perhaps name them x_removeChildren(), or have them be in some
- *      kind of sub-object, like $node->domo->removeChildren() or something.
- *
- *****************************************************************************/
 namespace domo;
 
-require_once('LinkedList.php');
-require_once('util.php');
 require_once("NodeList.php");
+require_once('utilities.php');
 require_once("whatwg.php");
 
 abstract class Node /* extends EventTarget // try factoring events out? */
@@ -87,8 +32,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
         protected $__nid;
 
         /* Node's index in childNodes of parent (NULL if no parent) */
-        /* TODO: Make it more obvious, like sibling_index */
-        public $___index;
+        public $___index; /* TODO: Name, 'sibling_index'? */
 
         /**********************************************************************
          * BOOK-KEEPING: What Node knows about its ancestors
@@ -636,7 +580,6 @@ abstract class Node /* extends EventTarget // try factoring events out? */
                 return $a === NULL && $b === NULL;
         }
 
-
         /**
          * Clone this Node
          *
@@ -722,6 +665,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
 	/**********************************************************************
 	 * UTILITY METHODS AND DOMO EXTENSIONS
 	 *********************************************************************/
+
         /* Called by Document::adoptNode */
         public function __set_owner(Document $doc)
         {
@@ -1008,6 +952,5 @@ abstract class Node /* extends EventTarget // try factoring events out? */
                 }
         }
 }
-
 
 ?>

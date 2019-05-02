@@ -2,7 +2,7 @@
 namespace domo;
 
 require_once('Node.php');
-require_once('LinkedList.php');
+require_once('linked_list.php');
 
 function _fragment_from_arguments($document, $args)
 {
@@ -141,7 +141,7 @@ abstract class ChildNode extends Node
                         $parent->_firstChild = $this->nextSibling();
                 }
 
-                LinkedList\remove($this);
+                ll_remove($this);
 
                 $parent->__lastmod_update();
         }
@@ -203,7 +203,7 @@ abstract class ChildNodeLeaf extends ChildNode
                 parent::__construct();
         }
 
-        public final function hasChildNodes(): bool 
+        public final function hasChildNodes(): bool
         {
                 return false;
         }

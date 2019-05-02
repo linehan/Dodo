@@ -1,7 +1,7 @@
 <?php
 /******************************************************************************
  * DOMException.php
- * ````````````````
+ * ----------------
  * (Mostly) implements the WebIDL-1 DOMException interface
  * https://www.w3.org/TR/WebIDL-1/#idl-DOMException*
  *****************************************************************************/
@@ -105,7 +105,7 @@ class DOMException extends \Exception
 	/*
 	 * [WEB-IDL-1] This is the actual constructor prototype.
          * I think the invocation is ridiculous, so we wrap it
-         * in an error() function (see util.php).
+         * in an error() function (see utilities.php).
 	 */
 	public function __construct(?string $message, ?string $name)
 	{

@@ -1,7 +1,14 @@
 <?php
+/******************************************************************************
+ * domo.php
+ * --------
+ * Loads the entire library. The library can also be loaded class-by-class
+ * if necessary. Individual dependencies are still included by each page,
+ * so use of this file is not strictly necessary.
+ ******************************************************************************/
 
-require_once('util.php');
-require_once('LinkedList.php');
+require_once('utilities.php');
+require_once('linked_list.php');
 require_once('whatwg.php');
 require_once('Node.php');
 require_once('DOMImplementation.php');

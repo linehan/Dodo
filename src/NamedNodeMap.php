@@ -1,28 +1,38 @@
 <?php
+/******************************************************************************
+ * NamedNodeMap.php
+ * ----------------
+ * Implements a NamedNodeMap. Used to represent Element::attributes.
+ *
+ * NOTE: Why is it called NamedNodeMap?
+ *
+ *      NamedNodeMap has nothing to do with Nodes, it's a collection
+ *      of Attrs. But once upon a time, an Attr was a type of Node called a
+ *      NamedNode. But then DOM-4 came along and said that an Attr is no
+ *      longer a subclass of Node. But then DOM-LS came and change it again,
+ *      and said it was a subclass of Node. NamedNode was forgotten, but it
+ *      lives on in this interface's name! How confusing!
+ *
+ * NOTE: This looks different from Domino.js!
+ *
+ *      In Domino.js, NamedNodeMap was only implemented to satisfy
+ *      'instanceof' type-checking. Almost all of the methods were
+ *      stubbed, except for 'length' and 'item'. The tables that
+ *      stored an Element's attributes were located directly on the
+ *      Element itself.
+ *
+ *      Because there are so many attribute handling methods on an
+ *      Element, each with little differences, this meant replicating
+ *      a bunch of the book-keeping inside those methods. The negative
+ *      impact on code maintainability was pronounced, so the book-keeping
+ *      was transferred to the NamedNodeMap itself, and its methods were
+ *      properly implemented, which made it much easier to read and write
+ *      the attribute methods on the Element class.
+ *
+ ******************************************************************************/
 namespace domo;
 
-require_once('util.php');
-
-/*
- * History: NamedNodeMap has nothing to do with Nodes, it's a collection
- * of Attrs. But once upon a time, an Attr was a type of Node called a
- * NamedNode. But then DOM4 came along and changed that, but it lives on
- * in this interface's name!
- */
-
-/*
- * Originally in Domino this was just to satisfy type checking, so
- * some of the DOM methods are still stubbed. We only really use construct(),
- * length(), and item().
- */
-
-
-/*
- * The main function of NamedNodeMap is to implement the
- * Element::attribute() array. Thus, we have baked in
- * logic that is specific to an Element, including access
- * of its internal storage caches.
- */
+require_once('utilities.php');
 
 class NamedNodeMap extends \ArrayObject
 {

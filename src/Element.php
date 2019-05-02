@@ -149,7 +149,7 @@
  */
 namespace domo;
 
-require_once('util.php');
+require_once('utilities.php');
 require_once('NonDocumentTypeChildNode.php');
 require_once('Attr.php');
 require_once('NamedNodeMap.php');
@@ -710,10 +710,10 @@ class Element extends NonDocumentTypeChildNode
          * Test Element for attribute with the given qualified name
          *
          * @param string $qname Qualified name of attribute
-         * @return bool 
+         * @return bool
          * @spec DOM-LS
          */
-        public function hasAttribute(string $qname): bool 
+        public function hasAttribute(string $qname): bool
         {
                 return $this->attributes->hasNamedItem($qname);
         }
@@ -723,10 +723,10 @@ class Element extends NonDocumentTypeChildNode
          *
          * @param ?string $ns the namespace
          * @param string $lname the localName
-         * @return bool 
+         * @return bool
          * @spec DOM-LS
          */
-        public function hasAttributeNS(?string $ns, string $lname): bool 
+        public function hasAttributeNS(?string $ns, string $lname): bool
         {
                 return $this->attributes->hasNamedItemNS($ns, $lname);
         }
@@ -741,7 +741,7 @@ class Element extends NonDocumentTypeChildNode
          * @return bool whether we set or removed an attribute
          * @spec DOM-LS
          */
-        public function toggleAttribute(string $qname, ?bool $force=NULL): bool 
+        public function toggleAttribute(string $qname, ?bool $force=NULL): bool
         {
                 if (!\domo\whatwg\is_valid_xml_name($qname)) {
                         \domo\error("InvalidCharacterError");
@@ -767,10 +767,10 @@ class Element extends NonDocumentTypeChildNode
         /**
          * Test whether this Element has any attributes
          *
-         * @return bool 
+         * @return bool
          * @spec DOM-LS
          */
-        public function hasAttributes(): bool 
+        public function hasAttributes(): bool
         {
                 return !empty($this->attributes->index_to_attr);
         }
