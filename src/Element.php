@@ -184,6 +184,14 @@ class Element extends NonDocumentTypeChildNode
 	{
 		return $this->_nodeValue;
 	}
+        public function id(?string $v = NULL)
+        {
+                if ($v !== NULL) {
+                        return $this->getAttribute("id");
+                } else {
+                        return $this->setAttribute("id", $v);
+                }
+        }
 
 	/**
 	 * Get or set the text content of an Element.
@@ -503,7 +511,7 @@ class Element extends NonDocumentTypeChildNode
                 if ($attr === NULL) {
                         $attr = new Attr($this, $qname, NULL, NULL);
                 }
-                $attr->value($value);
+                $attr->value($value); /* Triggers __onchange_attr */
                 $this->attributes->setNamedItem($attr);
         }
 
