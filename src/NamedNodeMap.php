@@ -141,7 +141,6 @@ class NamedNodeMap extends \ArrayObject
                 return $this[$index] ?? NULL;
         }
 
-        /* DOMO */
         public function hasNamedItem(string $qname): bool
         {
                 /*
@@ -155,7 +154,6 @@ class NamedNodeMap extends \ArrayObject
                 return isset($this->__qname_to_attr[$qname]);
         }
 
-        /* DOMO */
         public function hasNamedItemNS(?string $ns, string $lname): bool
         {
                 $ns = $ns ?? "";

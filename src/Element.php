@@ -20,82 +20,6 @@
  * HTML-LS   HTML Living Standard            https://html.spec.whatwg.org/
  *
  ******************************************************************************/
-/*
- * Attributes in the DOM are tricky:
- *
- * - there are the 8 basic get/set/has/removeAttribute{NS} methods
- *
- * - but many HTML attributes are also 'reflected' through IDL
- *   attributes which means that they can be queried and set through
- *   regular properties of the element.  There is just one attribute
- *   value, but two ways to get and set it.
- *
- * - Different HTML element types have different sets of reflected
- *   attributes.
- *
- * - attributes can also be queried and set through the .attributes
- *   property of an element.  This property behaves like an array of
- *   Attr objects.  The value property of each Attr is writeable, so
- *   this is a third way to read and write attributes.
- *
- * - for efficiency, we really want to store attributes in some kind
- *   of name->attr map.  But the attributes[] array is an array, not a
- *   map, which is kind of unnatural.
- *
- * - When using namespaces and prefixes, and mixing the NS methods
- *   with the non-NS methods, it is apparently actually possible for
- *   an attributes[] array to have more than one attribute with the
- *   same qualified name.  And certain methods must operate on only
- *   the first attribute with such a name.  So for these methods, an
- *   inefficient array-like data structure would be easier to
- *   implement.
- *
- * - The attributes[] array is live, not a snapshot, so changes to the
- *   attributes must be immediately visible through existing arrays.
- *
- * - When attributes are queried and set through IDL properties
- *   (instead of the get/setAttributes() method or the attributes[]
- *   array) they may be subject to type conversions, URL
- *   normalization, etc., so some extra processing is required in that
- *   case.
- *
- * - But access through IDL properties is probably the most common
- *   case, so we'd like that to be as fast as possible.
- *
- * - We can't just store attribute values in their parsed idl form,
- *   because setAttribute() has to return whatever string is passed to
- *   getAttribute even if it is not a legal, parseable value. So
- *   attribute values must be stored in unparsed string form.
- *
- * - We need to be able to send change notifications or mutation
- *   events of some sort to the renderer whenever an attribute value
- *   changes, regardless of the way in which it changes.
- *
- * - Some attributes, such as id and class affect other parts of the
- *   DOM API, like getElementById and getElementsByClassName and so
- *   for efficiency, we need to specially track changes to these
- *   special attributes.
- *
- * - Some attributes like class have different names (className) when
- *   reflected.
- *
- * - Attributes whose names begin with the string 'data-' are treated
- *   specially.
- *
- * - Reflected attributes that have a boolean type in IDL have special
- *   behavior: setting them to false (in IDL) is the same as removing
- *   them with removeAttribute()
- *
- * - numeric attributes (like HTMLElement.tabIndex) can have default
- *   values that must be returned by the idl getter even if the
- *   content attribute does not exist. (The default tabIndex value
- *   actually varies based on the type of the element, so that is a
- *   tricky one).
- *
- * See
- * http://www.whatwg.org/specs/web-apps/current-work/multipage/urls.html#reflect
- * for rules on how attributes are reflected.
- */
 namespace domo;
 
 require_once('utilities.php');
@@ -139,6 +63,26 @@ class Element extends NonDocumentTypeChildNode
 
 	/* Actually attached without an accessor */
         public $attributes = NULL;
+
+        /* Watch these attributes */
+        public $__onchange_attr = array(
+                "id" => function($elem, $old, $new) {
+                        if (!$elem->__is_rooted()) {
+                                return;
+                        }
+                        if ($old) {
+                                $elem->_ownerDocument->__remove_from_id_table($old, $elem);
+                        }
+                        if ($new) {
+                                $elem->_ownerDocument->__add_to_id_table($new, $elem);
+                        }
+                },
+                "class" => function($elem, $old, $new) {
+                        if ($elem->_classList) {
+                                $elem->_classList->_update();
+                        }
+                }
+        );
 
         /**
          * Element constructor
@@ -753,16 +697,6 @@ class Element extends NonDocumentTypeChildNode
          * OTHER
          ********************************************************************/
 
-        /* TODO TODO TODO */
-          //// Define getters and setters for an 'id' property that reflects
-          //// the content attribute 'id'.
-          //id: attributes.property({name: 'id'}),
-
-          //// Define getters and setters for a 'className' property that reflects
-          //// the content attribute 'class'.
-          //className: attributes.property({name: 'class'}),
-        /* TODO TODO TODO */
-
         public function classList()
         {
                 $self = $this;
@@ -855,38 +789,6 @@ class Element extends NonDocumentTypeChildNode
         }
 
 }
-
-/*
- * TODO: Here is the busted JavaScript style where class
- * extension is treated as a bunch of mixins applied in order
- */
-//Object.defineProperties(Element.prototype, ChildNode);
-//Object.defineProperties(Element.prototype, NonDocumentTypeChildNode);
-
-// Register special handling for the id attribute
-//attributes.registerChangeHandler(Element, 'id',
- //function(element, lname, oldval, newval) {
-   //if (element.rooted) {
-     //if (oldval) {
-       //element.ownerDocument.delId(oldval, element);
-     //}
-     //if (newval) {
-       //element.ownerDocument.addId(newval, element);
-     //}
-   //}
- //}
-//);
-//attributes.registerChangeHandler(Element, 'class',
- //function(element, lname, oldval, newval) {
-   //if (element._classList) { element._classList._update(); }
- //}
-//);
-
-
-
-
-
-
 
 
 
