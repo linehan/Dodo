@@ -225,7 +225,6 @@ class Attr extends Node /* As of 05/03/2019 */
                                  */
                                 $this->_ownerElement->__onchange_attr[$this->_localName](
                                         $this->_ownerElement,
-                                        $this->_localName,
                                         $old,
                                         $new
                                 );
@@ -251,6 +250,12 @@ class Attr extends Node /* As of 05/03/2019 */
                                 $this->_ownerElement->ownerDocument()->__mutate_attr($this, $old);
                         }
                 }
+        }
+
+        /* Delegated from Node */
+        public function textContent(?string $value = NULL)
+        {
+                return $this->value($value);
         }
 
         /* Delegated from Node */

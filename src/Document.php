@@ -762,19 +762,19 @@ class Document extends Node
          * Called by Node::__root() and Node::__uproot()
          *********************************************************************/
 
-        protected function __add_to_node_table(Node $node): void
+        public function __add_to_node_table(Node $node): void
         {
                 $node->__nid = $this->__nid_next++;
                 $this->__nid_to_node[$node->__nid] = $node;
         }
 
-        protected function __remove_from_node_table(Node $node): void
+        public function __remove_from_node_table(Node $node): void
         {
                 unset($this->__nid_to_node[$node->__nid]);
                 $node->__nid = 0;
         }
 
-        protected function __add_to_id_table(string $id, Element $elt): void
+        public function __add_to_id_table(string $id, Element $elt): void
         {
                 if (!isset($this->__id_to_element[$id])) {
                         $this->__id_to_element[$id] = $elt;
@@ -788,7 +788,7 @@ class Document extends Node
                 }
         }
 
-        protected function __remove_from_id_table(string $id, Element $elt): void
+        public function __remove_from_id_table(string $id, Element $elt): void
         {
                 if (!isset($this->__id_to_element[$id])) {
                         /* nothing */

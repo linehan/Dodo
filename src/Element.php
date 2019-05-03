@@ -65,24 +65,7 @@ class Element extends NonDocumentTypeChildNode
         public $attributes = NULL;
 
         /* Watch these attributes */
-        public $__onchange_attr = array(
-                "id" => function($elem, $old, $new) {
-                        if (!$elem->__is_rooted()) {
-                                return;
-                        }
-                        if ($old) {
-                                $elem->_ownerDocument->__remove_from_id_table($old, $elem);
-                        }
-                        if ($new) {
-                                $elem->_ownerDocument->__add_to_id_table($new, $elem);
-                        }
-                },
-                "class" => function($elem, $old, $new) {
-                        if ($elem->_classList) {
-                                $elem->_classList->_update();
-                        }
-                }
-        );
+        public $__onchange_attr = array();
 
         /**
          * Element constructor
@@ -98,6 +81,25 @@ class Element extends NonDocumentTypeChildNode
 		global $UC_Cache; /* See declaration, above */
 
                 parent::__construct();
+
+                $this->__onchange_attr = array(
+                        "id" => function($elem, $old, $new) {
+                                if (!$elem->__is_rooted()) {
+                                        return;
+                                }
+                                if ($old) {
+                                        $elem->_ownerDocument->__remove_from_id_table($old, $elem);
+                                }
+                                if ($new) {
+                                        $elem->_ownerDocument->__add_to_id_table($new, $elem);
+                                }
+                        },
+                        "class" => function($elem, $old, $new) {
+                                if ($elem->_classList) {
+                                        $elem->_classList->_update();
+                                }
+                        }
+                );
 
 		/*
 		 * TODO
@@ -186,7 +188,7 @@ class Element extends NonDocumentTypeChildNode
 	}
         public function id(?string $v = NULL)
         {
-                if ($v !== NULL) {
+                if ($v === NULL) {
                         return $this->getAttribute("id");
                 } else {
                         return $this->setAttribute("id", $v);
@@ -795,7 +797,6 @@ class Element extends NonDocumentTypeChildNode
                 }
                 return NULL;
         }
-
 }
 
 
