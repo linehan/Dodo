@@ -123,13 +123,13 @@ class Attr extends Node
 {
         protected const _nodeType = ATTRIBUTE_NODE;
 
-        protected $namespaceURI = NULL;   /* readonly (NULL or non-empty) */
-        protected $prefix = NULL;         /* readonly (NULL or non-empty) */
-        protected $localName = NULL;      /* readonly, (non-empty) */
-        protected $name;                  /* readonly, (non-empty) */
-        protected $value = "";            /* (string) */
-        protected $ownerElement = NULL;   /* readonly (NULL or Element) */
-        protected const specified = true; /* readonly const true */
+        protected $_namespaceURI = NULL;   /* readonly (NULL or non-empty) */
+        protected $_prefix = NULL;         /* readonly (NULL or non-empty) */
+        protected $_localName = NULL;      /* readonly, (non-empty) */
+        protected $_name;                  /* readonly, (non-empty) */
+        protected $_value = "";            /* (string) */
+        protected $_ownerElement = NULL;   /* readonly (NULL or Element) */
+        protected const _specified = true; /* readonly const true */
 
         public function __construct(
                 ?Element $ownerElement,
@@ -140,76 +140,80 @@ class Attr extends Node
         ) {
                 if ($localName !== '') {
                         /* DOM-LS: Non-empty string */
-                        $this->localName = $localName;
+                        $this->_localName = $localName;
                 } else {
                         throw Exception("Attr local name must be non-empty");
                 }
 
 		if ($namespaceURI !== '') {
                         /* DOM-LS: NULL or non-empty string */
-			$this->namespaceURI = $namespaceURI;
+			$this->_namespaceURI = $namespaceURI;
 		}
 
 		if ($prefix !== '') {
                         /* DOM-LS: NULL or non-empty string */
-			$this->prefix = $prefix;
+			$this->_prefix = $prefix;
 		}
 
-                if ($this->prefix === NULL) {
+                if ($this->_prefix === NULL) {
                         /* 
                          * DOM-LS: qualified name:
                          *      localName if prefix is NULL 
                          */
-                        $this->name = $this->localName;
+                        $this->_name = $this->_localName;
                 } else {
                         /* 
                          * DOM-LS: qualified name:
                          *      namespace prefix, followed by ":", 
                          *      followed by local name, otherwise.
                          */
-                        $this->name = "$this->prefix:$this->localName";
+                        $this->_name = "$this->_prefix:$this->_localName";
                 }
 
                 /* DOM-LS: NULL or Element */
-                $this->ownerElement = $ownerElement;
+                $this->_ownerElement = $ownerElement;
 
                 /* DOM-LS: String */
-                $this->value = $value; 
+                $this->_value = $value; 
         }
 
         /**********************************************************************
          * ACCESSORS
          **********************************************************************/
-        public function getNamespaceURI(): ?string
+        public function namespaceURI(): ?string
         {
-                return $this->namespaceURI;
+                return $this->_namespaceURI;
         }
-        public function getSpecified(): boolean
+        public function specified(): boolean
         {
-                return $this->specified;
+                return $this->_specified;
         }
-        public function getOwnerElement(): ?Element
+        public function ownerElement(): ?Element
         {
-                return $this->ownerElement;
+                return $this->_ownerElement;
         }
-        public function getPrefix(): ?string
+        public function prefix(): ?string
         {
-                return $this->prefix;
+                return $this->_prefix;
         }
-        public function getLocalName(): string
+        public function localName(): string
         {
-                return $this->localName;
+                return $this->_localName;
         }
-        public function getName(): string
+        public function name(): string
         {
-                return $this->name;
+                return $this->_name;
         }
-        public function getValue(): ?string
+        public function value(): ?string
         {
-                return $this->value;
         }
-        public function setValue(?string $value = NULL)
+        public function value(?string $value = NULL)
         {
+                if ($value === NULL) {
+                        /* GET */
+                        return $this->_value;
+                }
+
                 /*
                  * NOTE
                  * You can unset an attribute by calling Attr::value("");
@@ -271,15 +275,9 @@ class Attr extends Node
         }
 
         /* Delegated from Node */ 
-        public function getTextContent(?string $value = NULL)
+        public function textContent(?string $value = NULL)
         {
-                return $this->getValue();
-        }
-
-        /* Delegated from Node */ 
-        public function setTextContent(?string $value = NULL)
-        {
-                return $this->setValue($value);
+                return $this->value($value);
         }
 
         /* Delegated from Node */
@@ -287,19 +285,19 @@ class Attr extends Node
         {
                 return new Attr(
                         NULL,
-                        $this->localName,
-                        $this->prefix,
-                        $this->namespaceURI,
-                        $this->value
+                        $this->_localName,
+                        $this->_prefix,
+                        $this->_namespaceURI,
+                        $this->_value
                 );
         }
 
         /* Delegated from Node */
         public function _subclass_isEqualNode(Node $node): bool
         {
-                return ($this->namespaceURI === $node->namespaceURI
-                && $this->localName === $node->localName
-                && $this->value === $node->value);
+                return ($this->_namespaceURI === $node->_namespaceURI
+                && $this->_localName === $node->_localName
+                && $this->_value === $node->_value);
         }
 }
 

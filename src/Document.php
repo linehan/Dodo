@@ -152,41 +152,41 @@ class Document extends Node
         protected $__nid_next = 2;
 
         /* Required by Node */
-        public $nodeType = DOCUMENT_NODE; /* see Node::nodeType */
-        public $nodeName = '#document';   /* see Node::nodeName */
-        public $ownerDocument = NULL;     /* see Node::ownerDocument */
-        public $nodeValue = NULL;         /* see Node::nodeValue */
+        public $_nodeType = DOCUMENT_NODE; /* see Node::nodeType */
+        public $_nodeName = '#document';   /* see Node::nodeName */
+        public $_ownerDocument = NULL;     /* see Node::ownerDocument */
+        public $_nodeValue = NULL;         /* see Node::nodeValue */
 
         /* Required by Document */
-        public const characterSet = 'UTF-8';
-        public $encoding = 'UTF-8';
-        public $type = 'xml';
-        public $contentType = 'application/xml';
-        public $URL = 'about:blank';
-        public $origin = NULL;
-        public $compatMode = 'no-quirks';
+        public const _characterSet = 'UTF-8';
+        public $_encoding = 'UTF-8';
+        public $_type = 'xml';
+        public $_contentType = 'application/xml';
+        public $_URL = 'about:blank';
+        public $_origin = NULL;
+        public $_compatMode = 'no-quirks';
 
         /* Assigned on mutation to the first DocumentType child */
-        public $doctype = NULL;
+        public $_doctype = NULL;
         /* Assigned on mutation to the first Element child */
-        public $documentElement = NULL;
+        public $_documentElement = NULL;
 
-        public $implementation; /* DOMImplementation */
-        public $readyState;
+        public $_implementation; /* DOMImplementation */
+        public $_readyState;
 
         public $__mutation_handler = NULL;
 
         /* Used to mutate the above */
         private function __update_document_state(): void
         {
-                $this->doctype = NULL;
-                $this->documentElement = NULL;
+                $this->_doctype = NULL;
+                $this->_documentElement = NULL;
 
-                for ($n=$this->getFirstChild(); $n!==NULL; $n=$n->getNextSibling()) {
-                        if ($n->nodeType === DOCUMENT_TYPE_NODE) {
-                                $this->doctype = $n;
-                        } else if ($n->nodeType === ELEMENT_NODE) {
-                                $this->documentElement = $n;
+                for ($n=$this->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
+                        if ($n->_nodeType === DOCUMENT_TYPE_NODE) {
+                                $this->_doctype = $n;
+                        } else if ($n->_nodeType === ELEMENT_NODE) {
+                                $this->_documentElement = $n;
                         }
                 }
         }
@@ -199,17 +199,17 @@ class Document extends Node
 
                 /* Having an HTML Document affects some APIs */
                 if ($type === 'html') {
-                        $this->contentType = 'text/html';
+                        $this->_contentType = 'text/html';
                         $this->type = 'html';
                 }
 
                 /* DOM-LS: used by the documentURI and URL method */
                 if ($url !== NULL) {
-                        $this->URL = $url;
+                        $this->_URL = $url;
                 }
 
                 /* DOM-LS: DOMImplementation associated with document */
-                $this->implementation = new DOMImplementation($this);
+                $this->_implementation = new DOMImplementation($this);
 
                 /******** Internal ********/
 
@@ -231,12 +231,11 @@ class Document extends Node
 
                 /******** JUNK ********/
 
-                $this->readyState = "loading";
+                $this->_readyState = "loading";
 
                 /* USED EXCLUSIVELY IN htmlelts.js to make <TEMPLATE> */
                 $this->_templateDocCache = NULL;
         }
-
 
         /* USED EXCLUSIVELY IN htmlelts.js to make <TEMPLATE> */
         public function _templateDoc()
@@ -249,72 +248,50 @@ class Document extends Node
                 return $this->_templateDocCache;
         }
 
-        //// This method allows dom.js to communicate with a renderer
-        //// that displays the document in some way
-        //// XXX: I should probably move this to the window object
-        //[> PORT TODO: should stub? <]
-        //protected function _setMutationHandler($handler)
-        //{
-                //$this->mutationHandler = $handler;
-        //}
-
-        //// This method allows dom.js to receive event notifications
-        //// from the renderer.
-        //// XXX: I should probably move this to the window object
-        //[> PORT TODO: should stub? <]
-        //protected function _dispatchRendererEvent($targetNid, $type, $details)
-        //{
-                //$target = $this->_nodes[$targetNid];
-                //if (!$target) {
-                        //return;
-                //}
-                //$target->_dispatchEvent(new Event($type, $details), true);
-        //}
-
         /*********************************************************************
          * Accessors for read-only properties defined in Document
          *********************************************************************/
-        public function getCharacterSet(): string
+        public function characterSet(): string
         {
-                return $this->characterSet;
+                return $this->_characterSet;
         }
-        public function getCharset(): string
+        public function charset(): string
         {
-                return $this->characterSet; /* historical alias */
+                return $this->_characterSet; /* historical alias */
         }
-        public function getInputEncoding(): string
+        public function inputEncoding(): string
         {
-                return $this->characterSet; /* historical alias */
+                return $this->_characterSet; /* historical alias */
         }
-        public function getImplementation(): DOMImplementation
+        public function implementation(): DOMImplementation
         {
-                return $this->implementation;
+                return $this->_implementation;
         }
-        public function getDocumentURI()
+        public function documentURI()
         {
-                return $this->URL;
+                return $this->_URL;
         }
-        public function getURL() : string
+        public function URL() : string
         {
-                return $this->URL; /* Alias for HTMLDocuments */
+                return $this->_URL; /* Alias for HTMLDocuments */
         }
-        public function getCompatMode()
+        public function compatMode()
         {
-                return $this->compatMode === "quirks" ? "BackCompat" : "CSS1Compat";
+                return $this->_compatMode === "quirks" ? "BackCompat" : "CSS1Compat";
         }
-        public function getContentType(): ?string
+        public function contentType(): ?string
         {
-                return $this->contentType;
+                return $this->_contentType;
         }
-        public function getDoctype(): ?DocumentType
+        public function doctype(): ?DocumentType
         {
-                return $this->doctype;
+                return $this->_doctype;
         }
-        public function getDocumentElement(): ?Element
+        public function documentElement(): ?Element
         {
-                return $this->documentElement;
+                return $this->_documentElement;
         }
-        public function getTextContent(?string $value = NULL)
+        public function textContent(?string $value = NULL)
         {
                 /* HTML-LS: no-op */
         }
@@ -388,7 +365,7 @@ class Document extends Node
                  * and null otherwise.
                  */
                 return new Element($this, $lname, NULL, NULL);
-                if ($this->contentType === 'text/html') {
+                if ($this->_contentType === 'text/html') {
                         if (!ctype_lower($lname)) {
                                 $lname = \domo\ascii_to_lowercase($lname);
                         }
@@ -396,7 +373,7 @@ class Document extends Node
                         /* TODO STUB */
                         //return domo\html\createElement($this, $lname, NULL);
 
-                } else if ($this->contentType === 'application/xhtml+xml') {
+                } else if ($this->_contentType === 'application/xhtml+xml') {
                         /* TODO STUB */
                         //return domo\html\createElement($this, $lname, NULL);
                 } else {
@@ -454,16 +431,16 @@ class Document extends Node
          */
         public function adoptNode(Node $node): Node
         {
-                if ($node->nodeType === DOCUMENT_NODE) {
+                if ($node->_nodeType === DOCUMENT_NODE) {
                         \domo\error("NotSupported");
                 }
-                if ($node->nodeType === ATTRIBUTE_NODE) {
+                if ($node->_nodeType === ATTRIBUTE_NODE) {
                         return $node;
                 }
-                if ($node->getParentNode()) {
-                        $node->getParentNode()->removeChild($node);
+                if ($node->parentNode()) {
+                        $node->parentNode()->removeChild($node);
                 }
-                if ($node->ownerDocument !== $this) {
+                if ($node->_ownerDocument !== $this) {
                         $node->__set_owner($this);
                 }
 
@@ -541,7 +518,7 @@ class Document extends Node
                 }
 
                 /* Clone children too */
-                for ($n=$this->getFirstChild(); $n!==NULL; $n=$n->getNextSibling()) {
+                for ($n=$this->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
                         $clone->appendChild($clone->importNode($n, true));
                 }
 
@@ -574,139 +551,6 @@ class Document extends Node
                         return $n->get_first();
                 }
                 return $n;
-        }
-
-        /* Just copy this method from the Element prototype */
-        /* TODO PHP: Not that easy to do mixins in PHP! */
-        /*
-        getElementsByName: { value: Element.prototype.getElementsByName },
-        getElementsByTagName: { value: Element.prototype.getElementsByTagName },
-        getElementsByTagNameNS: { value: Element.prototype.getElementsByTagNameNS },
-        getElementsByClassName: { value: Element.prototype.getElementsByClassName },
-        */
-
-
-        /*********************************************************************
-         * HTMLDocument extensions
-         *********************************************************************/
-
-        public function location($value = NULL)
-        {
-                if ($value === NULL) {
-                        /* GET */
-                        if ($this->defaultView) {
-                                return $this->defaultView->location();
-                        } else {
-                                return NULL; // gh #75
-                        }
-                } else {
-                        /* SET */
-                        /* NOT YET IMPLEMENTED */
-                }
-	}
-
-        /**
-         * Fetch the <BODY> Element if we are an HTMLDocument
-         *
-         * @return Element or NULL
-         * @spec HTML-LS
-         *
-         * NOTE
-         * In the standard, this is actually a read-write property,
-         * but we don't implement that here because it's madness.
-         */
-        public function body(): ?Element
-        {
-                $elt = $this->documentElement;
-
-                if ($elt === NULL || $elt->type !== 'html') {
-                        return NULL;
-                }
-                for ($n=$elt->getFirstChild(); $n!==NULL; $n=$n->getNextSibling()) {
-                        if ($n->nodeType === ELEMENT_NODE
-                        &&  $n->getLocalName() === 'body'
-                        &&  $n->getNamespaceURI() === NAMESPACE_HTML) {
-                                return $n;
-                        }
-                }
-        }
-
-        /**
-         * Fetch the <HEAD> Element if we are an HTMLDocument
-         *
-         * @return Element or NULL
-         * @spec HTML-LS
-         */
-        public function head(): ?Element
-        {
-                $elt = $this->documentElement;
-
-                if ($elt === NULL || $elt->type !== 'html') {
-                        return NULL;
-                }
-                for ($n=$elt->getFirstChild(); $n!==NULL; $n=$n->getNextSibling()) {
-                        if ($n->nodeType === ELEMENT_NODE
-                        &&  $n->getLocalName() === 'head'
-                        &&  $n->getNamespaceURI() === NAMESPACE_HTML) {
-                                return $n;
-                        }
-                }
-        }
-
-        /**
-         * Get or set the title of the Document.
-         *
-         * @param string $value
-         * @return string that is the Document's title
-         * @spec HTML-LS
-         *
-         * If the <TITLE> was overridden by calling Document::title,
-         * it contains that value. Otherwise, it contains the title
-         * specified in the markup
-         *
-         * Follows spec quite closely, see:
-         * https://html.spec.whatwg.org/multipage/dom.html#document.title
-         */
-        public function title(string $value = NULL): ?string
-        {
-                $title = $this->getElementsByTagName("title")->item(0);
-
-                /* GET */
-                if ($value === NULL) {
-                        if ($title === NULL) {
-                                /* HTML-LS: "" if <TITLE> does not exist. */
-                                return "";
-                        } else {
-                                /* HTML-LS: Trim+collapse ASCII whitespace */
-                                return trim(preg_replace('/\s+/',' ', $title->textContent()));
-                        }
-                /* SET */
-                } else {
-                        /* HTML-LS: If documentElement is in HTML namespace */
-                        if ($this->documentElement()->isHTMLElement()) {
-                                $head = $this->head();
-                                if ($title === NULL && $head === NULL) {
-                                        /* HTML-LS : If title+head NULL, return */
-                                        return "";
-                                }
-                                if ($title !== NULL) {
-                                        /* HTML-LS: If <TITLE> !NULL use it */
-                                        $elt = $title;
-                                } else {
-                                        /* HTML-LS: Else create a new one */
-                                        $elt = $this->createElement("title");
-                                        /* HTML-LS: and append to head */
-                                        $head->appendChild($elt);
-                                }
-                                if ($elt !== NULL) {
-                                        $elt->textContent($value);
-                                }
-                                /*
-                                 * TODO: Spec does not mention what if head
-                                 * is NULL but Title is not?
-                                 */
-                        }
-                }
         }
 
         /*********** Utility methods extending normal DOM behavior ***********/
@@ -754,7 +598,6 @@ class Document extends Node
         {
                 return true;
         }
-
 
         /*********************************************************************
          * Internal book-keeping tables:
@@ -917,79 +760,6 @@ class Document extends Node
                                 "type" => MUTATE_MOVE,
                                 "target" => $node
                         ));
-                }
-        }
-
-        public function _resolve($href)
-        {
-                //XXX: Cache the URL
-                //return new URL($this->_documentBaseURL)->resolve($href);
-                /* TODO: implement? */
-                return '';
-        }
-
-        public function _documentBaseURL()
-        {
-                /* TODO: Implement? */
-                return '';
-                // XXX: This is not implemented correctly yet
-                //$url = $this->_address;
-                //if ($url === "about:blank") {
-                        //$url = "/";
-                //}
-
-                //$base = $this->querySelector("base[href]");
-
-                //if ($base) {
-                        //return new URL($url)->resolve($base->getAttribute("href"));
-                //}
-                //return $url;
-
-                /*
-                 * The document base URL of a Document object is the
-                 * absolute URL obtained by running these substeps:
-                 *
-                 * Let fallback base url be the document's address.
-                 *
-                 * If fallback base url is about:blank, and the
-                 * Document's browsing context has a creator browsing
-                 * context, then let fallback base url be the document
-                 * base URL of the creator Document instead.
-                 *
-                 * If the Document is an iframe srcdoc document, then
-                 * let fallback base url be the document base URL of
-                 * the Document's browsing context's browsing context
-                 * container's Document instead.
-                 *
-                 * If there is no base element that has an href
-                 * attribute, then the document base URL is fallback
-                 * base url; abort these steps. Otherwise, let url be
-                 * the value of the href attribute of the first such
-                 * element.
-                 *
-                 * Resolve url relative to fallback base url (thus,
-                 * the base href attribute isn't affected by xml:base
-                 * attributes).
-                 *
-                 * The document base URL is the result of the previous
-                 * step if it was successful; otherwise it is fallback
-                 * base url.
-                 */
-        }
-
-        public function querySelector($selector)
-        {
-                /* TODO: select() provided by some mechanism */
-                return select($selector, $this)[0];
-        }
-
-        public function querySelectorAll($selector)
-        {
-                $nodes = select($selector, $this);
-                if ($nodes->item) {
-                        return $nodes;
-                } else {
-                        return new NodeList($nodes);
                 }
         }
 }

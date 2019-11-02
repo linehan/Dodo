@@ -220,6 +220,11 @@ are called by `Node::isEqualNode` when it's time to do the subclass-specific
 part.
 
 
+Hmm, maybe the real reason this is coming up is that things like
+`isEqualNode` also recurse, and the children may be several different
+classes that extend Node.
+
+
 ### Other readability conventions
 
 * If a property is part of the spec, it is written exactly as in the spec

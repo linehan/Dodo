@@ -162,30 +162,38 @@ class Element extends NonDocumentTypeChildNode
          * ACCESSORS
          **********************************************************************/
 
-        public function prefix(): ?string
-        {
-                return $this->_prefix;
-        }
-        public function localName(): string
-        {
-                return $this->_localName;
-        }
-        public function namespaceURI(): ?string
-        {
-                return $this->_namespaceURI;
-        }
-        public function tagName(): string
-        {
-                return $this->_nodeName;
-        }
+        /* TODO: Totally defined on Node */
 	public function nodeName(): string
 	{
 		return $this->_nodeName;
 	}
+        /* TODO: Totally defined on Node */
 	public function nodeValue(): string
 	{
 		return $this->_nodeValue;
 	}
+
+        /* TODO: Also in Attr... are they part of Node ? */
+        public function prefix(): ?string
+        {
+                return $this->_prefix;
+        }
+        /* TODO: Also in Attr... are they part of Node ? */
+        public function localName(): string
+        {
+                return $this->_localName;
+        }
+        /* TODO: Also in Attr... are they part of Node ? */
+        public function namespaceURI(): ?string
+        {
+                return $this->_namespaceURI;
+        }
+
+        public function tagName(): string
+        {
+                return $this->_nodeName;
+        }
+
         public function id(?string $v = NULL)
         {
                 if ($v === NULL) {
@@ -367,79 +375,14 @@ class Element extends NonDocumentTypeChildNode
         }
 
         /**********************************************************************
-         * QUERIES AND SELECTIONS
+         * ATTRIBUTE: get/set/remove/has/toggle 
          **********************************************************************/
-
-        /* XXX:
-         * Tests are currently failing for this function.
-         * Awaiting resolution of:
-         * http://lists.w3.org/Archives/Public/www-dom/2011JulSep/0016.html
-         */
-        public function getElementsByTagName($lname)
-        {
-                $filter;
-
-                if (!$lname) {
-                        return new NodeList();
-                }
-                if ($lname === '*') {
-                        /* TODO: defining this function in PHP... */
-                        $filter = function() { return true; };
-                } else if ($this->isHTMLElement()) {
-                        $filter = htmlLocalNameElementFilter($lname);
-                } else {
-                        $filter = localNameElementFilter($lname);
-                }
-
-                return new FilteredElementList($this, $filter);
-        }
-
-        public function getElementsByTagNameNS($ns, $lname)
-        {
-                if ($ns === '*' && $lname === '*') {
-                        /* TODO: defining this fn in PHP... */
-                        $filter = function() { return true; };
-                } else if ($ns === '*') {
-                        $filter = localNameElementFilter($lname);
-                } else if ($lname === '*') {
-                        $filter = namespaceElementFilter($ns);
-                } else {
-                        $filter = namespaceLocalNameElementFilter($ns, $lname);
-                }
-
-                return new FilteredElementList($this, $filter);
-        }
-
-        public function getElementsByClassName($names)
-        {
-                $names = trim(strval($names));
-
-                if ($names === '') {
-                        $result = new NodeList(); // Empty node list
-                        return $result;
-                }
-                $names = preg_split('/\s+/', $names); // split on ASCII whitespace
-
-                return new FilteredElementList($this, classNamesElementFilter($names));
-        }
-
-        public function getElementsByName($name)
-        {
-                return new FilteredElementList($this, elementNameFilter(strval($name)));
-        }
-
-
-        /**********************************************************************
-         * ATTRIBUTES
-         **********************************************************************/
-
-	/* GET ****************************************************************/
 
         /**
          * Fetch the value of an attribute with the given qualified name
          *
-         * @param string $qname The attribute's qualifiedName
-         * @return ?string the value of the attribute
+         * param string $qname The attribute's qualifiedName
+         * return ?string the value of the attribute
          */
         public function getAttribute(string $qname): ?string
         {
@@ -448,56 +391,18 @@ class Element extends NonDocumentTypeChildNode
         }
 
         /**
-         * Fetch value of attribute with the given namespace and localName
-         *
-         * @param ?string $ns The attribute's namespace
-         * @param string $lname The attribute's local name
-         * @return ?string the value of the attribute
-         * @spec DOM-LS
-         */
-        public function getAttributeNS(?string $ns, string $lname): ?string
-        {
-                $attr = $this->attributes->getNamedItemNS($ns, $lname);
-                return $attr ? $attr->value() : NULL;
-        }
-
-        /**
-         * Fetch the Attr node with the given qualifiedName
-         *
-         * @param string $lname The attribute's local name
-         * @return ?Attr the attribute node, or NULL
-         * @spec DOM-LS
-         */
-        public function getAttributeNode(string $qname): ?Attr
-        {
-                return $this->attributes->getNamedItem($qname);
-        }
-
-        /**
-         * Fetch the Attr node with the given namespace and localName
-         *
-         * @param string $lname The attribute's local name
-         * @return ?Attr the attribute node, or NULL
-         * @spec DOM-LS
-         */
-        public function getAttributeNodeNS(?string $ns, string $lname): ?Attr
-        {
-                return $this->attributes->getNamedItemNS($ns, $lname);
-        }
-
-	/* SET ****************************************************************/
-
-        /**
          * Set the value of first attribute with a particular qualifiedName
          *
-         * @param string $qname
-         * @param $value
-         * @return void
-         * @spec DOM-LS
+         * param string $qname
+         * param $value
+         * return void
+         * spec DOM-LS
          *
          * NOTES
          * Per spec, $value is not a string, but the string value of
          * whatever is passed.
+         *
+         * TODO: DRY with this and setAttributeNS? 
          */
         public function setAttribute(string $qname, $value)
         {
@@ -518,63 +423,11 @@ class Element extends NonDocumentTypeChildNode
         }
 
         /**
-         * Set value of attribute with a particular namespace and localName
-         *
-         * @param string $ns
-         * @param string $qname
-         * @param $value
-         * @return void
-         * @spec DOM-LS
-         *
-         * NOTES
-         * Per spec, $value is not a string, but the string value of
-         * whatever is passed.
-         */
-        public function setAttributeNS(?string $ns, string $qname, $value)
-        {
-                $lname = NULL;
-                $prefix = NULL;
-
-                \domo\whatwg\validate_and_extract($ns, $qname, $prefix, $lname);
-
-                $attr = $this->attributes->getNamedItemNS($ns, $qname);
-                if ($attr === NULL) {
-                        $attr = new Attr($this, $lname, $prefix, $ns);
-                }
-                $attr->value($value);
-                $this->attributes->setNamedItemNS($attr);
-        }
-
-        /**
-         * Add an Attr node to an Element node
-         *
-         * @param Attr $attr
-         * @return ?Attr
-         */
-        public function setAttributeNode(Attr $attr): ?Attr
-        {
-                return $this->attributes->setNamedItem($attr);
-        }
-
-        /**
-         * Add a namespace-aware Attr node to an Element node
-         *
-         * @param Attr $attr
-         * @return ?Attr
-         */
-        public function setAttributeNodeNS($attr)
-        {
-                return $this->attributes->setNamedItemNS($attr);
-        }
-
-	/* REMOVE *************************************************************/
-
-        /**
          * Remove the first attribute given a particular qualifiedName
          *
-         * @param string $qname
-         * @return Attr or NULL the removed attribute node
-         * @spec DOM-LS
+         * param string $qname
+         * return Attr or NULL the removed attribute node
+         * spec DOM-LS
          */
         public function removeAttribute(string $qname): ?Attr
         {
@@ -582,59 +435,16 @@ class Element extends NonDocumentTypeChildNode
         }
 
         /**
-         * Remove attribute given a particular namespace and localName
-         *
-         * @param string $ns namespace
-         * @param string $lname localName
-         * @return Attr or NULL the removed attribute node
-         * @spec DOM-LS
-         */
-        public function removeAttributeNS(?string $ns, string $lname)
-        {
-                return $this->attributes->removeNamedItemNS($ns, $lname);
-        }
-
-        /**
-         * Remove the given attribute node from this Element
-         *
-         * @param Attr $attr attribute node to remove
-         * @return Attr or NULL the removed attribute node
-         * @spec DOM-LS
-         */
-        public function removeAttributeNode(Attr $attr)
-        {
-                /* TODO: This is not a public function */
-                return $this->attributes->_remove($attr);
-        }
-
-	/* HAS ****************************************************************/
-
-        /**
          * Test Element for attribute with the given qualified name
          *
-         * @param string $qname Qualified name of attribute
-         * @return bool
-         * @spec DOM-LS
+         * param string $qname Qualified name of attribute
+         * return bool
+         * spec DOM-LS
          */
         public function hasAttribute(string $qname): bool
         {
                 return $this->attributes->hasNamedItem($qname);
         }
-
-        /**
-         * Test Element for attribute with the given namespace and localName
-         *
-         * @param ?string $ns the namespace
-         * @param string $lname the localName
-         * @return bool
-         * @spec DOM-LS
-         */
-        public function hasAttributeNS(?string $ns, string $lname): bool
-        {
-                return $this->attributes->hasNamedItemNS($ns, $lname);
-        }
-
-	/* OTHER **************************************************************/
 
         /**
          * Toggle the first attribute with the given qualified name
@@ -666,6 +476,149 @@ class Element extends NonDocumentTypeChildNode
                         return true;
                 }
         }
+
+        /**********************************************************************
+         * ATTRIBUTE NS: get/set/remove/has
+         **********************************************************************/
+
+        /**
+         * Fetch value of attribute with the given namespace and localName
+         *
+         * @param ?string $ns The attribute's namespace
+         * @param string $lname The attribute's local name
+         * @return ?string the value of the attribute
+         * @spec DOM-LS
+         */
+        public function getAttributeNS(?string $ns, string $lname): ?string
+        {
+                $attr = $this->attributes->getNamedItemNS($ns, $lname);
+                return $attr ? $attr->value() : NULL;
+        }
+
+        /**
+         * Set value of attribute with a particular namespace and localName
+         *
+         * @param string $ns
+         * @param string $qname
+         * @param $value
+         * @return void
+         * @spec DOM-LS
+         *
+         * NOTES
+         * Per spec, $value is not a string, but the string value of
+         * whatever is passed.
+         */
+        public function setAttributeNS(?string $ns, string $qname, $value)
+        {
+                $lname = NULL;
+                $prefix = NULL;
+
+                \domo\whatwg\validate_and_extract($ns, $qname, $prefix, $lname);
+
+                $attr = $this->attributes->getNamedItemNS($ns, $qname);
+                if ($attr === NULL) {
+                        $attr = new Attr($this, $lname, $prefix, $ns);
+                }
+                $attr->value($value);
+                $this->attributes->setNamedItemNS($attr);
+        }
+
+        /**
+         * Remove attribute given a particular namespace and localName
+         *
+         * @param string $ns namespace
+         * @param string $lname localName
+         * @return Attr or NULL the removed attribute node
+         * @spec DOM-LS
+         */
+        public function removeAttributeNS(?string $ns, string $lname)
+        {
+                return $this->attributes->removeNamedItemNS($ns, $lname);
+        }
+
+        /**
+         * Test Element for attribute with the given namespace and localName
+         *
+         * @param ?string $ns the namespace
+         * @param string $lname the localName
+         * @return bool
+         * @spec DOM-LS
+         */
+        public function hasAttributeNS(?string $ns, string $lname): bool
+        {
+                return $this->attributes->hasNamedItemNS($ns, $lname);
+        }
+
+        /**********************************************************************
+         * ATTRIBUTE NODE: get/set/remove
+         **********************************************************************/
+
+        /**
+         * Fetch the Attr node with the given qualifiedName
+         *
+         * param string $lname The attribute's local name
+         * return ?Attr the attribute node, or NULL
+         * spec DOM-LS
+         */
+        public function getAttributeNode(string $qname): ?Attr
+        {
+                return $this->attributes->getNamedItem($qname);
+        }
+
+        /**
+         * Add an Attr node to an Element node
+         *
+         * @param Attr $attr
+         * @return ?Attr
+         */
+        public function setAttributeNode(Attr $attr): ?Attr
+        {
+                return $this->attributes->setNamedItem($attr);
+        }
+
+        /**
+         * Remove the given attribute node from this Element
+         *
+         * @param Attr $attr attribute node to remove
+         * @return Attr or NULL the removed attribute node
+         * @spec DOM-LS
+         */
+        public function removeAttributeNode(Attr $attr)
+        {
+                /* TODO: This is not a public function */
+                return $this->attributes->_remove($attr);
+        }
+
+        /**********************************************************************
+         * ATTRIBUTE NODE NS: get/set
+         **********************************************************************/
+
+        /**
+         * Fetch the Attr node with the given namespace and localName
+         *
+         * @param string $lname The attribute's local name
+         * @return ?Attr the attribute node, or NULL
+         * @spec DOM-LS
+         */
+        public function getAttributeNodeNS(?string $ns, string $lname): ?Attr
+        {
+                return $this->attributes->getNamedItemNS($ns, $lname);
+        }
+
+        /**
+         * Add a namespace-aware Attr node to an Element node
+         *
+         * @param Attr $attr
+         * @return ?Attr
+         */
+        public function setAttributeNodeNS($attr)
+        {
+                return $this->attributes->setNamedItemNS($attr);
+        }
+
+        /*********************************************************************
+         * OTHER
+         ********************************************************************/
 
         /**
          * Test whether this Element has any attributes
@@ -702,11 +655,6 @@ class Element extends NonDocumentTypeChildNode
                 return $ret;
         }
 
-
-        /*********************************************************************
-         * OTHER
-         ********************************************************************/
-
         public function classList()
         {
                 $self = $this;
@@ -725,21 +673,6 @@ class Element extends NonDocumentTypeChildNode
                 */
                 $this->_classList = $dtlist;
                 return $dtlist;
-        }
-
-        public function matches($selector)
-        {
-                /* TODO: SELECTOR INTEGRATION */
-                //return $select->matches($this, $selector);
-        }
-
-        public function closest($selector)
-        {
-                $el = $this;
-                while (method_exists($el, "matches") && !$el->matches($selector)) {
-                        $el = $el->parentNode();
-                }
-                return (method_exists($el, "matches")) ? $el : NULL;
         }
 
         /*********************************************************************
@@ -799,46 +732,3 @@ class Element extends NonDocumentTypeChildNode
         }
 }
 
-
-
-// These functions return predicates for filtering elements.
-// They're used by the Document and Element classes for methods like
-// getElementsByTagName and getElementsByClassName
-
-//function localNameElementFilter(lname) {
-  //return function(e) { return e.localName === lname; };
-//}
-
-//function htmlLocalNameElementFilter(lname) {
-  //var lclname = utils.toASCIILowerCase(lname);
-  //if (lclname === lname)
-    //return localNameElementFilter(lname);
-
-  //return function(e) {
-    //return e.isHTML ? e.localName === lclname : e.localName === lname;
-  //};
-//}
-
-//function namespaceElementFilter(ns) {
-  //return function(e) { return e.namespaceURI === ns; };
-//}
-
-//function namespaceLocalNameElementFilter(ns, lname) {
-  //return function(e) {
-    //return e.namespaceURI === ns && e.localName === lname;
-  //};
-//}
-
-//function classNamesElementFilter(names) {
-  //return function(e) {
-    //return names.every(function(n) { return e.classList.contains(n); });
-  //};
-//}
-
-//function elementNameFilter(name) {
-  //return function(e) {
-    //// All the *HTML elements* in the document with the given name attribute
-    //if (e.namespaceURI !== NAMESPACE.HTML) { return false; }
-    //return e.getAttribute('name') === name;
-  //};
-//}
