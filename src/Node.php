@@ -14,8 +14,17 @@ require_once("NodeList.php");
 require_once('utilities.php');
 require_once("whatwg.php");
 
-abstract class Node /* extends EventTarget // try factoring events out? */
+abstract class Node
 {
+        /* 
+         * NOTE: We do not include all of the constant node type enums 
+         * see: https://dom.spec.whatwg.org/#node.
+         */
+
+        /**********************************************************************
+         * Abstract methods that must be defined in subclasses
+         **********************************************************************/
+
         /* Delegated subclass method called by Node::isEqualNode() */
         abstract protected function _subclass_isEqualNode(Node $node): bool;
 
@@ -23,68 +32,84 @@ abstract class Node /* extends EventTarget // try factoring events out? */
         abstract protected function _subclass_cloneNodeShallow(): ?Node;
 
         /**********************************************************************
-         * DOMO internal book-keeping layer
+         * Properties that are only set in the subclass constructors 
          **********************************************************************/
-        /* Used for caching (Node::__lastmod_update, Node::__lastmod) */
-        protected $___lastmod = 0;
 
-        /* Assigned by Document::adopt() as a node index in the Document */
-        protected $__nid;
-
-        /* Node's index in childNodes of parent (NULL if no parent) */
-        public $___index; /* TODO: Name, 'sibling_index'? */
+        public $nodeType; /* readonly unsigned short */
+        public $nodeName; /* readonly DOMString */
+        public $nodeValue; /* DOMString or NULL */
 
         /**********************************************************************
          * BOOK-KEEPING: What Node knows about its ancestors
          **********************************************************************/
 
         /* DOMO: Top-level Document object of the Node */
-        public $_ownerDocument;
+        public $ownerDocument; /* readonly Document or NULL */
 
         /* DOMO: Parent node (NULL if no parent) */
-        public $_parentNode;
+        public $parentNode; /* readonly */
 
         /**********************************************************************
          * BOOK-KEEPING: What Node knows about the childNodes of its parent
          **********************************************************************/
 
         /* DOMO: Next sibling in childNodes of parent ($this if none) */
-        public $_nextSibling;
+        public $nextSibling; /* readonly */
 
         /* DOMO: Prev sibling in childNodes of parent ($this if none) */
-        public $_previousSibling;
+        public $previousSibling; /* readonly */
 
         /**********************************************************************
          * BOOK-KEEPING: What Node knows about its own childNodes
          **********************************************************************/
 
         /* DOMO: Reference to first child Node (NULL if no children) */
-        public $_firstChild;
+        public $firstChild; /* readonly */
 
         /* DOMO: Array form of childNodes (NULL if no children or using LL) */
-        public $_childNodes;
+        public $childNodes; /* readonly */
+
+
+        /**********************************************************************
+         * DOMO internal book-keeping layer
+         **********************************************************************/
+        /* Used for caching (Node::__mod_time_update) */
+
+        /*
+         * NOTE The __mod_time (modified time) value is used as a cache 
+         * invalidation mechanism. If the node does not already have one, 
+         * it will be initialized to the owner document's __mod_clock 
+         * property. (__mod_clock does not hold an actual time, it is simply 
+         * a counter incremented on each document modification).
+         */
+
+        protected $__mod_time = 0;
+
+        /* Assigned by Document::adopt() as a node index in the Document */
+        protected $_nid;
+
+        /* Node's index in childNodes of parent (NULL if no parent) */
+        public $__index; /* TODO: Name, 'sibling_index'? */
 
         /* TODO: Unused */
         public $_roothook;
 
-        /**********************************************************************
-         * BOOK-KEEPING: What Node knows about itself
-         **********************************************************************/
 
         public function __construct()
         {
                 /* Our ancestors */
-		$this->_ownerDocument = NULL;
-                $this->_parentNode = NULL;
+		$this->ownerDocument = NULL;
+                $this->parentNode = NULL;
 
                 /* Our children */
-                $this->_firstChild = NULL;
-                $this->_childNodes = NULL;
+                $this->firstChild = NULL;
+                $this->childNodes = NULL;
 
                 /* Our siblings */
-                $this->_nextSibling = $this; // for LL
-                $this->_previousSibling = $this; // for LL
+                $this->nextSibling = $this; // for LL
+                $this->previousSibling = $this; // for LL
         }
+
 
         /**********************************************************************
          * UNSUPPORTED
@@ -98,7 +123,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
 
         /*
          * TODO: These accessors rely on subclasses to set values on
-         * the properties _nodeType, _nodeName, and _nodeValue, _ownerDocument,
+         * the properties nodeType, nodeName, nodeValue, ownerDocument,
          * and so on, in order to function.
          *
          * However sometimes the subclasses simply override/extend these
@@ -106,19 +131,19 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          *
          * This could perhaps better be done by declaring them abstract
          * methods and asking the subclasses to implement the accessors
-         * there, like how textContent is done now.
+         * there, like how textContent is done.
          */
-        public function nodeType(): int
+        public function getNodeType(): int
         {
-                return $this->_nodeType;
+                return $this->nodeType;
         }
-        public function nodeName()
+        public function getNodeName()
         {
-                return $this->_nodeName;
+                return $this->nodeName;
         }
-        public function nodeValue()
+        public function getNodeValue()
         {
-                return $this->_nodeValue;
+                return $this->nodeValue;
         }
 
         /* TODO: Hmm. */
@@ -130,13 +155,13 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          * @return Document or NULL
          * @spec DOM-LS
          */
-        public function ownerDocument(): ?Document
+        public function getOwnerDocument(): ?Document
         {
-                if ($this->_ownerDocument === NULL
-                ||  $this->_nodeType === DOCUMENT_NODE) {
+                if ($this->ownerDocument === NULL
+                ||  $this->nodeType === DOCUMENT_NODE) {
                         return NULL;
                 }
-                return $this->_ownerDocument;
+                return $this->ownerDocument;
         }
 
         /**
@@ -150,9 +175,9 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          * tree (e.g. Document Nodes), or if they don't participate in a
          * tree.
          */
-        public function parentNode(): ?Node
+        public function getParentNode(): ?Node
         {
-                return $this->_parentNode ?? NULL;
+                return $this->parentNode ?? NULL;
         }
 
         /**
@@ -164,13 +189,13 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          * NOTE
          * Computed from _parentNode, has no state of its own to mutate.
          */
-        public function parentElement(): ?Element
+        public function getParentElement(): ?Element
         {
-                if ($this->_parentNode === NULL
-                || $this->_parentNode->_nodeType !== ELEMENT_NODE) {
+                if ($this->parentNode === NULL
+                || $this->parentNode->nodeType !== ELEMENT_NODE) {
                         return NULL;
                 }
-                return $this->_parentNode;
+                return $this->parentNode;
         }
 
         /**
@@ -184,13 +209,13 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          * for this method. When Node is an only child, _previousSibling
          * is set to $this, but DOM-LS needs it to be NULL.
          */
-        public function previousSibling(): ?Node
+        public function getPreviousSibling(): ?Node
         {
-                if ($this->_parentNode === NULL
-                || $this === $this->_parentNode->firstChild()) {
+                if ($this->parentNode === NULL
+                || $this === $this->parentNode->firstChild()) {
                         return NULL;
                 }
-                return $this->_previousSibling;
+                return $this->previousSibling;
         }
 
         /**
@@ -204,13 +229,13 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          * for this method. When Node is an only child, _nextSibling
          * is set to $this, but DOM-LS needs it to be NULL.
          */
-        public function nextSibling(): ?Node
+        public function getNextSibling(): ?Node
         {
-                if ($this->_parentNode === NULL
-                || $this->_nextSibling === $this->_parentNode->_firstChild) {
+                if ($this->parentNode === NULL
+                || $this->nextSibling === $this->parentNode->firstChild) {
                         return NULL;
                 }
-                return $this->_nextSibling;
+                return $this->nextSibling;
         }
 
         /**
@@ -232,21 +257,21 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          * It's annoying how we can do foreach (Document::attributes as $a)
          * but not foreach (Node::childNodes as $c).
          */
-        public function childNodes(): ?NodeList
+        public function getChildNodes(): ?NodeList
         {
-                if ($this->_childNodes !== NULL) {
-                        return $this->_childNodes; /* memoization */
+                if ($this->childNodes !== NULL) {
+                        return $this->childNodes; /* memoization */
                 }
 
                 /* Lazy evaluation to build the child nodes */
-                $this->_childNodes = new NodeList();
+                $this->childNodes = new NodeList();
 
-                for ($n=$this->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
-                        $this->_childNodes[] = $n;
+                for ($n=$this->getFirstChild(); $n!==NULL; $n=$n->getNextSibling()) {
+                        $this->childNodes[] = $n;
                 }
 
-                $this->_firstChild = NULL; /* Signals we are not using LL */
-                return $this->_childNodes;
+                $this->firstChild = NULL; /* Signals we are not using LL */
+                return $this->childNodes;
         }
 
         /**
@@ -262,10 +287,10 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          */
         public function hasChildNodes(): bool
         {
-                if ($this->_childNodes !== NULL) {
-                        return !empty($this->_childNodes); /* NodeList */
+                if ($this->childNodes !== NULL) {
+                        return !empty($this->childNodes); /* NodeList */
                 } else {
-                        return $this->_firstChild !== NULL; /* LinkedList */
+                        return $this->firstChild !== NULL; /* LinkedList */
                 }
         }
 
@@ -280,16 +305,16 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          * method. Where to find the first child depends on whether we
          * are in NodeList or LinkedList mode.
          */
-        public function firstChild(): ?Node
+        public function getFirstChild(): ?Node
         {
-                if ($this->_childNodes !== NULL) {
-                        if (isset($this->_childNodes[0])) {
-                                return $this->_childNodes[0]; /* NodeList */
+                if ($this->childNodes !== NULL) {
+                        if (isset($this->childNodes[0])) {
+                                return $this->childNodes[0]; /* NodeList */
                         } else {
                                 return NULL; /* NodeList */
                         }
                 }
-                return $this->_firstChild; /* LinkedList */
+                return $this->firstChild; /* LinkedList */
         }
 
         /**
@@ -301,17 +326,17 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          * NOTE
          * See note for firstChild()
          */
-        public function lastChild(): ?Node
+        public function getLastChild(): ?Node
         {
-                if ($this->_childNodes !== NULL) {
-                        if (!empty($this->_childNodes)) {
-                                return end($this->_childNodes); /* NodeList */
+                if ($this->childNodes !== NULL) {
+                        if (!empty($this->childNodes)) {
+                                return end($this->childNodes); /* NodeList */
                         } else {
                                 return NULL; /* NodeList */
                         }
                 }
-                if ($this->_firstChild !== NULL) {
-                        return $this->_firstChild->previousSibling(); /* LinkedList */
+                if ($this->firstChild !== NULL) {
+                        return $this->firstChild->getPreviousSibling(); /* LinkedList */
                 } else {
                         return NULL; /* LinkedList */
                 }
@@ -354,11 +379,11 @@ abstract class Node /* extends EventTarget // try factoring events out? */
 
                 /* DOM-LS #3. If $refChild is node, set to $node next sibling */
                 if ($refChild === $node) {
-                        $refChild = $node->nextSibling();
+                        $refChild = $node->getNextSibling();
                 }
 
                 /* DOM-LS #4. Adopt $node into parent's node document. */
-                $this->__node_document()->adoptNode($node);
+                $this->_node_document()->adoptNode($node);
 
                 /* DOM-LS #5. Insert $node into parent before $refChild . */
                 \domo\whatwg\insert_before_or_replace($node, $this, $refChild, false);
@@ -402,7 +427,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
                 \domo\whatwg\ensure_replace_valid($newChild, $this, $oldChild);
 
                 /* Adopt node into parent's node document. */
-                if ($newChild->__node_document() !== $this->__node_document()) {
+                if ($newChild->_node_document() !== $this->_node_document()) {
                         /*
                          * XXX adoptNode has side-effect of removing node from
                          * its parent and generating a mutation event, causing
@@ -412,7 +437,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
                          * now let's only adopt (ie, remove 'node' from its
                          * parent) here if we need to.
                          */
-                        $this->__node_document()->adoptNode($newChild);
+                        $this->_node_document()->adoptNode($newChild);
                 }
 
                 \domo\whatwg\insert_before_or_replace($newChild, $this, $oldChild, true);
@@ -433,7 +458,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          */
         public function removeChild(ChildNode $node): ?Node
         {
-                if ($this !== $node->_parentNode) {
+                if ($this !== $node->parentNode) {
                         \domo\error("NotFoundError");
                 }
                 $node->remove(); /* ChildNode method */
@@ -447,18 +472,18 @@ abstract class Node /* extends EventTarget // try factoring events out? */
         {
                 $next=NULL;
 
-                for ($n=$this->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
+                for ($n=$this->getFirstChild(); $n!==NULL; $n=$n->getNextSibling()) {
 
                         /* TODO: HOW TO FIX THIS IN PHP? */
                         if (method_exists($n, "normalize")) {
                                 $n->normalize();
                         }
 
-                        if ($n->_nodeType !== TEXT_NODE) {
+                        if ($n->nodeType !== TEXT_NODE) {
                                 continue;
                         }
 
-                        if ($n->_nodeValue === "") {
+                        if ($n->nodeValue === "") {
                                 $this->removeChild($n);
                                 continue;
                         }
@@ -468,12 +493,12 @@ abstract class Node /* extends EventTarget // try factoring events out? */
                         if ($prevChild === NULL) {
                                 continue;
                         } else {
-                                if ($prevChild->_nodeType === TEXT_NODE) {
+                                if ($prevChild->nodeType === TEXT_NODE) {
                                         /*
                                          * merge this with previous and
                                          * remove the child
                                          */
-                                        $prevChild->appendData($n->_nodeValue);
+                                        $prevChild->appendData($n->nodeValue);
                                         $this->removeChild($n);
                                 }
                         }
@@ -555,7 +580,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
                         /* We're not equal to NULL */
                         return false;
                 }
-                if ($node->_nodeType !== $this->_nodeType) {
+                if ($node->nodeType !== $this->nodeType) {
                         /* If we're not the same nodeType, we can stop */
                         return false;
                 }
@@ -567,9 +592,9 @@ abstract class Node /* extends EventTarget // try factoring events out? */
 
                 /* Call this method on the children of both nodes */
                 for (
-                        $a=$this->firstChild(), $b=$node->firstChild();
+                        $a=$this->getFirstChild(), $b=$node->getFirstChild();
                         $a!==NULL && $b!==NULL;
-                        $a=$a->nextSibling(), $b=$b->nextSibling()
+                        $a=$a->getNextSibling(), $b=$b->getNextSibling()
                 ) {
                         if (!$a->isEqualNode($b)) {
                                 return false;
@@ -612,7 +637,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
                 }
 
                 /* Otherwise, recurse on the children */
-                for ($n=$this->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
+                for ($n=$this->getFirstChild(); $n!==NULL; $n=$n->getNextSibling()) {
                         /* APPEND DIRECTLY; NO CHECKINSERTVALID */
                         \domo\whatwg\insert_before_or_replace($clone, $n->cloneNode(true), NULL, false);
                 }
@@ -669,17 +694,22 @@ abstract class Node /* extends EventTarget // try factoring events out? */
         /* Called by Document::adoptNode */
         public function __set_owner(Document $doc)
         {
-                $this->_ownerDocument = $doc;
+                $this->ownerDocument = $doc;
 
-                /* lastmod is based on owner document */
-                $this->__lastmod_zero();
+                /* 
+                 * modtimes are by-owner, i.e., the mod clock is
+                 * a property of a Document object. So when being 
+                 * adopted into a new owner document, re-set the
+                 * Node's __mod_time property.
+                 */
+                $this->__mod_time = 0; 
 
                 if (method_exists($this, "tagName")) {
                         /* Element subclasses might need to change case */
-                        $this->_tagName = NULL;
+                        $this->tagName = NULL;
                 }
 
-                for ($n=$this->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
+                for ($n=$this->getFirstChild(); $n!==NULL; $n=$n->getNextSibling()) {
                         $n->__set_owner($n, $owner);
                 }
         }
@@ -711,15 +741,15 @@ abstract class Node /* extends EventTarget // try factoring events out? */
 
                 $doc->__add_to_node_table($this);
 
-                if ($this->_nodeType === ELEMENT_NODE) {
+                if ($this->nodeType === ELEMENT_NODE) {
                         /* getElementById table */
                         if (NULL !== ($id = $this->getAttribute('id'))) {
                                 $doc->__add_to_id_table($id, $this);
                         }
                         /* <SCRIPT> elements use this hook */
                         /* TODO This hook */
-                        if ($this->_roothook) {
-                                $this->_roothook();
+                        if ($this->__roothook) {
+                                $this->__roothook();
                         }
 
                         /*
@@ -728,7 +758,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
                          * a bug?
                          */
                         /* RECURSE ON CHILDREN */
-                        for ($n=$this->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
+                        for ($n=$this->getFirstChild(); $n!==NULL; $n=$n->getNextSibling()) {
                                 $n->__root();
                         }
                 }
@@ -736,10 +766,10 @@ abstract class Node /* extends EventTarget // try factoring events out? */
 
         public function __uproot(): void
         {
-                $doc = $this->ownerDocument();
+                $doc = $this->getOwnerDocument();
 
                 /* Manage id to element mapping */
-                if ($this->_nodeType === ELEMENT_NODE) {
+                if ($this->nodeType === ELEMENT_NODE) {
                         if (NULL !== ($id = $this->getAttribute('id'))) {
                                 $doc->__remove_from_id_table($id, $this);
                         }
@@ -751,7 +781,7 @@ abstract class Node /* extends EventTarget // try factoring events out? */
                  * Then does that make the behavior in root() a bug?
                  * Go over with Scott.
                  */
-                for ($n=$this->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
+                for ($n=$this->getFirstChild(); $n!==NULL; $n=$n->getNextSibling()) {
                         $n->__uproot();
                 }
 
@@ -786,9 +816,9 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          * Does the DOM-LS method Node::getRootNode (not implemented here)
          * in its non-shadow-tree branch, do the same thing?
          */
-        public function __node_document(): Document
+        public function __get_node_document(): Document
         {
-                return $this->_ownerDocument ?? $this;
+                return $this->ownerDocument ?? $this;
         }
 
         /**
@@ -798,24 +828,24 @@ abstract class Node /* extends EventTarget // try factoring events out? */
          * @throw Something if we have no parent
          *
          * NOTE
-         * Calling Node::__index() will automatically trigger a switch
+         * Calling Node::__get_index() will automatically trigger a switch
          * to the NodeList representation (see Node::childNodes()).
          */
-        public function __index(): int
+        public function __get_index(): int
         {
-                if ($this->_parentNode === NULL) {
+                if ($this->parentNode === NULL) {
                         return 0; /* ??? TODO: throw or make an error ??? */
                 }
 
-                if ($this === $this->_parentNode->firstChild()) {
+                if ($this === $this->parentNode->getFirstChild()) {
                         return 0;
                 }
 
                 /* We fire up the NodeList mode */
-                $childNodes = $this->_parentNode->childNodes();
+                $childNodes = $this->parentNode->getChildNodes();
 
                 /* We end up re-indexing here if we ever run into trouble */
-                if ($this->___index === NULL || $childNodes[$this->___index] !== $this) {
+                if ($this->__index === NULL || $childNodes[$this->__index] !== $this) {
                         /*
                          * Ensure that we don't have an O(N^2) blowup
                          * if none of the kids have defined indices yet
@@ -823,12 +853,12 @@ abstract class Node /* extends EventTarget // try factoring events out? */
                          * previousSibling
                          */
                         foreach ($childNodes as $i => $child) {
-                                $child->___index = $i;
+                                $child->__index = $i;
                         }
 
-                        \domo\assert($childNodes[$this->___index] === $this);
+                        \domo\assert($childNodes[$this->__index] === $this);
                 }
-                return $this->___index;
+                return $this->__index;
         }
 
         /**
@@ -841,31 +871,31 @@ abstract class Node /* extends EventTarget // try factoring events out? */
         public function __remove_children()
         {
                 if ($this->__is_rooted()) {
-                        $root = $this->_ownerDocument;
+                        $root = $this->ownerDocument;
                 } else {
                         $root = NULL;
                 }
 
                 /* Go through all the children and remove me as their parent */
-                for ($n=$this->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
+                for ($n=$this->getFirstChild(); $n!==NULL; $n=$n->getNextSibling()) {
                         if ($root !== NULL) {
                                 /* If we're rooted, mutate */
                                 $root->__mutate_remove($n);
                         }
-                        $n->_parentNode = NULL;
+                        $n->parentNode = NULL;
                 }
 
                 /* Remove the child node memory or references on this node */
-                if ($this->_childNodes !== NULL) {
+                if ($this->childNodes !== NULL) {
                         /* BRANCH: NodeList (array-like) */
-                        $this->_childNodes = new NodeList();
+                        $this->childNodes = new NodeList();
                 } else {
                         /* BRANCH: circular linked list */
-                        $this->_firstChild = NULL;
+                        $this->firstChild = NULL;
                 }
 
                 /* Update last modified type once only (minor optimization) */
-                $this->__lastmod_update();
+                $this->__mod_time_update();
         }
 
 
@@ -877,76 +907,38 @@ abstract class Node /* extends EventTarget // try factoring events out? */
         {
                 $s = "";
 
-                for ($n=$this->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
+                for ($n=$this->getFirstChild(); $n!==NULL; $n=$n->getNextSibling()) {
                         $s .= \domo\whatwg\serialize_node($n, $this);
                 }
 
                 return $s;
         }
 
-        public function outerHTML(string $value = NULL)
-        {
-                if ($value == NULL) {
-                        /* TODO Need a way to instantiate a mock parent Node
-                         * with nodeType = 0, like this */
-                        //return \domo\whatwg\serialize_node($this, { $nodeType: 0 });
-                } else {
-                        /* not yet implemented */
-                }
-        }
-
         /**
-         * Return lastModTime value for this Node
-         *
-         * @return int
-         *
-         * NOTE The _lastModTime value is used as a cache invalidation
-         * mechanism. If the node does not already have one, it will be
-         * initialized from the owner document's modclock property.
-         * (modclock does not return the actual time; it is simply a
-         * counter incremented on each document modification)
-         */
-        public function __lastmod(): int
-        {
-                if (!$this->___lastmod) {
-                        $this->___lastmod = $this->__node_document()->__modclock;
-                }
-                return $this->___lastmod;
-        }
-
-        /* Called when being adopted into a new owner document, since
-         * the modtimes are by-owner.
-         */
-        public function __lastmod_zero(): void
-        {
-                $this->___lastmod = 0;
-        }
-
-        /**
-         * Assigns a new _lastModTime to this Node and all ancestors.
+         * Assigns a new __mod_time value to this Node and all ancestors.
          *
          * @return void
          *
          * NOTE
-         * Increments the owner document's modclock and uses the new
-         * value to update the lastModTime value for this node and
+         * Increments the owner document's __mod_clock and uses the new
+         * value to update the __mod_time value for this node and
          * all of its ancestors.
          *
-         * Nodes that have never had their lastModTime value queried
-         * do not need to have a lastModTime property set on them since
+         * Nodes that have never had their __mod_time value queried
+         * do not need to have a __mod_time property set on them since
          * there is no previously queried value to ever compare the new
          * value against, so this will only update nodes that already
-         * have a _lastModTime property.
+         * have a __mod_time property.
          */
-        public function __lastmod_update(): void
+        public function __mod_time_update(): void
         {
                 /* Skip while doc.modclock == 0 */
-                if ($this->__node_document()->__modclock) {
-                        $time = ++$this->__node_document()->__modclock;
+                if ($this->__get_node_document()->__mod_clock) {
+                        $time = ++$this->__get_node_document()->__mod_clock;
 
-                        for ($n=$this; $n!==NULL; $n=$n->parentElement()) {
-                                if ($n->___lastmod) {
-                                        $n->___lastmod = $time;
+                        for ($n=$this; $n!==NULL; $n=$n->getParentElement()) {
+                                if ($n->__mod_time) {
+                                        $n->__mod_time= $time;
                                 }
                         }
                 }

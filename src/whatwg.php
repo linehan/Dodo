@@ -100,7 +100,7 @@ function compare_document_position(\domo\Node $node1, \domo\Node $node2): int
 
         for ($i = 1; $i < $len; $i++) {
                 if ($node1_ancestors[$i] !== $node2_ancestors[$i]) {
-                        if ($node1_ancestors[$i]->__index() < $node2_ancestors[$i]->__index()) {
+                        if ($node1_ancestors[$i]->__get_index() < $node2_ancestors[$i]->__get_index()) {
                                 return \domo\DOCUMENT_POSITION_PRECEDING;
                         }
                 }
@@ -239,11 +239,11 @@ function insert_before_or_replace(\domo\Node $node, \domo\Node $parent, ?\domo\N
 
         if ($parent->_childNodes) {
                 if ($before !== NULL) {
-                        $ref_index = $before->__index();
+                        $ref_index = $before->__get_index();
                 } else {
                         $ref_index = count($parent->_childNodes);
                 }
-                if ($node->_parentNode===$parent && $node->__index()<$ref_index) {
+                if ($node->_parentNode===$parent && $node->__get_index()<$ref_index) {
                         $ref_index--;
                 }
         }
@@ -337,11 +337,11 @@ function insert_before_or_replace(\domo\Node $node, \domo\Node $parent, ?\domo\N
         $d = $parent->__node_document();
 
         if ($bothWereRooted) {
-                $parent->__lastmod_update();
+                $parent->__mod_time_update();
                 $d->__mutate_move($insert[0]);
         } else {
                 if ($parent->__is_rooted()) {
-                        $parent->__lastmod_update();
+                        $parent->__mod_time_update();
                         foreach ($insert as $n) {
                                 $n->__root($d);
                                 $d->__mutate_insert($n);

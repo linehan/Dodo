@@ -111,151 +111,175 @@
 namespace domo;
 require_once('Node.php');
 
-class Attr extends Node /* As of 05/03/2019 */
+/* 
+ * SPEC NOTE
+ * Attr has gone back and forth between
+ * extending Node and being its own 
+ * class in recent specs. As of the
+ * most recent DOM-LS at the time of this
+ * writing (05/03/2019), it extends Node.
+ */
+class Attr extends Node 
 {
         protected const _nodeType = ATTRIBUTE_NODE;
 
-        /*
-         * Protected storage for class properties are prefixed
-         * with an underscore followed by the property name.
-         * Defaults are given. Readonly properties are marked.
-         *
-         * TODO: If you're reading this, and PHP has passed an RFC with
-         * readonly properties or type hints for class property definitions,
-         * you know what to do.
-         */
-        protected $_namespaceURI = NULL;   /* readonly (NULL or non-empty) */
-        protected $_prefix = NULL;         /* readonly (NULL or non-empty) */
-        protected $_localName;             /* readonly, (non-empty) */
-        protected $_name;                  /* readonly, (non-empty) */
-        protected $_value = "";            /* (string) */
-        protected $_ownerElement = NULL;   /* readonly (NULL or Element) */
-        protected const _specified = true; /* readonly const true */
+        protected $namespaceURI = NULL;   /* readonly (NULL or non-empty) */
+        protected $prefix = NULL;         /* readonly (NULL or non-empty) */
+        protected $localName = NULL;      /* readonly, (non-empty) */
+        protected $name;                  /* readonly, (non-empty) */
+        protected $value = "";            /* (string) */
+        protected $ownerElement = NULL;   /* readonly (NULL or Element) */
+        protected const specified = true; /* readonly const true */
 
         public function __construct(
-                ?Element $elt,
-                string $lname,
+                ?Element $ownerElement,
+                string $localName,
                 ?string $prefix=NULL,
-                ?string $ns=NULL,
-                ?string $value=""
+                ?string $namespaceURI=NULL,
+                string $value=""
         ) {
-                $this->_ownerElement = $elt;
-
-                $this->_localName = $lname;
-
-                $this->_namespaceURI = ($ns === "") ? NULL : $ns;
-
-                $this->_prefix = ($prefix==="") ? NULL : $prefix;
-
-                /* DOM-LS: name must return the qualified name */
-                if ($this->_prefix) {
-                        $this->_name = "$this->_prefix:$this->_localName";
+                if ($localName !== '') {
+                        /* DOM-LS: Non-empty string */
+                        $this->localName = $localName;
                 } else {
-                        $this->_name = $this->_localName;
+                        throw Exception("Attr local name must be non-empty");
                 }
 
-                $this->_value = ($value === NULL) ? "" : $value;
+		if ($namespaceURI !== '') {
+                        /* DOM-LS: NULL or non-empty string */
+			$this->namespaceURI = $namespaceURI;
+		}
+
+		if ($prefix !== '') {
+                        /* DOM-LS: NULL or non-empty string */
+			$this->prefix = $prefix;
+		}
+
+                if ($this->prefix === NULL) {
+                        /* 
+                         * DOM-LS: qualified name:
+                         *      localName if prefix is NULL 
+                         */
+                        $this->name = $this->localName;
+                } else {
+                        /* 
+                         * DOM-LS: qualified name:
+                         *      namespace prefix, followed by ":", 
+                         *      followed by local name, otherwise.
+                         */
+                        $this->name = "$this->prefix:$this->localName";
+                }
+
+                /* DOM-LS: NULL or Element */
+                $this->ownerElement = $ownerElement;
+
+                /* DOM-LS: String */
+                $this->value = $value; 
         }
 
         /**********************************************************************
          * ACCESSORS
          **********************************************************************/
-        public function namespaceURI(): ?string
+        public function getNamespaceURI(): ?string
         {
-                return $this->_namespaceURI;
+                return $this->namespaceURI;
         }
-        public function specified()
+        public function getSpecified(): boolean
         {
-                return $this->_specified;
+                return $this->specified;
         }
-        public function ownerElement()
+        public function getOwnerElement(): ?Element
         {
-                return $this->_ownerElement;
+                return $this->ownerElement;
         }
-        public function localName()
+        public function getPrefix(): ?string
         {
-                return $this->_localName;
+                return $this->prefix;
         }
-        public function prefix()
+        public function getLocalName(): string
         {
-                return $this->_prefix;
+                return $this->localName;
         }
-        public function name()
+        public function getName(): string
         {
-                return $this->_name;
+                return $this->name;
         }
-        /*
-         * NOTE
-         * You can unset an attribute by calling Attr::value("");
-         */
-        public function value(?string $v = NULL)
+        public function getValue(): ?string
         {
-                if ($v === NULL) {
-                        /* GET */
-                        return $this->_value;
-                } else {
-                        /* SET */
-                        $old = $this->_value;
-                        $new = $v;
+                return $this->value;
+        }
+        public function setValue(?string $value = NULL)
+        {
+                /*
+                 * NOTE
+                 * You can unset an attribute by calling Attr::value("");
+                 */
+                $old = $this->value;
+                $new = $value;
 
-                        if ($new === $old) {
-                                return;
-                        }
+                if ($new === $old) {
+                        return;
+                }
 
-                        $this->_value = $new;
+                $this->value = $new;
 
-                        if ($this->_ownerElement
-                        && (isset($this->_ownerElement->__onchange_attr[$this->_localName]))) {
-                                /*
-                                 * Elements must take special action if the
-                                 * value of certain attributes are updated.
-                                 * This allows the Attr to inform the Element
-                                 * it has been updated, so the Element can
-                                 * take the appropriate steps.
-                                 *
-                                 * For example, updating the 'id' attribute
-                                 * will cause a rooted Element to delete its
-                                 * old id from and add its new id to its
-                                 * ownerDocument's node id cache.
-                                 *
-                                 * WARNING: This is only fired when we modify
-                                 * the attribute using .value(). This is not
-                                 * fired when we call Element::removeAttribute,
-                                 * but that's okay for 'id' and 'class'.
-                                 */
-                                $this->_ownerElement->__onchange_attr[$this->_localName](
-                                        $this->_ownerElement,
-                                        $old,
-                                        $new
-                                );
-                        }
+                if ($this->ownerElement
+                && (isset($this->ownerElement->__onchange_attr[$this->localName]))) {
+                        /*
+                         * Elements must take special action if the
+                         * value of certain attributes are updated.
+                         * This allows the Attr to inform the Element
+                         * it has been updated, so the Element can
+                         * take the appropriate steps.
+                         *
+                         * For example, updating the 'id' attribute
+                         * will cause a rooted Element to delete its
+                         * old id from and add its new id to its
+                         * ownerDocument's node id cache.
+                         *
+                         * WARNING: This is only fired when we modify
+                         * the attribute using .value(). This is not
+                         * fired when we call Element::removeAttribute,
+                         * but that's okay for 'id' and 'class'.
+                         */
+                        $this->ownerElement->__onchange_attr[$this->localName](
+                                $this->ownerElement,
+                                $old,
+                                $new
+                        );
+                }
 
-                        if ($this->_ownerElement->__is_rooted()) {
-                                /*
-                                 * Documents must also sometimes take special action
-                                 * and be aware of mutations occurring in their tree.
-                                 * These methods are for that.
-                                 *
-                                 * WARNING: This is only fired when we modify
-                                 * the attribute using .value(). This is not
-                                 * fired when we call Element::removeAttribute,
-                                 * but that's okay for 'id' and 'class'.
-                                 *
-                                 * TODO: These two mutation handling things
-                                 * should be combined.
-                                 *
-                                 * TODO: Is this trying to implement spec,
-                                 * or are we just doing this for our own use?
-                                 */
-                                $this->_ownerElement->ownerDocument()->__mutate_attr($this, $old);
-                        }
+                if ($this->ownerElement->__is_rooted()) {
+                        /*
+                         * Documents must also sometimes take special action
+                         * and be aware of mutations occurring in their tree.
+                         * These methods are for that.
+                         *
+                         * WARNING: This is only fired when we modify
+                         * the attribute using .value(). This is not
+                         * fired when we call Element::removeAttribute,
+                         * but that's okay for 'id' and 'class'.
+                         *
+                         * TODO: These two mutation handling things
+                         * should be combined.
+                         *
+                         * TODO: Is this trying to implement spec,
+                         * or are we just doing this for our own use?
+                         */
+                        $this->ownerElement->ownerDocument()->__mutate_attr($this, $old);
                 }
         }
 
-        /* Delegated from Node */
-        public function textContent(?string $value = NULL)
+        /* Delegated from Node */ 
+        public function getTextContent(?string $value = NULL)
         {
-                return $this->value($value);
+                return $this->getValue();
+        }
+
+        /* Delegated from Node */ 
+        public function setTextContent(?string $value = NULL)
+        {
+                return $this->setValue($value);
         }
 
         /* Delegated from Node */
@@ -263,19 +287,19 @@ class Attr extends Node /* As of 05/03/2019 */
         {
                 return new Attr(
                         NULL,
-                        $this->_localName,
-                        $this->_prefix,
-                        $this->_namespaceURI,
-                        $this->_value
+                        $this->localName,
+                        $this->prefix,
+                        $this->namespaceURI,
+                        $this->value
                 );
         }
 
         /* Delegated from Node */
         public function _subclass_isEqualNode(Node $node): bool
         {
-                return ($this->_namespaceURI === $node->_namespaceURI
-                && $this->_localName === $node->_localName
-                && $this->_value === $node->_value);
+                return ($this->namespaceURI === $node->namespaceURI
+                && $this->localName === $node->localName
+                && $this->value === $node->value);
         }
 }
 

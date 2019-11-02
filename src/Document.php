@@ -144,46 +144,49 @@ class Document extends Node
          */
         private $__id_to_element = array();
 
-        /* Used to assign Node::__lastmod */
-        protected $__modclock = 0;
+        /* Used to assign Node::__mod_time */
+        protected $__mod_clock = 0;
 
         /* Documents are rooted by definition and get $__nid = 1 */
         protected $__nid = 1;
         protected $__nid_next = 2;
 
         /* Required by Node */
-        public $_nodeType = DOCUMENT_NODE; /* see Node::nodeType */
-        public $_nodeName = '#document';   /* see Node::nodeName */
-        public $_ownerDocument = NULL;     /* see Node::ownerDocument */
-        public $_nodeValue = NULL;         /* see Node::nodeValue */
+        public $nodeType = DOCUMENT_NODE; /* see Node::nodeType */
+        public $nodeName = '#document';   /* see Node::nodeName */
+        public $ownerDocument = NULL;     /* see Node::ownerDocument */
+        public $nodeValue = NULL;         /* see Node::nodeValue */
 
         /* Required by Document */
-        public const _characterSet = 'UTF-8';
-        public $_encoding = 'UTF-8';
-        public $_type = 'xml';
-        public $_contentType = 'application/xml';
-        public $_URL = 'about:blank';
-        public $_origin = NULL;
-        public $_compatMode = 'no-quirks';
+        public const characterSet = 'UTF-8';
+        public $encoding = 'UTF-8';
+        public $type = 'xml';
+        public $contentType = 'application/xml';
+        public $URL = 'about:blank';
+        public $origin = NULL;
+        public $compatMode = 'no-quirks';
 
         /* Assigned on mutation to the first DocumentType child */
-        public $_doctype = NULL;
+        public $doctype = NULL;
         /* Assigned on mutation to the first Element child */
-        public $_documentElement = NULL;
+        public $documentElement = NULL;
+
+        public $implementation; /* DOMImplementation */
+        public $readyState;
 
         public $__mutation_handler = NULL;
 
         /* Used to mutate the above */
         private function __update_document_state(): void
         {
-                $this->_doctype = NULL;
-                $this->_documentElement = NULL;
+                $this->doctype = NULL;
+                $this->documentElement = NULL;
 
-                for ($n=$this->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
-                        if ($n->_nodeType === DOCUMENT_TYPE_NODE) {
-                                $this->_doctype = $n;
-                        } else if ($n->_nodeType === ELEMENT_NODE) {
-                                $this->_documentElement = $n;
+                for ($n=$this->getFirstChild(); $n!==NULL; $n=$n->getNextSibling()) {
+                        if ($n->nodeType === DOCUMENT_TYPE_NODE) {
+                                $this->doctype = $n;
+                        } else if ($n->nodeType === ELEMENT_NODE) {
+                                $this->documentElement = $n;
                         }
                 }
         }
@@ -196,17 +199,17 @@ class Document extends Node
 
                 /* Having an HTML Document affects some APIs */
                 if ($type === 'html') {
-                        $this->_contentType = 'text/html';
-                        $this->_type = 'html';
+                        $this->contentType = 'text/html';
+                        $this->type = 'html';
                 }
 
                 /* DOM-LS: used by the documentURI and URL method */
                 if ($url !== NULL) {
-                        $this->_URL = $url;
+                        $this->URL = $url;
                 }
 
                 /* DOM-LS: DOMImplementation associated with document */
-                $this->_implementation = new DOMImplementation($this);
+                $this->implementation = new DOMImplementation($this);
 
                 /******** Internal ********/
 
@@ -223,7 +226,7 @@ class Document extends Node
                  * FilteredElementList for an example of the use of
                  * lastModTime
                  */
-                $this->__modclock = 0;
+                $this->__mod_clock = 0;
 
 
                 /******** JUNK ********/
@@ -271,47 +274,47 @@ class Document extends Node
         /*********************************************************************
          * Accessors for read-only properties defined in Document
          *********************************************************************/
-        public function characterSet(): string
+        public function getCharacterSet(): string
         {
-                return $this->_characterSet;
+                return $this->characterSet;
         }
-        public function charset(): string
+        public function getCharset(): string
         {
-                return $this->characterSet(); /* historical alias */
+                return $this->characterSet; /* historical alias */
         }
-        public function inputEncoding(): string
+        public function getInputEncoding(): string
         {
-                return $this->characterSet(); /* historical alias */
+                return $this->characterSet; /* historical alias */
         }
-        public function implementation(): DOMImplementation
+        public function getImplementation(): DOMImplementation
         {
-                return $this->_implementation;
+                return $this->implementation;
         }
-        public function documentURI()
+        public function getDocumentURI()
         {
-                return $this->_URL;
+                return $this->URL;
         }
-        public function URL() : string
+        public function getURL() : string
         {
-                return $this->documentURI(); /* Alias for HTMLDocuments */
+                return $this->URL; /* Alias for HTMLDocuments */
         }
-        public function compatMode()
+        public function getCompatMode()
         {
-                return $this->_mode === "quirks" ? "BackCompat" : "CSS1Compat";
+                return $this->compatMode === "quirks" ? "BackCompat" : "CSS1Compat";
         }
-        public function contentType(): ?string
+        public function getContentType(): ?string
         {
-                return $this->_contentType;
+                return $this->contentType;
         }
-        public function doctype(): ?DocumentType
+        public function getDoctype(): ?DocumentType
         {
-                return $this->_doctype;
+                return $this->doctype;
         }
-        public function documentElement(): ?Element
+        public function getDocumentElement(): ?Element
         {
-                return $this->_documentElement;
+                return $this->documentElement;
         }
-        public function textContent(?string $value = NULL)
+        public function getTextContent(?string $value = NULL)
         {
                 /* HTML-LS: no-op */
         }
@@ -385,7 +388,7 @@ class Document extends Node
                  * and null otherwise.
                  */
                 return new Element($this, $lname, NULL, NULL);
-                if ($this->_contentType === 'text/html') {
+                if ($this->contentType === 'text/html') {
                         if (!ctype_lower($lname)) {
                                 $lname = \domo\ascii_to_lowercase($lname);
                         }
@@ -393,7 +396,7 @@ class Document extends Node
                         /* TODO STUB */
                         //return domo\html\createElement($this, $lname, NULL);
 
-                } else if ($this->_contentType === 'application/xhtml+xml') {
+                } else if ($this->contentType === 'application/xhtml+xml') {
                         /* TODO STUB */
                         //return domo\html\createElement($this, $lname, NULL);
                 } else {
@@ -451,16 +454,16 @@ class Document extends Node
          */
         public function adoptNode(Node $node): Node
         {
-                if ($node->_nodeType === DOCUMENT_NODE) {
+                if ($node->nodeType === DOCUMENT_NODE) {
                         \domo\error("NotSupported");
                 }
-                if ($node->_nodeType === ATTRIBUTE_NODE) {
+                if ($node->nodeType === ATTRIBUTE_NODE) {
                         return $node;
                 }
-                if ($node->parentNode()) {
-                        $node->parentNode()->removeChild($node);
+                if ($node->getParentNode()) {
+                        $node->getParentNode()->removeChild($node);
                 }
-                if ($node->_ownerDocument !== $this) {
+                if ($node->ownerDocument !== $this) {
                         $node->__set_owner($this);
                 }
 
@@ -538,7 +541,7 @@ class Document extends Node
                 }
 
                 /* Clone children too */
-                for ($n=$this->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
+                for ($n=$this->getFirstChild(); $n!==NULL; $n=$n->getNextSibling()) {
                         $clone->appendChild($clone->importNode($n, true));
                 }
 
@@ -591,8 +594,8 @@ class Document extends Node
         {
                 if ($value === NULL) {
                         /* GET */
-                        if ($this->_defaultView) {
-                                return $this->_defaultView->location();
+                        if ($this->defaultView) {
+                                return $this->defaultView->location();
                         } else {
                                 return NULL; // gh #75
                         }
@@ -614,15 +617,15 @@ class Document extends Node
          */
         public function body(): ?Element
         {
-                $elt = $this->_documentElement;
+                $elt = $this->documentElement;
 
-                if ($elt === NULL || $elt->_type !== 'html') {
+                if ($elt === NULL || $elt->type !== 'html') {
                         return NULL;
                 }
-                for ($n=$elt->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
-                        if ($n->_nodeType === ELEMENT_NODE
-                        &&  $n->localName() === 'body'
-                        &&  $n->namespaceURI() === NAMESPACE_HTML) {
+                for ($n=$elt->getFirstChild(); $n!==NULL; $n=$n->getNextSibling()) {
+                        if ($n->nodeType === ELEMENT_NODE
+                        &&  $n->getLocalName() === 'body'
+                        &&  $n->getNamespaceURI() === NAMESPACE_HTML) {
                                 return $n;
                         }
                 }
@@ -636,15 +639,15 @@ class Document extends Node
          */
         public function head(): ?Element
         {
-                $elt = $this->_documentElement;
+                $elt = $this->documentElement;
 
-                if ($elt === NULL || $elt->_type !== 'html') {
+                if ($elt === NULL || $elt->type !== 'html') {
                         return NULL;
                 }
-                for ($n=$elt->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
-                        if ($n->_nodeType === ELEMENT_NODE
-                        &&  $n->localName() === 'head'
-                        &&  $n->namespaceURI() === NAMESPACE_HTML) {
+                for ($n=$elt->getFirstChild(); $n!==NULL; $n=$n->getNextSibling()) {
+                        if ($n->nodeType === ELEMENT_NODE
+                        &&  $n->getLocalName() === 'head'
+                        &&  $n->getNamespaceURI() === NAMESPACE_HTML) {
                                 return $n;
                         }
                 }
