@@ -240,6 +240,7 @@ For why, see their definition in the code.
 Node::_nextSibling
 Node::_previousSibling
 Node::_childNodes
+Node::_firstChild -- is set to NULL when _childNodes is not NULL.
 ```
 
 ### Potential bugs in Domino.js 

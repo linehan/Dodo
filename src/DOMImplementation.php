@@ -146,9 +146,6 @@ class DOMImplementation
 
                 $html->appendChild($d->createElement("body"));
 
-                /* Start tracking modifications */
-                $d->__mod_clock = 1;
-
                 return $d;
         }
 }

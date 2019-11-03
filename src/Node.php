@@ -104,61 +104,27 @@ abstract class Node
          **********************************************************************/
 
         /*
-         * OPTIMIZATION: "LIVE" NODES 
+         * DEVELOPERS NOTE:
+         * The Node is assignd an index 
+         * once it is inserted into a
+         * Document. The Document keeps
+         * track of all the Nodes in its
+         * tree using these indexes. 
          * 
-         * DOM-LS specifies that an 
-         * HTMLCollection must provide
-         * a "live" representation of
-         * its contents. 
-         *
-         * In practice, HTMLCollection
-         * is used exclusively to 
-         * implement Element::children(),
-         * so being "live" boils down to 
-         * keeping track of changes in the
-         * child nodes of the Element.
-         *
-         * Any time a Node is mutated, 
-         * we
-         * To know when to update an
-         * HTMLCollection, we have the Document assign each
-         * Node a new number, its "last
-         * modified time", whenever a
-         * mutation occurs.
-         *
-         * built-in cache which is
-         * invalidated based on this The __mod_time (modified time) is 
-         * used as a cache invalidation 
-         * mechanism. If the node does not 
-         * already have one, it will be 
-         * initialized to the owner document's 
-         * __mod_clock property. 
-         *
-         * Note that __mod_clock does not hold 
-         * an actual time, it is simply a counter 
-         * incremented on each document mutation. 
-         */
-        protected $__mod_time = 0;
-
-        /*
-         * DOMO NOTE:
-         * Node's index among the nodes
-         * rooted in its _ownerDocument. 
-         * 
-         * Assigned by Document::adopt(). 
+         * The value is assigned in the
+         * Document::adopt() method.
          */
         protected $__document_index;
 
         /* 
-         * DOMO NOTE:
-         * Node's index in the array 
-         * _parentNode->_childNodes,
+         * DEVELOPERS NOTE:
+         * The Node is assigned an index
+         * once it is inserted below a
+         * parent. The index is the Node's
+         * position in the "array" which
+         * represents it's parent's children,
          * i.e. the index of this node 
          * among its siblings. 
-         *
-         * Sort of a local index, to 
-         * contrast the more global 
-         * $__document_index.
          *
          * Takes value NULL if there 
          * are no siblings.
@@ -188,32 +154,40 @@ abstract class Node
          **********************************************************************/
 
         /*
-         * TODO: These accessors rely on subclasses to set values on
-         * the properties nodeType, nodeName, nodeValue, ownerDocument,
-         * and so on, in order to function.
-         *
-         * However sometimes the subclasses simply override/extend these
-         * methods when it suits them. This is a bit confusing.
-         *
-         * This could perhaps better be done by declaring them abstract
-         * methods and asking the subclasses to implement the accessors
-         * there, like how textContent is done.
+         * Often overridden by subclasses.
+         * ------------------------------
+         * Sometimes, subclasses will override 
+         * these accessors, so these should be 
+         * seen as "defaults," which in some 
+         * cases are extended.
          */
-        public function nodeType(): int
-        {
-                return $this->_nodeType;
-        }
-        public function nodeName(): ?string
-        {
-                return $this->_nodeName;
-        }
         public function nodeValue(): ?string
         {
                 return $this->_nodeValue;
         }
+        public function textContent(string $value=NULL): ?string
+        {
+                /* This is spec. Relevent classes should override. */ 
+                /* https://dom.spec.whatwg.org/#dom-node-textcontent */
+                return NULL; 
+        }
 
-        /* TODO: Hmm. */
-        abstract public function textContent(string $value=NULL);
+        /*
+         * Never overridden by subclasses.
+         * ------------------------------
+         * These accessors are marked 'final'
+         * because they cannot be extended.
+         */
+
+        final public function nodeType(): int
+        {
+                return $this->_nodeType;
+        }
+
+        final public function nodeName(): ?string
+        {
+                return $this->_nodeName;
+        }
 
         /**
          * Document that this node belongs to, or NULL if node is a Document
@@ -221,7 +195,7 @@ abstract class Node
          * @return Document or NULL
          * @spec DOM-LS
          */
-        public function ownerDocument(): ?Document
+        final public function ownerDocument(): ?Document
         {
                 if ($this->_ownerDocument === NULL
                 ||  $this->_nodeType === DOCUMENT_NODE) {
@@ -241,7 +215,7 @@ abstract class Node
          * tree (e.g. Document Nodes), or if they don't participate in a
          * tree.
          */
-        public function parentNode(): ?Node
+        final public function parentNode(): ?Node
         {
                 return $this->_parentNode ?? NULL;
         }
@@ -255,7 +229,7 @@ abstract class Node
          * NOTE
          * Computed from _parentNode, has no state of its own to mutate.
          */
-        public function parentElement(): ?Element
+        final public function parentElement(): ?Element
         {
                 if ($this->_parentNode === NULL
                 || $this->_parentNode->_nodeType !== ELEMENT_NODE) {
@@ -275,7 +249,7 @@ abstract class Node
          * for this method. When Node is an only child, _previousSibling
          * is set to $this, but DOM-LS needs it to be NULL.
          */
-        public function previousSibling(): ?Node
+        final public function previousSibling(): ?Node
         {
                 if ($this->_parentNode === NULL
                 || $this === $this->_parentNode->firstChild()) {
@@ -295,7 +269,7 @@ abstract class Node
          * for this method. When Node is an only child, _nextSibling
          * is set to $this, but DOM-LS needs it to be NULL.
          */
-        public function nextSibling(): ?Node
+        final public function nextSibling(): ?Node
         {
                 if ($this->_parentNode === NULL
                 || $this->_nextSibling === $this->_parentNode->_firstChild) {
@@ -322,6 +296,11 @@ abstract class Node
          * TODO
          * It's annoying how we can do foreach (Document::attributes as $a)
          * but not foreach (Node::childNodes as $c).
+         *
+         * TODO
+         * Overridden (optimized) in 
+         *      ChildNodeLeaf
+         *      NonDocumentTypeChildNodeLeaf
          */
         public function childNodes(): ?NodeList
         {
@@ -350,6 +329,11 @@ abstract class Node
          * Testing _firstChild or _childNodes alone is *not* a shortcut
          * for this method. Depending on whether we are in NodeList or
          * LinkedList mode, one or the other or both may be NULL.
+         *
+         * TODO
+         * Overridden (optimized) in 
+         *      ChildNodeLeaf
+         *      NonDocumentTypeChildNodeLeaf
          */
         public function hasChildNodes(): bool
         {
@@ -370,6 +354,11 @@ abstract class Node
          * Directly accessing _firstChild is *not* a substitute for this
          * method. Where to find the first child depends on whether we
          * are in NodeList or LinkedList mode.
+         *
+         * TODO
+         * Overridden (optimized) in 
+         *      ChildNodeLeaf
+         *      NonDocumentTypeChildNodeLeaf
          */
         public function firstChild(): ?Node
         {
@@ -383,14 +372,27 @@ abstract class Node
                 return $this->_firstChild; /* LinkedList */
         }
 
+        /*
+         * FIXME 
+         * HEY HEY HEY!! THIS IS NOT PART OF THE NORMAL SPEC,
+         * BUT IS USED HEAVILY IN OUR TARGET RUN. 
+         * IT SHOULD BE NAMED DIFFERENTLY, MAYBE.
+         */
         /**
          * Node representing the Node's last child node, or NULL if DNE
          *
          * @return Node or NULL
-         * @spec DOM-LS
+         * @spec DOMO 
          *
          * NOTE
          * See note for firstChild()
+         *
+         * TODO
+         * Overridden (optimized) in 
+         *      ChildNodeLeaf
+         *      NonDocumentTypeChildNodeLeaf
+         *
+         * ALSO, this is part of TreeWalker, NOT part of Node.
          */
         public function lastChild(): ?Node
         {
@@ -769,14 +771,6 @@ abstract class Node
         {
                 $this->_ownerDocument = $doc;
 
-                /* 
-                 * modtimes are by-owner, i.e., the mod clock is
-                 * a property of a Document object. So when being 
-                 * adopted into a new owner document, re-set the
-                 * Node's __mod_time property.
-                 */
-                $this->__mod_time = 0; 
-
                 /* FIXME: Wat ? */
                 if (method_exists($this, "tagName")) {
                         /* Element subclasses might need to change case */
@@ -942,6 +936,7 @@ abstract class Node
          * NOTE
          * Provides minor optimization over iterative calls to
          * Node::removeChild(), since it calls Node::modify() once.
+         * TODO: Node::modify() no longer exists. Does this optimization?
          */
         public function __remove_children()
         {
@@ -968,9 +963,6 @@ abstract class Node
                         /* BRANCH: circular linked list */
                         $this->_firstChild = NULL;
                 }
-
-                /* Update last modified type once only (minor optimization) */
-                $this->__mod_time_update();
         }
 
 
@@ -987,36 +979,6 @@ abstract class Node
                 }
 
                 return $s;
-        }
-
-        /**
-         * Assigns a new __mod_time value to this Node and all ancestors.
-         *
-         * @return void
-         *
-         * NOTE
-         * Increments the owner document's __mod_clock and uses the new
-         * value to update the __mod_time value for this node and
-         * all of its ancestors.
-         *
-         * Nodes that have never had their __mod_time value queried
-         * do not need to have a __mod_time property set on them since
-         * there is no previously queried value to ever compare the new
-         * value against, so this will only update nodes that already
-         * have a __mod_time property.
-         */
-        public function __mod_time_update(): void
-        {
-                /* Skip while doc.modclock == 0 */
-                if ($this->__node_document()->__mod_clock) {
-                        $time = ++$this->__node_document()->__mod_clock;
-
-                        for ($n=$this; $n!==NULL; $n=$n->parentElement()) {
-                                if ($n->__mod_time) {
-                                        $n->__mod_time= $time;
-                                }
-                        }
-                }
         }
 }
 

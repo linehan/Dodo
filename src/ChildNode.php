@@ -130,6 +130,7 @@ abstract class ChildNode extends Node
 
         /**
          * Remove this node w/o uprooting or sending mutation events
+         * This is like a 'soft remove' - it's used in whatwg stuff.
          */
         protected function _remove()
         {
@@ -146,8 +147,6 @@ abstract class ChildNode extends Node
                 }
 
                 ll_remove($this);
-
-                $parent->__mod_time_update();
         }
 
         /**

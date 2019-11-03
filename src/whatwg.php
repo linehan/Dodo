@@ -337,11 +337,9 @@ function insert_before_or_replace(\domo\Node $node, \domo\Node $parent, ?\domo\N
         $d = $parent->__node_document();
 
         if ($bothWereRooted) {
-                $parent->__mod_time_update();
                 $d->__mutate_move($insert[0]);
         } else {
                 if ($parent->__is_rooted()) {
-                        $parent->__mod_time_update();
                         foreach ($insert as $n) {
                                 $n->__root($d);
                                 $d->__mutate_insert($n);

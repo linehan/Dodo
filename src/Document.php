@@ -165,9 +165,6 @@ class Document extends Node
          */
         private $__id_to_element = array();
 
-        /* Used to assign Node::__mod_time */
-        protected $__mod_clock = 0;
-
         /* Required by Node */
         public $_nodeType = DOCUMENT_NODE; /* see Node::nodeType */
         public $_nodeName = '#document';   /* see Node::nodeName */
@@ -227,17 +224,6 @@ class Document extends Node
 
                 /* DOM-LS: DOMImplementation associated with document */
                 $this->_implementation = new DOMImplementation($this);
-
-                /*
-                 * This property holds a monotonically increasing value
-                 * akin to a timestamp used to record the last modification
-                 * time of nodes and their subtrees. See the lastModTime
-                 * attribute and modify() method of the Node class. And see
-                 * FilteredElementList for an example of the use of
-                 * lastModTime
-                 */
-                $this->__mod_clock = 0;
-
 
                 /******** JUNK ********/
 
