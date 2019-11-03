@@ -227,6 +227,48 @@ classes that extend Node.
 
 ### Other readability conventions
 
-* If a property is part of the spec, it is written exactly as in the spec
+- If a property is part of the spec, it is written exactly as in the spec
 IDL.
-* If a property or method is for internal-use, it is prefixed with `_`.
+- If a property or method is for internal-use, it is prefixed with '_'.
+
+
+### Properties which are not spec-compliant if accessed directly
+
+For why, see their definition in the code.
+
+```
+Node::_nextSibling
+Node::_previousSibling
+Node::_childNodes
+```
+
+### Potential bugs in Domino.js 
+
+It appears that HTMLCollection will not recompute the cache
+when an Element's `id` or `name` attribute changes. However,
+these are used to index two internal caches, and so the HTMLCollection
+will no longer be "live".
+
+Solution would be to update `lastModTime` when those attributes are
+mutated.
+
+### Blacklisted things from the spec that we will not support
+
+The old-style [HTMLCollection](https://dom.spec.whatwg.org/#old-style-collections)
+has a 'liveness' requirement that requires us to constantly
+keep track of modifications to the subtree. This is annoying and
+has serious performance implications.
+
+#### HTMLCollection
+
+Things that use `HTMLCollection` (hence cannot be used):
+```
+ Document::getElementsByTagName()
+ Document::getElementsByTagNameNS()
+ Document::getElementsByClassNames()
+ Element::getElementsByTagName()
+ Element::getElementsByTagNameNS()
+ Element::getElementsByClassNames()
+ 
+ Element::children
+```

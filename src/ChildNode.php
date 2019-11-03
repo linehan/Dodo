@@ -140,7 +140,7 @@ abstract class ChildNode extends Node
                 $parent = $this->_parentNode;
 
                 if ($parent->_childNodes !== NULL) {
-                        array_splice($parent->_childNodes, $this->__get_index(), 1);
+                        array_splice($parent->_childNodes, $this->__sibling_index(), 1);
                 } else if ($parent->_firstChild === $this) {
                         $parent->_firstChild = $this->nextSibling();
                 }

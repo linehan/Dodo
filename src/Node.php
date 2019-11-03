@@ -32,68 +32,141 @@ abstract class Node
         abstract protected function _subclass_cloneNodeShallow(): ?Node;
 
         /**********************************************************************
-         * Properties that are only set in the subclass constructors 
+         * Properties that appear in DOM-LS 
          **********************************************************************/
 
-        public $_nodeType; /* readonly unsigned short */
-        public $_nodeName; /* readonly DOMString */
-        public $_nodeValue; /* DOMString or NULL */
+        /* 
+         * SET IN SUBCLASS CONSTRUCTOR 
+         */
+        public $_nodeType;     /* readonly unsigned short */
+        public $_nodeName;     /* readonly DOMString */
+        public $_nodeValue;    /* readonly DOMString or NULL */
+
+        /* 
+         * SET WHEN SOMETHING APPENDS NODE
+         */
+        public $_ownerDocument /* readonly Document or NULL */
+        public $_parentNode    /* readonly Node or NULL */
+        /* 
+         * DEVIATION FROM SPEC
+         * PURPOSE: SIBLING TRAVERSAL OPTIMIZATION
+         *
+         * If a Node has no siblings, 
+         * i.e. it is the 'only child' 
+         * of $_parentNode, then the
+         * properties $_nextSibling 
+         * and $_previousSibling are
+         * set equal to $this. 
+         *
+         * This is an optimization for 
+         * traversing siblings, but in
+         * DOM-LS, these properties
+         * should be NULL in this 
+         * scenario. 
+         *
+         * The relevant accessors are
+         * spec-compliant, returning
+         * NULL in this situation. 
+         */
+        public $_nextSibling;     /* readonly Node or NULL */
+        public $_previousSibling; /* readonly Node or NULL */
+
+        /* 
+         * SET WHEN NODE APPENDS SOMETHING 
+         */
+        public $_firstChild;      /* readonly Node or NULL */
+        /*
+         * DEVIATION FROM SPEC
+         * PURPOSE: APPEND OPTIMIZATION
+         *    
+         * The $_childNodes property
+         * holds an array-like object 
+         * (a NodeList) referencing
+         * each of a Node's children. 
+         *
+         * The upkeep of this object
+         * has a significant impact
+         * on append performance.
+         *
+         * So, this implementation 
+         * chooses to defer its 
+         * construction until a value
+         * is requested by calling
+         * Node::childNodes().
+         *
+         * Until that time, it will 
+         * have the value NULL.
+         */
+        public $_childNodes;      /* readonly NodeList or NULL */
 
         /**********************************************************************
-         * BOOK-KEEPING: What Node knows about its ancestors
+         * Properties that are for internal use by this library
          **********************************************************************/
-
-        /* DOMO: Top-level Document object of the Node */
-        public $_ownerDocument; /* readonly Document or NULL */
-
-        /* DOMO: Parent node (NULL if no parent) */
-        public $_parentNode; /* readonly */
-
-        /**********************************************************************
-         * BOOK-KEEPING: What Node knows about the childNodes of its parent
-         **********************************************************************/
-
-        /* DOMO: Next sibling in childNodes of parent ($this if none) */
-        public $_nextSibling; /* readonly */
-
-        /* DOMO: Prev sibling in childNodes of parent ($this if none) */
-        public $_previousSibling; /* readonly */
-
-        /**********************************************************************
-         * BOOK-KEEPING: What Node knows about its own childNodes
-         **********************************************************************/
-
-        /* DOMO: Reference to first child Node (NULL if no children) */
-        public $_firstChild; /* readonly */
-
-        /* DOMO: Array form of childNodes (NULL if no children or using LL) */
-        public $_childNodes; /* readonly */
-
-
-        /**********************************************************************
-         * DOMO internal book-keeping layer
-         **********************************************************************/
-        /* Used for caching (Node::__mod_time_update) */
 
         /*
-         * NOTE The __mod_time (modified time) value is used as a cache 
-         * invalidation mechanism. If the node does not already have one, 
-         * it will be initialized to the owner document's __mod_clock 
-         * property. (__mod_clock does not hold an actual time, it is simply 
-         * a counter incremented on each document modification).
+         * OPTIMIZATION: "LIVE" NODES 
+         * 
+         * DOM-LS specifies that an 
+         * HTMLCollection must provide
+         * a "live" representation of
+         * its contents. 
+         *
+         * In practice, HTMLCollection
+         * is used exclusively to 
+         * implement Element::children(),
+         * so being "live" boils down to 
+         * keeping track of changes in the
+         * child nodes of the Element.
+         *
+         * Any time a Node is mutated, 
+         * we
+         * To know when to update an
+         * HTMLCollection, we have the Document assign each
+         * Node a new number, its "last
+         * modified time", whenever a
+         * mutation occurs.
+         *
+         * built-in cache which is
+         * invalidated based on this The __mod_time (modified time) is 
+         * used as a cache invalidation 
+         * mechanism. If the node does not 
+         * already have one, it will be 
+         * initialized to the owner document's 
+         * __mod_clock property. 
+         *
+         * Note that __mod_clock does not hold 
+         * an actual time, it is simply a counter 
+         * incremented on each document mutation. 
          */
-
         protected $__mod_time = 0;
 
-        /* Assigned by Document::adopt() as a node index in the Document */
-        protected $_nid;
+        /*
+         * DOMO NOTE:
+         * Node's index among the nodes
+         * rooted in its _ownerDocument. 
+         * 
+         * Assigned by Document::adopt(). 
+         */
+        protected $__document_index;
 
-        /* Node's index in childNodes of parent (NULL if no parent) */
-        public $__index; /* TODO: Name, 'sibling_index'? */
+        /* 
+         * DOMO NOTE:
+         * Node's index in the array 
+         * _parentNode->_childNodes,
+         * i.e. the index of this node 
+         * among its siblings. 
+         *
+         * Sort of a local index, to 
+         * contrast the more global 
+         * $__document_index.
+         *
+         * Takes value NULL if there 
+         * are no siblings.
+         */
+        public $__sibling_index; 
 
         /* TODO: Unused */
-        public $_roothook;
-
+        public $__roothook;
 
         public function __construct()
         {
@@ -130,11 +203,11 @@ abstract class Node
         {
                 return $this->_nodeType;
         }
-        public function nodeName()
+        public function nodeName(): ?string
         {
                 return $this->_nodeName;
         }
-        public function nodeValue()
+        public function nodeValue(): ?string
         {
                 return $this->_nodeValue;
         }
@@ -400,10 +473,12 @@ abstract class Node
 
         /**
          * NO CHECKS!
-         * See
+         * This out-performs PHP DOMDocument.
+         */
         public function __unsafe_appendChild(Node $node): Node
         {
-                return \domo\whatwg\insert_before_or_replace($node, $this, NULL);
+                \domo\whatwg\insert_before_or_replace($node, $this, NULL, false);
+                return $node;
         }
 
         /**
@@ -702,6 +777,7 @@ abstract class Node
                  */
                 $this->__mod_time = 0; 
 
+                /* FIXME: Wat ? */
                 if (method_exists($this, "tagName")) {
                         /* Element subclasses might need to change case */
                         $this->tagName = NULL;
@@ -720,7 +796,8 @@ abstract class Node
          * NOTE
          * A Node is rooted if it belongs to a tree, in which case it will
          * have an ownerDocument. Document nodes maintain a list of all the
-         * nodes inside their tree, assigning each an index, Node::_nid.
+         * nodes inside their tree, assigning each an index, 
+         * Node::__document_index.
          *
          * Therefore if we are currently rooted, we can tell by checking that
          * we have one of these.
@@ -729,7 +806,7 @@ abstract class Node
          */
         public function __is_rooted(): bool
         {
-                return !!$this->__nid;
+                return !!$this->__document_index;
         }
 
         /* Called by \domo\whatwg\insert_before_or_replace */
@@ -814,7 +891,7 @@ abstract class Node
          * Does the DOM-LS method Node::getRootNode (not implemented here)
          * in its non-shadow-tree branch, do the same thing?
          */
-        public function __get_node_document(): Document
+        public function __node_document(): Document
         {
                 return $this->_ownerDocument ?? $this;
         }
@@ -826,10 +903,10 @@ abstract class Node
          * @throw Something if we have no parent
          *
          * NOTE
-         * Calling Node::__get_index() will automatically trigger a switch
+         * Calling Node::__sibling_index() will automatically trigger a switch
          * to the NodeList representation (see Node::childNodes()).
          */
-        public function __get_index(): int
+        public function __sibling_index(): int
         {
                 if ($this->_parentNode === NULL) {
                         return 0; /* ??? TODO: throw or make an error ??? */
@@ -843,7 +920,7 @@ abstract class Node
                 $childNodes = $this->_parentNode->childNodes();
 
                 /* We end up re-indexing here if we ever run into trouble */
-                if ($this->__index === NULL || $childNodes[$this->__index] !== $this) {
+                if ($this->___sibling_index === NULL || $childNodes[$this->___sibling_index] !== $this) {
                         /*
                          * Ensure that we don't have an O(N^2) blowup
                          * if none of the kids have defined indices yet
@@ -851,12 +928,12 @@ abstract class Node
                          * previousSibling
                          */
                         foreach ($childNodes as $i => $child) {
-                                $child->__index = $i;
+                                $child->___sibling_index = $i;
                         }
 
-                        \domo\assert($childNodes[$this->__index] === $this);
+                        \domo\assert($childNodes[$this->___sibling_index] === $this);
                 }
-                return $this->__index;
+                return $this->___sibling_index;
         }
 
         /**
@@ -931,8 +1008,8 @@ abstract class Node
         public function __mod_time_update(): void
         {
                 /* Skip while doc.modclock == 0 */
-                if ($this->__get_node_document()->__mod_clock) {
-                        $time = ++$this->__get_node_document()->__mod_clock;
+                if ($this->__node_document()->__mod_clock) {
+                        $time = ++$this->__node_document()->__mod_clock;
 
                         for ($n=$this; $n!==NULL; $n=$n->parentElement()) {
                                 if ($n->__mod_time) {

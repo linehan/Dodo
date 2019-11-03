@@ -52,9 +52,12 @@ class Element extends NonDocumentTypeChildNode
 {
 	/* Required by Node */
         public $_nodeType = ELEMENT_NODE;
+
+        /* Provided by Node 
         public $_nodeValue = NULL;
-	public $_nodeName = NULL; /* HTML-uppercased qualified name */
+	public $_nodeName = NULL; // HTML-uppercased qualified name
         public $_ownerDocument = NULL;
+        */
 
 	/* Required by Element */
         public $_namespaceURI = NULL;
@@ -162,17 +165,6 @@ class Element extends NonDocumentTypeChildNode
          * ACCESSORS
          **********************************************************************/
 
-        /* TODO: Totally defined on Node */
-	public function nodeName(): string
-	{
-		return $this->_nodeName;
-	}
-        /* TODO: Totally defined on Node */
-	public function nodeValue(): string
-	{
-		return $this->_nodeValue;
-	}
-
         /* TODO: Also in Attr... are they part of Node ? */
         public function prefix(): ?string
         {
@@ -226,37 +218,6 @@ class Element extends NonDocumentTypeChildNode
                                 \domo\whatwg\insert_before_or_replace($node, $this->_ownerDocument->createTextNode($value), NULL);
                         }
                 }
-        }
-
-        public function innerHTML(string $value = NULL)
-        {
-                if ($value === NULL) {
-                        return $this->__serialize();
-                } else {
-                        /* NYI */
-                }
-        }
-
-        public function outerHTML(string $value = NULL)
-        {
-                /* NOT IMPLEMENTED ANYMORE */
-        }
-
-        /**********************************************************************
-         * UNSUPPORTED METHODS
-         **********************************************************************/
-
-        /* DOM-LS: Historical method */
-        public function insertAdjacentElement(string $where, Element $element): ?Element
-        {
-        }
-        /* DOM-LS: Historical method */
-        public function insertAdjacentText(string $where, string $data): void
-        {
-        }
-        /* [DOM-PS-WD] A new extension in draft phase. */
-        public function insertAdjacentHTML(string $where, string $text): void
-        {
         }
 
         /**********************************************************************
@@ -318,60 +279,6 @@ class Element extends NonDocumentTypeChildNode
                         }
                 }
                 return true;
-        }
-
-
-        /**********************************************************************
-         * ParentNode MIXIN
-         **********************************************************************/
-
-        public function append() {}
-        public function prepend() {}
-
-        public function querySelector($selector)
-        {
-                /* TODO: SELECTOR INTEGRATION */
-                return select($selector, $this)[0];
-        }
-
-        public function querySelectorAll($selector)
-        {
-                /* TODO: SELECTOR INTEGRATION */
-                $nodes = select($selector, $this);
-                return ($nodes instanceof NodeList) ? $nodes : new NodeList($nodes);
-        }
-
-        public function children()
-        {
-                if (!$this->_children) {
-                        $this->_children = new HTMLCollection($this);
-                }
-                return $this->_children;
-        }
-
-        public function firstElementChild()
-        {
-                for ($n=$this->firstChild(); $n!==NULL; $n=$n->nextSibling()) {
-                        if ($n->_nodeType === ELEMENT_NODE) {
-                                return $n;
-                        }
-                }
-                return NULL;
-        }
-
-        public function lastElementChild()
-        {
-                for ($n=$this->lastChild(); $n!==NULL; $n=$n->previousSibling()) {
-                        if ($n->_nodeType === ELEMENT_NODE) {
-                                return $n;
-                        }
-                }
-                return NULL;
-        }
-
-        public function childElementCount()
-        {
-                return count($this->children());
         }
 
         /**********************************************************************

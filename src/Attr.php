@@ -204,9 +204,6 @@ class Attr extends Node
         {
                 return $this->_name;
         }
-        public function value(): ?string
-        {
-        }
         public function value(?string $value = NULL)
         {
                 if ($value === NULL) {
@@ -218,17 +215,17 @@ class Attr extends Node
                  * NOTE
                  * You can unset an attribute by calling Attr::value("");
                  */
-                $old = $this->value;
+                $old = $this->_value;
                 $new = $value;
 
                 if ($new === $old) {
                         return;
                 }
 
-                $this->value = $new;
+                $this->_value = $new;
 
-                if ($this->ownerElement
-                && (isset($this->ownerElement->__onchange_attr[$this->localName]))) {
+                if ($this->_ownerElement
+                && (isset($this->_ownerElement->__onchange_attr[$this->_localName]))) {
                         /*
                          * Elements must take special action if the
                          * value of certain attributes are updated.
@@ -253,7 +250,7 @@ class Attr extends Node
                         );
                 }
 
-                if ($this->ownerElement->__is_rooted()) {
+                if ($this->_ownerElement->__is_rooted()) {
                         /*
                          * Documents must also sometimes take special action
                          * and be aware of mutations occurring in their tree.
@@ -270,7 +267,7 @@ class Attr extends Node
                          * TODO: Is this trying to implement spec,
                          * or are we just doing this for our own use?
                          */
-                        $this->ownerElement->ownerDocument()->__mutate_attr($this, $old);
+                        $this->_ownerElement->ownerDocument()->__mutate_attr($this, $old);
                 }
         }
 

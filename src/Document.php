@@ -25,7 +25,7 @@ class MultiId
 
         public function __construct(Node $node)
         {
-                $this->table[$node->__nid] = $node;
+                $this->table[$node->__document_index] = $node;
                 $this->length = 1;
                 $this->first = NULL; // invalidate cache
         }
@@ -33,8 +33,8 @@ class MultiId
         // Add a node to the list, with O(1) time
         public function add(Node $node)
         {
-                if (!isset($this->table[$node->__nid])) {
-                        $this->table[$node->__nid] = $node;
+                if (!isset($this->table[$node->__document_index])) {
+                        $this->table[$node->__document_index] = $node;
                         $this->length++;
                         $this->first = NULL; // invalidate cache
                 }
@@ -43,8 +43,8 @@ class MultiId
         // Remove a node from the list, with O(1) time
         public function del(Node $node)
         {
-                if ($this->table[$node->__nid]) {
-                        unset($this->table[$node->__nid]);
+                if ($this->table[$node->__document_index]) {
+                        unset($this->table[$node->__document_index]);
                         $this->length--;
                         $this->first = NULL; // invalidate cache
                 }
@@ -120,18 +120,39 @@ class Document extends Node
         /**********************************************************************
          * DOMO internal book-keeping layer
          **********************************************************************/
+        protected $__document_index_next = 2;
+
+        /* Documents are rooted by definition and get $__document_index = 1 */
+        protected $__document_index = 1;
+
         /*
-         * The Node class includes an '_nid' property, which is
-         * assigned when a Node gets associated with a Document
-         * (see Document::_helper_root())
+         * The Node class includes a '__document_index' property, 
+         * which is assigned when a Node gets associated with a 
+         * Document (see Document::_helper_root())
          *
-         * '_nid' is an internal-use index used to index Nodes
-         * in this table.
+         * '__document_index' is an internal-use index used to 
+         * index Nodes in this table.
          *
          * You can think of it as an unofficial 'id' given to
          * every Node once it becomes a part of a Document.
+         *
+         * FIXME
+         * It seems that it is only currently used for two things:
+         *      1. To test whether a node is rooted;
+         *         but this could be done with a simple flag,
+         *         it doesn't require an advancing unique index. 
+         *      2. To act as a secondary index to handle "id"
+         *         collisions. This is not really something I
+         *         understand, why can't we just push them?
+         *
+         * From this, it *seems* like we could get rid of this,
+         * and replace it with a bool on Nodes to indicate if
+         * the node is rooted, and set that instead.
          */
-        private $__nid_to_node = array();
+        private $__document_index_to_node = array(
+                NULL, 
+                $this
+        );
 
         /*
          * For Element nodes having an actual 'id' attribute, we
@@ -146,10 +167,6 @@ class Document extends Node
 
         /* Used to assign Node::__mod_time */
         protected $__mod_clock = 0;
-
-        /* Documents are rooted by definition and get $__nid = 1 */
-        protected $__nid = 1;
-        protected $__nid_next = 2;
 
         /* Required by Node */
         public $_nodeType = DOCUMENT_NODE; /* see Node::nodeType */
@@ -210,13 +227,6 @@ class Document extends Node
 
                 /* DOM-LS: DOMImplementation associated with document */
                 $this->_implementation = new DOMImplementation($this);
-
-                /******** Internal ********/
-
-                $this->__nid = 1;
-                $this->__nid_next = 2;
-                $this->__nid_to_node[0] = NULL;
-                $this->__nid_to_node[1] = $this;
 
                 /*
                  * This property holds a monotonically increasing value
@@ -365,20 +375,21 @@ class Document extends Node
                  * and null otherwise.
                  */
                 return new Element($this, $lname, NULL, NULL);
-                if ($this->_contentType === 'text/html') {
-                        if (!ctype_lower($lname)) {
-                                $lname = \domo\ascii_to_lowercase($lname);
-                        }
 
-                        /* TODO STUB */
-                        //return domo\html\createElement($this, $lname, NULL);
+                //if ($this->_contentType === 'text/html') {
+                        //if (!ctype_lower($lname)) {
+                                //$lname = \domo\ascii_to_lowercase($lname);
+                        //}
 
-                } else if ($this->_contentType === 'application/xhtml+xml') {
-                        /* TODO STUB */
-                        //return domo\html\createElement($this, $lname, NULL);
-                } else {
-                        return new Element($this, $lname, NULL, NULL);
-                }
+                        //[> TODO STUB <]
+                        ////return domo\html\createElement($this, $lname, NULL);
+
+                //} else if ($this->_contentType === 'application/xhtml+xml') {
+                        //[> TODO STUB <]
+                        ////return domo\html\createElement($this, $lname, NULL);
+                //} else {
+                        //return new Element($this, $lname, NULL, NULL);
+                //}
         }
 
         public function createElementNS($ns, $qname): ?Element
@@ -610,14 +621,14 @@ class Document extends Node
 
         public function __add_to_node_table(Node $node): void
         {
-                $node->__nid = $this->__nid_next++;
-                $this->__nid_to_node[$node->__nid] = $node;
+                $node->__document_index = $this->__document_index_next++;
+                $this->__document_index_to_node[$node->__document_index] = $node;
         }
 
         public function __remove_from_node_table(Node $node): void
         {
-                unset($this->__nid_to_node[$node->__nid]);
-                $node->__nid = 0;
+                unset($this->__document_index_to_node[$node->__document_index]);
+                $node->__document_index = 0;
         }
 
         public function __add_to_id_table(string $id, Element $elt): void
