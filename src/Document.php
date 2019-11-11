@@ -17,67 +17,133 @@ require_once('ProcessingInstruction.php');
 require_once('DocumentType.php');
 require_once('utilities.php');
 
+/*
+ * DOM-LS specifies that in the
+ * event that two Elements have
+ * the same 'id' attribute value,
+ * the first one, in document order,
+ * shall be returned from getElementById.
+ *
+ * This data structure makes that
+ * as performant as possible, by:
+ *
+ * 1. Caching the first element in the list, in document order
+ * It is updated on move because a move is treated as a
+ * removal followed by an insertion, and those two operations
+ * will update this table.
+ *
+ * 2. Elements are looked up by an integer index set when they
+ * are adopted by Document. This index gives a canonical
+ * integer representation of an Element, so we can operate
+ * on integers instead of Elements.
+ */
 class MultiId
 {
         public $table = array();
         public $length = 0;
+        /*
+         * The first element,
+         * in document order.
+         * NULL indicates the
+         * cache is not set
+         * and the first
+         * element must be
+         * re-computed.
+         */
         public $first = NULL;
 
         public function __construct(Node $node)
         {
                 $this->table[$node->__document_index] = $node;
                 $this->length = 1;
-                $this->first = NULL; // invalidate cache
+                $this->first = NULL;
         }
 
-        // Add a node to the list, with O(1) time
+        /*
+         * Add a Node to array
+         * in O(1) time by using
+         * Node::$__document_index
+         * as the array index.
+         */
         public function add(Node $node)
         {
                 if (!isset($this->table[$node->__document_index])) {
                         $this->table[$node->__document_index] = $node;
                         $this->length++;
-                        $this->first = NULL; // invalidate cache
+                        $this->first = NULL; /* invalidate cache */
                 }
         }
 
-        // Remove a node from the list, with O(1) time
+        /*
+         * Remove a Node from
+         * the array in O(1)
+         * time by using
+         * Node::$__document_index
+         * to perform the lookup.
+         */
         public function del(Node $node)
         {
                 if ($this->table[$node->__document_index]) {
                         unset($this->table[$node->__document_index]);
                         $this->length--;
-                        $this->first = NULL; // invalidate cache
+                        $this->first = NULL; /* invalidate cache */
                 }
         }
 
-        // Get the first node from the list, in the document order
-        // Takes O(N) time in the size of the list, with a cache that is invalidated
-        // when the list is modified.
-        // (the invalidation is by setting $this->first to NULL in add and del)
+        /*
+         * Retreive that Node
+         * from the array which
+         * appears first in
+         * document order in
+         * the associated document.
+         *
+         * Cache the value for
+         * repeated lookups.
+         *
+         * The cache is invalidated
+         * each time the array
+         * is modified. The list
+         * is modified when a Node
+         * is inserted or removed
+         * from a Document, or when
+         * the 'id' attribute value
+         * of a Node is changed.
+         */
         public function get_first()
         {
                 if ($this->first === NULL) {
-                        /* cache is invalid, re-compute */
-                        foreach ($this->table as $nid => $node) {
-                                if ($this->first === NULL || $this->first->compareDocumentPosition($node) & DOCUMENT_POSITION_PRECEDING) {
+                        /*
+                         * No item has been cached.
+                         * Well, let's find it then.
+                         */
+                        foreach ($this->table as $document_index => $node) {
+                                if ($this->first->compareDocumentPosition($node) & DOCUMENT_POSITION_PRECEDING) {
                                         $this->first = $node;
                                 }
+                                /* TODO: What about the old NULLity stuff?? */
+                                //if ($this->first === NULL || $this->first->compareDocumentPosition($node) & DOCUMENT_POSITION_PRECEDING) {
+                                        //$this->first = $node;
+                                //}
                         }
                 }
                 return $this->first;
         }
 
-        // If there is only one node left, return it. Otherwise return "this".
+        /*
+         * If there is only one node left, return it. Otherwise return "this".
+         */
         public function downgrade()
         {
                 if ($this->length === 1) {
-                        foreach ($this->table as $nid => $node) {
+                        foreach ($this->table as $document_index => $node) {
                                 return $node;
                         }
                 }
                 return $this;
         }
 }
+
+
 
 
 /**
@@ -118,60 +184,70 @@ class MultiId
 class Document extends Node
 {
         /**********************************************************************
-         * DOMO internal book-keeping layer
+         * Properties that are for internal use by this library
          **********************************************************************/
+        /*
+         * DEVELOPERS NOTE
+         * Certain APIs are only defined
+         * when the Document contains HTML
+         * (rather than XML). Rather than
+         * implement a separate HTMLDocument
+         * class, we simply store the type
+         * of Document in a variable.
+         *
+         * Outside callers will use the
+         * isHTMLDocument() method, which
+         * makes use of this value.
+         */
+        protected $__type;
+
+        /*
+         * DEVELOPERS NOTE:
+         * Used to assign the document
+         * index to Nodes on ADOPTION.
+         */
         protected $__document_index_next = 2;
 
-        /* Documents are rooted by definition and get $__document_index = 1 */
+        /*
+         * DEVELOPERS NOTE:
+         * Document's aren't going to
+         * adopt themselves, so we set
+         * this to a default of 1.
+         */
         protected $__document_index = 1;
 
         /*
-         * The Node class includes a '__document_index' property, 
-         * which is assigned when a Node gets associated with a 
-         * Document (see Document::_helper_root())
+         * Element nodes having an 'id'
+         * attribute are stored in this
+         * table, indexed by their 'id'
+         * value.
          *
-         * '__document_index' is an internal-use index used to 
-         * index Nodes in this table.
+         * This is how getElementById
+         * performs its fast lookup.
          *
-         * You can think of it as an unofficial 'id' given to
-         * every Node once it becomes a part of a Document.
-         *
-         * FIXME
-         * It seems that it is only currently used for two things:
-         *      1. To test whether a node is rooted;
-         *         but this could be done with a simple flag,
-         *         it doesn't require an advancing unique index. 
-         *      2. To act as a secondary index to handle "id"
-         *         collisions. This is not really something I
-         *         understand, why can't we just push them?
-         *
-         * From this, it *seems* like we could get rid of this,
-         * and replace it with a bool on Nodes to indicate if
-         * the node is rooted, and set that instead.
-         */
-        private $__document_index_to_node = array(
-                NULL, 
-                $this
-        );
-
-        /*
-         * For Element nodes having an actual 'id' attribute, we
-         * also store a reference to the node under its 'id' in
-         * this table, and use it to implement Document->getElementById();
-         *
-         * We must check to see if we must update this table every time:
-         *      - a node is rooted / uprooted
-         *      - a rooted node has an attribute added / removed / changed
+         * The table must be mutated on:
+         *      - Element insertion
+         *      - Element removal
+         *      - mutation of 'id' attribute
+         *        on an inserted Element.
          */
         private $__id_to_element = array();
 
-        /* Required by Node */
-        public $_nodeType = DOCUMENT_NODE; /* see Node::nodeType */
-        public $_nodeName = '#document';   /* see Node::nodeName */
-        public $_ownerDocument = NULL;     /* see Node::ownerDocument */
-        public $_nodeValue = NULL;         /* see Node::nodeValue */
+        /**********************************************************************
+         * Properties that appear in DOM-LS
+         **********************************************************************/
 
-        /* Required by Document */
+        /*
+         * Part of Node parent class
+         */
+        public $_nodeType = DOCUMENT_NODE;
+        public $_nodeName = '#document';
+        public $_ownerDocument = NULL;
+        public $_nodeValue = NULL;
+
+        /*
+         * Part of Document class
+         */
         public const _characterSet = 'UTF-8';
         public $_encoding = 'UTF-8';
         public $_type = 'xml';
@@ -180,18 +256,38 @@ class Document extends Node
         public $_origin = NULL;
         public $_compatMode = 'no-quirks';
 
-        /* Assigned on mutation to the first DocumentType child */
+        /*
+         * ANNOYING LIVE REFERENCES
+         *
+         * The below are slightly annoying
+         * because we must keep them updated
+         * whenever there is mutation to the
+         * children of the Document.
+         */
+
+        /*
+         * Reference to the first
+         * DocumentType child, in
+         * document order. NULL if
+         * no such child exists.
+         */
         public $_doctype = NULL;
-        /* Assigned on mutation to the first Element child */
+
+        /*
+         * Reference to the first
+         * Element child, in
+         * document order. NULL if
+         * no such child exists.
+         */
         public $_documentElement = NULL;
 
-        public $_implementation; /* DOMImplementation */
-        public $_readyState;
-
-        public $__mutation_handler = NULL;
-
-        /* Used to mutate the above */
-        private function __update_document_state(): void
+        /*
+         * Called when a child is
+         * inserted or removed from
+         * the document. Keeps the
+         * above references live.
+         */
+        private function __rereference_doctype_and_documentElement(): void
         {
                 $this->_doctype = NULL;
                 $this->_documentElement = NULL;
@@ -205,6 +301,12 @@ class Document extends Node
                 }
         }
 
+        /* TODO: These three amigos. */
+        public $_implementation;
+        public $_readyState;
+        public $__mutation_handler = NULL;
+
+
         public function __construct(string $type="xml", ?string $url=NULL)
         {
                 parent::__construct();
@@ -214,7 +316,7 @@ class Document extends Node
                 /* Having an HTML Document affects some APIs */
                 if ($type === 'html') {
                         $this->_contentType = 'text/html';
-                        $this->type = 'html';
+                        $this->__type = 'html';
                 }
 
                 /* DOM-LS: used by the documentURI and URL method */
@@ -419,38 +521,75 @@ class Document extends Node
          *********************************************************************/
 
         /**
-         * Set the ownerDocument of a Node and its subtree to $this.
+         * Adopt the subtree rooted at Node
+         * into this Document.
          *
-         * @param Node $node
-         * @return Node
-         * @throws DOMException "NotSupported"
-         * @spec DOM-LS
+         * This means setting ownerDocument
+         * of each node in the subtree to
+         * point to $this.
+         *
+         * No insertion is performed, but
+         * if Node is inserted into another
+         * Document, it will be removed.
          */
         public function adoptNode(Node $node): Node
         {
                 if ($node->_nodeType === DOCUMENT_NODE) {
+                        /*
+                         * A Document cannot adopt
+                         * another Document. Throw
+                         * a "NotSupported" exception.
+                         */
                         \domo\error("NotSupported");
                 }
                 if ($node->_nodeType === ATTRIBUTE_NODE) {
+                        /*
+                         * Attributes do not have
+                         * an ownerDocument, so
+                         * do nothing.
+                         */
                         return $node;
                 }
                 if ($node->parentNode()) {
+                        /*
+                         * If the Node is currently
+                         * inserted in some Document,
+                         * remove it.
+                         *
+                         * TODO:
+                         * Why is this not using $node->__is_rooted()?
+                         * Is this diagnostic for rooted-ness? Why
+                         * doesn't __is_rooted() just do this?
+                         */
                         $node->parentNode()->removeChild($node);
                 }
                 if ($node->_ownerDocument !== $this) {
+                        /*
+                         * If the Node is not
+                         * currently connected
+                         * to this Document,
+                         * then recursively set
+                         * the ownerDocument.
+                         *
+                         * (The recursion skips
+                         * the above checks because
+                         * they don't make sense.)
+                         */
                         $node->__set_owner($this);
                 }
 
+                /* DOM-LS requires this return $node */
                 return $node;
         }
 
         /**
-         * Adopt a clone of a tree rooted at $node.
+         * Clone and then adopt either
+         * $node or, if $deep === true,
+         * the entire subtree rooted at
+         * $node, into the Document.
          *
-         * @param Node $node
-         * @param bool $deep
-         * @return Node $node
-         * @spec DOM-LS
+         * By default, only $node will
+         * be cloned.
          */
         public function importNode(Node $node, bool $deep=false): Node
         {
@@ -458,33 +597,34 @@ class Document extends Node
         }
 
         /**
-         * Extends Node::insertBefore to update documentElement and doctype
+         * The following three methods
+         * are a simple extension of
+         * the Node methods, with an
+         * added call to update the
+         * doctype and documentElement
+         * references that are specific
+         * to the Document interface.
          *
          * NOTE
-         * Node::appendChild is not extended, because it calls insertBefore.
+         * appendChild is not extended,
+         * because it calls insertBefore.
          */
         public function insertBefore(Node $node, ?Node $refChild): Node
         {
                 $ret = parent::insertBefore($node, $refChild);
-                $this->__update_document_state();
+                $this->__rereference_doctype_and_documentElement();
                 return $ret;
         }
-        /**
-         * Extends Node::replaceChild to update documentElement and doctype
-         */
         public function replaceChild(Node $node, ?Node $child): Node
         {
                 $ret = parent::replaceChild($node, $child);
-                $this->__update_document_state();
+                $this->__rereference_doctype_and_documentElement();
                 return $ret;
         }
-        /**
-         * Extends Node::removeChild to update documentElement and doctype
-         */
         public function removeChild(ChildNode $child): ?Node
         {
                 $ret = parent::removeChild($child);
-                $this->__update_document_state();
+                $this->__rereference_doctype_and_documentElement();
                 return $ret;
         }
 
@@ -510,7 +650,7 @@ class Document extends Node
 
                 if ($deep === false) {
                         /* Return shallow clone */
-                        $clone->__update_document_state();
+                        $clone->__rereference_doctype_and_documentElement();
                         return $clone;
                 }
 
@@ -519,7 +659,7 @@ class Document extends Node
                         $clone->appendChild($clone->importNode($n, true));
                 }
 
-                $clone->__update_document_state();
+                $clone->__rereference_doctype_and_documentElement();
                 return $clone;
         }
 
@@ -555,7 +695,7 @@ class Document extends Node
         /* TODO Where does this fit in */
         public function isHTMLDocument(): bool
         {
-                if ($this->_type === 'html') {
+                if ($this->__type === 'html') {
                         $elt = $this->documentElement();
                         if ($elt !== NULL && $elt->isHTMLElement()) {
                                 return true;
@@ -603,19 +743,9 @@ class Document extends Node
          * <full explanation goes here>
          *
          * Called by Node::__root() and Node::__uproot()
+         *
+         * See, we are adding, and removing, but never using...?
          *********************************************************************/
-
-        public function __add_to_node_table(Node $node): void
-        {
-                $node->__document_index = $this->__document_index_next++;
-                $this->__document_index_to_node[$node->__document_index] = $node;
-        }
-
-        public function __remove_from_node_table(Node $node): void
-        {
-                unset($this->__document_index_to_node[$node->__document_index]);
-                $node->__document_index = 0;
-        }
 
         public function __add_to_id_table(string $id, Element $elt): void
         {
@@ -633,9 +763,7 @@ class Document extends Node
 
         public function __remove_from_id_table(string $id, Element $elt): void
         {
-                if (!isset($this->__id_to_element[$id])) {
-                        /* nothing */
-                } else {
+                if (isset($this->__id_to_element[$id])) {
                         if ($this->__id_to_element[$id] instanceof MultiId) {
                                 $item = $this->__id_to_element[$id];
                                 $item->del($elt);
@@ -649,7 +777,6 @@ class Document extends Node
                         }
                 }
         }
-
 
         /*********************************************************************
          * MUTATION STUFF

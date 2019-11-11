@@ -53,7 +53,7 @@ class Element extends NonDocumentTypeChildNode
 	/* Required by Node */
         public $_nodeType = ELEMENT_NODE;
 
-        /* Provided by Node 
+        /* Provided by Node
         public $_nodeValue = NULL;
 	public $_nodeName = NULL; // HTML-uppercased qualified name
         public $_ownerDocument = NULL;
@@ -282,7 +282,7 @@ class Element extends NonDocumentTypeChildNode
         }
 
         /**********************************************************************
-         * ATTRIBUTE: get/set/remove/has/toggle 
+         * ATTRIBUTE: get/set/remove/has/toggle
          **********************************************************************/
 
         /**
@@ -309,7 +309,7 @@ class Element extends NonDocumentTypeChildNode
          * Per spec, $value is not a string, but the string value of
          * whatever is passed.
          *
-         * TODO: DRY with this and setAttributeNS? 
+         * TODO: DRY with this and setAttributeNS?
          */
         public function setAttribute(string $qname, $value)
         {
@@ -604,6 +604,7 @@ class Element extends NonDocumentTypeChildNode
          *
          * This is not a DOM method, but is convenient for
          * lazy traversals of the tree.
+         * TODO: Change its name to __next_element then!
          */
         public function nextElement($root)
         {
