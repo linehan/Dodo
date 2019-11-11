@@ -4,7 +4,7 @@
  * -------------
  * Define namespace-global constants and functions (mostly error-handling).
  ******************************************************************************/
-namespace domo;
+namespace Dodo;
 
 /******************************************************************************
  * CONSTANTS
@@ -17,7 +17,7 @@ namespace domo;
 /**
  * NAMESPACE_*
  * Strings defining the various document namespaces
- * [DOMO] These are used by this library and aren't part of a spec.
+ * [DODO] These are used by this library and aren't part of a spec.
  */
 const NAMESPACE_HTML = "http://www.w3.org/1999/xhtml";
 const NAMESPACE_XML = "http://www.w3.org/XML/1998/namespace";

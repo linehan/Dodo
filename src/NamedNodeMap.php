@@ -30,7 +30,7 @@
  *      the attribute methods on the Element class.
  *
  ******************************************************************************/
-namespace domo;
+namespace Dodo;
 
 require_once('utilities.php');
 
@@ -51,7 +51,7 @@ class NamedNodeMap extends \ArrayObject
         }
 
         /**********************************************************************
-         * DOMO INTERNAL BOOK-KEEPING
+         * Dodo INTERNAL BOOK-KEEPING
          **********************************************************************/
         private function __append(Attr $a)
         {
@@ -148,7 +148,7 @@ class NamedNodeMap extends \ArrayObject
                  * even though XML itself is case-sensitive.
                  */
                 if (!ctype_lower($qname) && $this->_element->isHTMLElement()) {
-                        $qname = \domo\to_ascii_lower_case($qname);
+                        $qname = \Dodo\to_ascii_lower_case($qname);
                 }
 
                 return isset($this->__qname_to_attr[$qname]);
@@ -167,7 +167,7 @@ class NamedNodeMap extends \ArrayObject
                  * even though XML itself is case-sensitive.
                  */
                 if (!ctype_lower($qname) && $this->_element->isHTMLElement()) {
-                        $qname = \domo\to_ascii_lower_case($qname);
+                        $qname = \Dodo\to_ascii_lower_case($qname);
                 }
 
                 if (!isset($this->__qname_to_attr[$qname])) {
@@ -192,7 +192,7 @@ class NamedNodeMap extends \ArrayObject
                 $owner = $attr->ownerElement();
 
                 if ($owner !== NULL && $owner !== $this->_element) {
-                        \domo\error("InUseAttributeError");
+                        \Dodo\error("InUseAttributeError");
                 }
 
                 $oldAttr = $this->getNamedItem($attr->name());
@@ -215,7 +215,7 @@ class NamedNodeMap extends \ArrayObject
                 $owner = $attr->ownerElement();
 
                 if ($owner !== NULL && $owner !== $this->_element) {
-                        \domo\error("InUseAttributeError");
+                        \Dodo\error("InUseAttributeError");
                 }
 
                 $oldAttr = $this->getNamedItemNS($attr->namespaceURI(), $attr->localName());
@@ -240,7 +240,7 @@ class NamedNodeMap extends \ArrayObject
                 if ($attr !== NULL) {
                         $this->__remove($attr);
                 } else {
-                        \domo\error("NotFoundError");
+                        \Dodo\error("NotFoundError");
                 }
                 return $attr;
         }
@@ -252,7 +252,7 @@ class NamedNodeMap extends \ArrayObject
                 if ($attr !== NULL) {
                         $this->__remove($attr);
                 } else {
-                        \domo\error("NotFoundError");
+                        \Dodo\error("NotFoundError");
                 }
                 return $attr;
         }

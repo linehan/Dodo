@@ -3,7 +3,7 @@
  * ProcessingInstruction.php
  * -------------------------
  ******************************************************************************/
-namespace domo;
+namespace Dodo;
 
 require_once('CharacterData.php');
 

@@ -3,7 +3,7 @@
  * CharacterData.php
  * -----------------
  ******************************************************************************/
-namespace domo;
+namespace Dodo;
 
 require_once("NonDocumentTypeChildNode.php");
 

@@ -16,7 +16,7 @@
  *
  * This family of classes allows us to implement these reflected attributes.
  ******************************************************************************/
-namespace domo;
+namespace Dodo;
 
 
 /*
@@ -455,7 +455,7 @@ class IDLReflectedAttributeNumeric
                 }
 
                 if ($this->_setmin !== NULL && $v < $this->_setmin) {
-                        \domo\error("IndexSizeError", $this->_name.' set to '.$v);
+                        \Dodo\error("IndexSizeError", $this->_name.' set to '.$v);
                 }
 
                 switch ($this->_type) {

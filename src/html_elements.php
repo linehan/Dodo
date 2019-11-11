@@ -1,5 +1,5 @@
 <?php
-namespace domo;
+namespace Dodo;
 
 require_once('reflected_attributes.php');
 

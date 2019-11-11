@@ -20,7 +20,7 @@
  *
  ******************************************************************************/
 //declare( strict_types = 1 );
-namespace domo;
+namespace Dodo;
 
 /* circular dependency, meh... */
 require_once('Document.php');

@@ -3,7 +3,7 @@
  * ChildNode.php
  * -------------
  ******************************************************************************/
-namespace domo;
+namespace Dodo;
 
 require_once('Node.php');
 require_once('linked_list.php');
@@ -16,6 +16,7 @@ function _fragment_from_arguments($document, $args)
                 $item = $args[$i];
 
                 if (!($item instanceof Node)) {
+                        /* In particular, you can't have NULLs */
                         $item = $document->createTextNode(strval($item));
                 }
 
@@ -25,10 +26,22 @@ function _fragment_from_arguments($document, $args)
         return $fragment;
 }
 
-/*
- * The ChildNode interface contains methods that are particular
- * to 'Node' objects that can have a parent. It is implemented
- * by 'Element', 'DocumentType', and 'CharacterData' objects.
+/**
+ * DOM-LS
+ * Node objects that can have a parent must
+ * implement the ChildNode class. These include:
+ *
+ *      Element
+ *      CharacterData
+ *      DocumentType
+ *
+ * The additional methods defined by this class
+ * are practical conveniences, but are not really
+ * required to get full DOM functionality.
+ *
+ * TODO
+ * That being the case, perhaps DODO should choose
+ * not to implement them.
  */
 abstract class ChildNode extends Node
 {
@@ -38,80 +51,205 @@ abstract class ChildNode extends Node
         }
 
         /**
-         * Insert list of Nodes or DOMStrings after this ChildNode
-         *
-         * @param ... Any number of Nodes or DOMStrings
-         * @return void
+         * Insert any number of Nodes or
+         * DOMStrings after $this.
          *
          * NOTE
-         * DOMStrings are inserted as equivalent Text nodes.
+         * DOMStrings are inserted as
+         * equivalent Text nodes.
+         *
+         * TODO: after and before()
+         * are very very similar and
+         * could probably be factored
+         * nicely..
          */
-        public function after(/* ... */)
+        public function after(/* DOMStrings and/or Nodes */)
         {
                 if ($this->_parentNode === NULL) {
+                        /*
+                         * If $this has no parent,
+                         * then it is not actually
+                         * part of a document, and
+                         * according to DOM-LS,
+                         * this method has no effect.
+                         */
                         return;
                 }
 
+                /*
+                 * Arguments are of variable
+                 * number and type, although
+                 * they should be either Node
+                 * or DOMString (with string
+                 * standing in for DOMString
+                 * in this impelmentation).
+                 */
                 $args = func_get_args();
 
-                /* Find next sibling not in $args */
-                $after = $this->nextSibling();
-                while ($after !== NULL && in_array($after, $args)) {
-                        $after = $after->nextSibling();
+                if ($this->nextSibling() === NULL) {
+                        /*
+                         * If $this is an only
+                         * child, then provide
+                         * insertBefore with a
+                         * NULL $ref. This results
+                         * in insertBefore acting
+                         * like append.
+                         *
+                         * TODO: Is this spec?
+                         */
+                        $ref = NULL;
+                } else {
+                        $ref = $this->nextSibling();
+                        while (in_array($ref, $args)) {
+                                /*
+                                 * If $this has siblings,
+                                 * find the first sibling
+                                 * next to $this which
+                                 * is not part of the
+                                 * arguments. That sibling
+                                 * will be the ref.
+                                 *
+                                 * TODO: Even if one of
+                                 * the arguments were
+                                 * in the list, does it
+                                 * get pruned on insert?
+                                 * Doensn't seem so.
+                                 *
+                                 * TODO: Do we mean this
+                                 * equality to be between
+                                 * object referenecs, or
+                                 * between objects in the
+                                 * DOM? Because this does
+                                 * not capture the latter.
+                                 */
+                                $ref = $ref->nextSibling();
+                        }
                 }
 
-                $frag = _fragment_from_arguments($this->doc(), $args);
-                $this->_parentNode->insertBefore($frag, $after);
+                /*
+                 * Turn the arguments into
+                 * a DocumentFragment.
+                 */
+                $frag = _fragment_from_arguments($this->__document_node(), $ref);
+
+                /*
+                 * Insert the DocumentFragment
+                 * at the determined location.
+                 */
+                $this->_parentNode->insertBefore($frag, $ref);
         }
 
         /**
-         * Insert list of Nodes or DOMStrings before this ChildNode
-         *
-         * @param ... Any number of Nodes or DOMStrings
-         * @return void
+         * Insert any number of Nodes or
+         * DOMStrings after $this.
          *
          * NOTE
-         * DOMStrings are inserted as equivalent Text nodes.
+         * DOMStrings are inserted as
+         * equivalent Text nodes.
          */
-        public function before(/* ... */)
+        public function before(/* DOMStrings and/or Nodes */)
         {
                 if ($this->_parentNode === NULL) {
+                        /*
+                         * If $this has no parent,
+                         * then it is not actually
+                         * part of a document, and
+                         * according to DOM-LS,
+                         * this method has no effect.
+                         */
                         return;
                 }
 
+                /*
+                 * Arguments are of variable
+                 * number and type, although
+                 * they should be either Node
+                 * or DOMString (with string
+                 * standing in for DOMString
+                 * in this impelmentation).
+                 */
                 $args = func_get_args();
 
-                /* Find prev sibling not in $args */
-                $before = $this->previousSibling();
-
-                while ($before !== NULL && in_array($before, $args)) {
-                        $before = $before->previousSibling();
-                }
-
-                $frag = _fragment_from_arguments($this->doc(), $args);
-
-                if ($before) {
-                        $before = $before->nextSibling();
+                if ($this->previousSibling() === NULL) {
+                        /*
+                         * If $this is an only
+                         * child, then we need
+                         * to provide insertBefore
+                         * with $this for the ref.
+                         *
+                         * TODO
+                         * Yet it's written this way.
+                         * Why are the two not equiv?
+                         */
+                        $ref = $this->_parentNode->firstChild();
                 } else {
-                        $before = $this->_parentNode->firstChild();
+                        $ref = $this->previousSibling();
+                        while (in_array($ref, $args)) {
+                                /*
+                                 * If $this has siblings,
+                                 * find the first sibling
+                                 * previous to $this which
+                                 * is not in the arguments.
+                                 * The arguments will be
+                                 * inserted before this
+                                 * sibling.
+                                 *
+                                 * TODO: Even if one of
+                                 * the arguments were
+                                 * in the list, does it
+                                 * get pruned on insert?
+                                 * Doensn't seem so.
+                                 *
+                                 * TODO: Do we mean this
+                                 * equality to be between
+                                 * object referenecs, or
+                                 * between objects in the
+                                 * DOM? Because this does
+                                 * not capture the latter.
+                                 */
+                                $ref = $ref->previousSibling();
+                        }
+                        /*
+                         * Since we're inserting
+                         * before, we need to move
+                         * over one.
+                         */
+                        $ref = $ref->nextSibling();
                 }
 
+                /*
+                 * Turn the arguments into
+                 * a DocumentFragment.
+                 */
+                $frag = _fragment_from_arguments($this->__document_node(), $args);
+
+                /*
+                 * Insert the DocumentFragment
+                 * at the determined location.
+                 */
                 $this->_parentNode->insertBefore($frag, $before);
         }
 
-        /**
-         * Remove this node from its parent
-         *
-         * @return void
+        /*
+         * Remove $this from its parent.
          */
         public function remove()
         {
                 if ($this->_parentNode === NULL) {
+                        /*
+                         * If $this has no parent,
+                         * according to DOM-LS,
+                         * this method has no effect.
+                         */
                         return;
                 }
 
                 if (($doc = $this->__node_document())) {
-                        //$doc->_preremoveNodeIterators($this);
+                        /*
+                         * Un-associate $this
+                         * with its document,
+                         * if it has one.
+                         */
                         if ($this->__is_rooted()) {
                                 $doc->__mutate_remove($this);
                                 $doc->__uproot();
@@ -220,15 +358,15 @@ abstract class ChildNodeLeaf extends ChildNode
         }
         public final function insertBefore(Node $node, ?Node $refChild):?Node
         {
-                \domo\error("NotFoundError");
+                \Dodo\error("NotFoundError");
         }
         public final function replaceChild(Node $node, ?Node $refChild):?Node
         {
-                \domo\error("HierarchyRequestError");
+                \Dodo\error("HierarchyRequestError");
         }
         public final function removeChild(ChildNode $node):?Node
         {
-                \domo\error("NotFoundError");
+                \Dodo\error("NotFoundError");
         }
         public final function __remove_children()
         {

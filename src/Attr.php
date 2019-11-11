@@ -108,7 +108,7 @@
  * http://www.whatwg.org/specs/web-apps/current-work/multipage/urls.html#reflect
  * for rules on how attributes are reflected.
  ******************************************************************************/
-namespace domo;
+namespace Dodo;
 require_once('Node.php');
 
 /* 

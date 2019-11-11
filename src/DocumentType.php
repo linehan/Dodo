@@ -3,7 +3,7 @@
  * DocumentType.php
  * ----------------
  ******************************************************************************/
-namespace domo;
+namespace Dodo;
 
 require_once('ChildNode.php'); /* also defines ChildNodeLeaf */
 

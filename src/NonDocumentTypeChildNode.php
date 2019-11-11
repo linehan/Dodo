@@ -3,7 +3,7 @@
  * NonDocumentTypeChildNode.php
  * ----------------------------
  ******************************************************************************/
-namespace domo;
+namespace Dodo;
 
 require_once("ChildNode.php");
 
@@ -78,15 +78,15 @@ abstract class NonDocumentTypeChildNodeLeaf extends NonDocumentTypeChildNode
         }
         public final function insertBefore(Node $node, ?Node $refChild):?Node
         {
-                \domo\error("NotFoundError");
+                \Dodo\error("NotFoundError");
         }
         public final function replaceChild(Node $node, ?Node $refChild):?Node
         {
-                \domo\error("HierarchyRequestError");
+                \Dodo\error("HierarchyRequestError");
         }
         public final function removeChild(ChildNode $node):?Node
         {
-                \domo\error("NotFoundError");
+                \Dodo\error("NotFoundError");
         }
         public final function __remove_children()
         {

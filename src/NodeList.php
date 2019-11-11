@@ -3,7 +3,7 @@
  * NodeList.php
  * ------------
  ******************************************************************************/
-namespace domo;
+namespace Dodo;
 
 /* Played fairly straight. Used for Node::childNodes when in "array mode". */
 class NodeList extends \ArrayObject

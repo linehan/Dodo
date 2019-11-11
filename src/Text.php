@@ -3,7 +3,7 @@
  * Text.php
  * --------
  ******************************************************************************/
-namespace domo;
+namespace Dodo;
 
 require_once('CharacterData.php');
 
@@ -70,7 +70,7 @@ class Text extends CharacterData
         public function splitText($offset)
         {
                 if ($offset > strlen($this->_data) || $offset < 0) {
-                        \domo\error("IndexSizeError");
+                        \Dodo\error("IndexSizeError");
                 }
 
                 $newdata = substr($this->_data, offset);

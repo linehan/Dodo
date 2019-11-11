@@ -3,7 +3,7 @@
  * DocumentFragment.php
  * --------------------
  ******************************************************************************/
-namespace domo;
+namespace Dodo;
 
 class DocumentFragment extends Node
 {
@@ -24,14 +24,14 @@ class DocumentFragment extends Node
                 /* GET */
                 if ($value === NULL) {
                         $text = array();
-                        \domo\algorithm\descendant_text_content($this, $text);
+                        \Dodo\algorithm\descendant_text_content($this, $text);
                         return implode("", $text);
                 /* SET */
                 } else {
                         $this->__remove_children();
                         if ($value !== "") {
                                 /* Equivalent to Node:: appendChild without checks! */
-                                \domo\whatwg\insert_before_or_replace($node, $this->_ownerDocument->createTextNode($value), NULL);
+                                \Dodo\whatwg\insert_before_or_replace($node, $this->_ownerDocument->createTextNode($value), NULL);
                         }
                 }
         }

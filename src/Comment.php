@@ -3,7 +3,7 @@
  * Comment.php
  * -----------
  ******************************************************************************/
-namespace domo;
+namespace Dodo;
 
 require_once('CharacterData.php');
 
@@ -29,7 +29,7 @@ class Comment extends CharacterData
                 return ($this->_data === $node->_data);
         }
 
-        public function nodeValue($value = NULL)
+        public function nodeValue(?string $value = NULL)
         {
                 if ($value === NULL) {
                         return $this->_data;
@@ -44,12 +44,12 @@ class Comment extends CharacterData
                 }
         }
 
-        public function textContent($value = NULL)
+        public function textContent(?string $value = NULL)
         {
                 return $this->nodeValue($value);
         }
 
-        public function data($value = NULL)
+        public function data(?string $value = NULL)
         {
                 return $this->nodeValue($value);
         }

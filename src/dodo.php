@@ -1,6 +1,6 @@
 <?php
 /******************************************************************************
- * domo.php
+ * dodo.php
  * --------
  * Loads the entire library. The library can also be loaded class-by-class
  * if necessary. Individual dependencies are still included by each page,

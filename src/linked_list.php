@@ -9,7 +9,7 @@
  * That means our Node object is a node in a linked list! Yes, in reality
  * this is just rather tightly coupled to Node.
  ******************************************************************************/
-namespace domo;
+namespace Dodo;
 
 /**
  * Determine if the object we want to treat as a (circular) linked list
@@ -17,13 +17,13 @@ namespace domo;
  *
  * @param Node $a: "circular ll node"
  * @return: true if all assertions pass
- * @throws: The exception in \domo\assert(), see 'utilities.php'
+ * @throws: The exception in \Dodo\assert(), see 'utilities.php'
  */
 function ll_is_valid($a)
 {
-        \domo\assert(NULL!==$a, "list is falsy");
-        \domo\assert(NULL!==$a->_previousSibling, "previous is falsy");
-        \domo\assert(NULL!==$a->_nextSibling, "next is falsy");
+        \Dodo\assert(NULL!==$a, "list is falsy");
+        \Dodo\assert(NULL!==$a->_previousSibling, "previous is falsy");
+        \Dodo\assert(NULL!==$a->_nextSibling, "next is falsy");
 
         /* TODO: Check that list is actually circular? */
 
@@ -44,7 +44,7 @@ function ll_is_valid($a)
  */
 function ll_insert_before($a, $b)
 {
-        \domo\assert(ll_is_valid($a) && ll_is_valid($b));
+        \Dodo\assert(ll_is_valid($a) && ll_is_valid($b));
 
         $a_first = $a;
         $a_last  = $a->_previousSibling;
@@ -56,7 +56,7 @@ function ll_insert_before($a, $b)
         $b_last->_nextSibling      = $a_first;
         $b_first->_previousSibling = $a_last;
 
-        \domo\assert(ll_is_valid($a) && ll_is_valid($b));
+        \Dodo\assert(ll_is_valid($a) && ll_is_valid($b));
 }
 
 /**
@@ -72,7 +72,7 @@ function ll_insert_before($a, $b)
  */
 function ll_remove($a)
 {
-        \domo\assert(ll_is_valid($a));
+        \Dodo\assert(ll_is_valid($a));
 
         $prev = $a->_previousSibling;
 
@@ -85,7 +85,7 @@ function ll_remove($a)
         $next->_previousSibling = $prev;
         $a->_previousSibling = $a->_nextSibling = $a;
 
-        \domo\assert(ll_is_valid($a));
+        \Dodo\assert(ll_is_valid($a));
 }
 
 /**
@@ -101,7 +101,7 @@ function ll_remove($a)
  */
 function ll_replace($a, $b)
 {
-        \domo\assert(ll_is_valid($a) && ($b==NULL || ll_is_valid($b)));
+        \Dodo\assert(ll_is_valid($a) && ($b==NULL || ll_is_valid($b)));
 
         if ($b !== NULL) {
                 ll_is_valid($b);
@@ -111,7 +111,7 @@ function ll_replace($a, $b)
         }
         ll_remove($a);
 
-        \domo\assert(ll_is_valid($a) && ($b==NULL || ll_is_valid($b)));
+        \Dodo\assert(ll_is_valid($a) && ($b==NULL || ll_is_valid($b)));
 }
 
 ?>

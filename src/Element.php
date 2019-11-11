@@ -20,7 +20,7 @@
  * HTML-LS   HTML Living Standard            https://html.spec.whatwg.org/
  *
  ******************************************************************************/
-namespace domo;
+namespace Dodo;
 
 require_once('utilities.php');
 require_once('NonDocumentTypeChildNode.php');
@@ -53,7 +53,7 @@ class Element extends NonDocumentTypeChildNode
 	/* Required by Node */
         public $_nodeType = ELEMENT_NODE;
 
-        /* Provided by Node 
+        /* Provided by Node
         public $_nodeValue = NULL;
 	public $_nodeName = NULL; // HTML-uppercased qualified name
         public $_ownerDocument = NULL;
@@ -135,7 +135,7 @@ class Element extends NonDocumentTypeChildNode
 		 */
                 if ($this->isHTMLElement()) {
                         if (!isset($UC_Cache[$qname])) {
-                                $uc_qname = \domo\ascii_to_uppercase($qname);
+                                $uc_qname = \Dodo\ascii_to_uppercase($qname);
                                 $UC_Cache[$qname] = $uc_qname;
                         } else {
                                 $uc_qname = $UC_Cache[$qname];
@@ -208,14 +208,14 @@ class Element extends NonDocumentTypeChildNode
                 /* GET */
                 if ($value === NULL) {
                         $text = array();
-                        \domo\algorithm\descendant_text_content($this, $text);
+                        \Dodo\algorithm\descendant_text_content($this, $text);
                         return implode("", $text);
                 /* SET */
                 } else {
                         $this->__remove_children();
                         if ($value !== "") {
                                 /* Equivalent to Node:: appendChild without checks! */
-                                \domo\whatwg\insert_before_or_replace($node, $this->_ownerDocument->createTextNode($value), NULL);
+                                \Dodo\whatwg\insert_before_or_replace($node, $this->_ownerDocument->createTextNode($value), NULL);
                         }
                 }
         }
@@ -282,7 +282,7 @@ class Element extends NonDocumentTypeChildNode
         }
 
         /**********************************************************************
-         * ATTRIBUTE: get/set/remove/has/toggle 
+         * ATTRIBUTE: get/set/remove/has/toggle
          **********************************************************************/
 
         /**
@@ -309,16 +309,16 @@ class Element extends NonDocumentTypeChildNode
          * Per spec, $value is not a string, but the string value of
          * whatever is passed.
          *
-         * TODO: DRY with this and setAttributeNS? 
+         * TODO: DRY with this and setAttributeNS?
          */
         public function setAttribute(string $qname, $value)
         {
-                if (!\domo\whatwg\is_valid_xml_name($qname)) {
-                        \domo\error("InvalidCharacterError");
+                if (!\Dodo\whatwg\is_valid_xml_name($qname)) {
+                        \Dodo\error("InvalidCharacterError");
                 }
 
                 if (!ctype_lower($qname) && $this->isHTMLElement()) {
-                        $qname = \domo\ascii_to_lowercase($qname);
+                        $qname = \Dodo\ascii_to_lowercase($qname);
                 }
 
                 $attr = $this->attributes->getNamedItem($qname);
@@ -363,8 +363,8 @@ class Element extends NonDocumentTypeChildNode
          */
         public function toggleAttribute(string $qname, ?bool $force=NULL): bool
         {
-                if (!\domo\whatwg\is_valid_xml_name($qname)) {
-                        \domo\error("InvalidCharacterError");
+                if (!\Dodo\whatwg\is_valid_xml_name($qname)) {
+                        \Dodo\error("InvalidCharacterError");
                 }
 
                 $a = $this->attributes->getNamedItem($qname);
@@ -420,7 +420,7 @@ class Element extends NonDocumentTypeChildNode
                 $lname = NULL;
                 $prefix = NULL;
 
-                \domo\whatwg\validate_and_extract($ns, $qname, $prefix, $lname);
+                \Dodo\whatwg\validate_and_extract($ns, $qname, $prefix, $lname);
 
                 $attr = $this->attributes->getNamedItemNS($ns, $qname);
                 if ($attr === NULL) {
@@ -583,7 +583,7 @@ class Element extends NonDocumentTypeChildNode
         }
 
         /*********************************************************************
-         * DOMO EXTENSIONS
+         * DODO EXTENSIONS
          ********************************************************************/
 
         /* Calls isHTMLDocument() on ownerDocument */
@@ -604,6 +604,7 @@ class Element extends NonDocumentTypeChildNode
          *
          * This is not a DOM method, but is convenient for
          * lazy traversals of the tree.
+         * TODO: Change its name to __next_element then!
          */
         public function nextElement($root)
         {

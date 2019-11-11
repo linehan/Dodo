@@ -2,17 +2,19 @@
 /******************************************************************************
  * This is just a demo to show basic invocation.
  * It is not intended to provide test coverage of any kind.
+ *
+ * Run with: 'php ./demo.php' 
  ******************************************************************************/
-require_once('../src/domo.php');
+require_once('../src/dodo.php');
 require_once('../src/html_elements.php');
 
 /* Instantiate the nodes */
-$doc = new domo\Document('html');
+$doc = new Dodo\Document('html');
 $html = $doc->createElement('html');
 $body = $doc->createElement('body');
 $comment = $doc->createComment('Hello, world!');
 $p = $doc->createElement("p");
-$img = new domo\HTMLImgElement($doc, "img", ""); /* using createElement soon */
+$img = new Dodo\HTMLImgElement($doc, "img", ""); /* using createElement soon */
 
 /* Construct the tree */
 $p->appendChild($doc->createTextNode('Lorem ipsum'));
@@ -26,7 +28,7 @@ $doc->appendChild($html);
 echo $doc->__serialize() . "\n\n";
 
 /* Update the attributes on the <img> node */
-$img->alt = "Sailor Moon";
+$img->alt = "Incredible Vision";
 $img->width = "1337px"; // NOTE: width stored as a string
 
 /* Print the tree again (<img> should have attributes now) */

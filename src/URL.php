@@ -5,7 +5,7 @@
  * TODO: This is currently NOT implementing https://url.spec.whatwg.org/#api,
  * but it could, and probably should.
  ******************************************************************************/
-namespace domo;
+namespace Dodo;
 
 // Return a percentEncoded version of s.
 // S should be a single-character string

@@ -8,15 +8,15 @@
  * Consider eliminating this, or stubbing it.
  */
 
-use domo\interfaces\DOMImplementation;
-use domo\interfaces\EventTarget;
+use Dodo\interfaces\DOMImplementation;
+use Dodo\interfaces\EventTarget;
 
-use domo\interfaces\browser\Location;
-use domo\interfaces\browser\History;
-use domo\interfaces\browser\Console;
-use domo\interfaces\browser\NavigatorID;
+use Dodo\interfaces\browser\Location;
+use Dodo\interfaces\browser\History;
+use Dodo\interfaces\browser\Console;
+use Dodo\interfaces\browser\NavigatorID;
 
-use domo\utils;
+use Dodo\utils;
 
 require_once("interfaces/DOMImplementation.php");
 require_once("interfaces/EventTarget.php");

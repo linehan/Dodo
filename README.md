@@ -1,6 +1,7 @@
-# DOMO (DOM Operator)
+# Dodo 
+## The Wikimedia PHP DOM Document Library
 
-Domo is an effort to port [Domino.js](https://github.com/fgnass/domino) to PHP 7, in order to provide a more performant and spec-compliant DOM library than the DOMDocument PHP extension, which is built on [libxml2](www.xmlsoft.org).
+Dodo is an effort to port [Domino.js](https://github.com/fgnass/domino) to PHP 7, in order to provide a more performant and spec-compliant DOM library than the DOMDocument PHP extension, which is built on [libxml2](www.xmlsoft.org).
 
 ## Usage
 
@@ -32,7 +33,7 @@ This software is a work in progress. Prioritized *TODO*s:
 
 ## Developer Notes
 
-### Why you need accessors for interface properties 
+### Why you need accessors for interface properties
 
 Most DOM implementations have to make a decision about adapting the
 specification's notion of an interface property. In many languages,
@@ -42,13 +43,13 @@ the only solution is to use accessor functions, e.g. `getFoo()` and
 This is not contrary to the spec's intention, as it is mostly capturing
 data representation, and seems to expect some level of indirection between
 the library that implements the specification, and the code which calls
-that library. 
+that library.
 
 Aside from the usual arguments and reasons for preferring accessors
 over direct property access and vice-versa, in this case most implementations
-are forced down the accessor route for one reason in particular, and that is 
-that the current [DOM Specification](https://dom.spec.whatwg.org) defines 
-certain interface properties as being `readonly`, for example the 
+are forced down the accessor route for one reason in particular, and that is
+that the current [DOM Specification](https://dom.spec.whatwg.org) defines
+certain interface properties as being `readonly`, for example the
 [Attr](https://dom.spec.whatwg.org/#interface-attr) interface:
 
 ```
@@ -74,15 +75,15 @@ several RFCs ([readonly properties](https://wiki.php.net/rfc/readonly_properties
 and [property accessors syntax](https://wiki.php.net/rfc/propertygetsetsyntax-v1.2)),
 they have always been declined.
 
-So, in this implementation, all properties have `protected` scope, and 
-each interface is equipped with either one or two accessors depending 
+So, in this implementation, all properties have `protected` scope, and
+each interface is equipped with either one or two accessors depending
 on whether the specification marks it as `readonly` or not.
 These accessors do not appear in the spec, and now you know why.
 
-To be clear: if a class property "foo" is not marked `readonly`, then there 
-will be methods `getFoo()` and `setFoo($value)` defined on the class. 
+To be clear: if a class property "foo" is not marked `readonly`, then there
+will be methods `getFoo()` and `setFoo($value)` defined on the class.
 If "foo" is marked `readonly`, then only `getFoo()` will be defined on the
-class. 
+class.
 
 An irritating side-effect here is that since the style of the spec obliges
 us to use camelCase, by pre-pending the property names with `get` or `set`,
@@ -102,10 +103,10 @@ they are abiding by the constraints.
 
 ### Strings specified as "NULL or non-empty"
 
-It isn't uncommon for interface properties to have type written 
-`DOMString?`, which is not a single type, but rather indicates 
-that the field may take either of type `NULL`, or type `DOMString` 
-(they are distinct types). 
+It isn't uncommon for interface properties to have type written
+`DOMString?`, which is not a single type, but rather indicates
+that the field may take either of type `NULL`, or type `DOMString`
+(they are distinct types).
 
 For example, the `namespaceURI` property from the [Attr](https://dom.spec.whatwg.org/#interface-attr) interface:
 
@@ -116,17 +117,17 @@ interface Attr : Node {
 };
 ```
 
-However, it's common for there to be an additional constraint on the value of 
+However, it's common for there to be an additional constraint on the value of
 such properties, one which is not visible from inspection of the interface
 definition in IDL.
 
-For example, [namespaceURI](https://dom.spec.whatwg.org/#dom-attr-namespaceuri) 
-is defined to return the 
+For example, [namespaceURI](https://dom.spec.whatwg.org/#dom-attr-namespaceuri)
+is defined to return the
 [namespace](https://dom.spec.whatwg.org/#concept-attribute-namespace), which is
 either "NULL or a non-empty string".
 
 Well, this is a bit annoying because it's certainly possible to provide the
-empty string to any interface which accepts arguments of type `DOMString`. 
+empty string to any interface which accepts arguments of type `DOMString`.
 
 Because of this common stipulation, you would find in the code something
 that looks like:
@@ -140,7 +141,7 @@ class Attr extends Node
                 if ($namespace !== '') {
                         $this->$namespaceURI = $namespace;
                 }
-                
+
                 /* ... */
         }
 
@@ -153,30 +154,26 @@ will only occur if it is NOT the empty string. In that case,
 
 ### Strings specified as "non-empty"
 
-This seems simpler, but it's actually worse than "NULL or non-empty"! 
+This seems simpler, but it's actually worse than "NULL or non-empty"!
 
-Properties that must be "non-empty strings", such as 
+Properties that must be "non-empty strings", such as
 [localName](https://dom.spec.whatwg.org/#concept-attribute-local-name),
 are usually integral to the object functioning properly. `localName`, for
 example, is the name of the attribute.
 
 Unfortunately, an empty string is also a string, and even a `DOMString`. So
-providing the empty string is valid when the function's argument type 
+providing the empty string is valid when the function's argument type
 is `DOMString` (or `string`, in PHP's type hinting). But in the case of
 constructors, once we find out that this argument is the empty string,
-the entire object is undefined. 
+the entire object is undefined.
 
 But in PHP, it's not possible to "abort" the constructor -- an object of the
-specified class will always be returned to the caller. 
+specified class will always be returned to the caller.
 In old versions of PHP, you could actually do something like `unset($this)`
 inside the constructor. Pretty cool, but you haven't been able to do it for
 years. What a pain...
 
-So we probably have to throw an Exception. It's such a pain, and hurts
-performance too, but what else can you do? 
-
-If only we could type a "non-empty string", to make the function
-prototype enforce this contract at interpretation time. 
+So we probably have to throw an Exception, or make a "non-empty string" class.
 
 ### Readonly does not mean immutable
 
@@ -209,13 +206,13 @@ directly, you can update something that is used to compute their value.
 The `Node` interface methods `isEqualNode` and `cloneNode` are two good
 examples of things that are annoying. Both of them first do something
 that is common among all `Node` objects, and then proceed to do something
-that is unique to whatever class has extended `Node`, for example `Attr`. 
+that is unique to whatever class has extended `Node`, for example `Attr`.
 
 That means that if you want to implement them as `abstract`, you have
 to include this boilerplate `Node`-common stuff in all of the subclass
 implementations of the abstract method. What a pain.
 
-So instead, we have abstract methods like `_subclass_isEqualNode`, which 
+So instead, we have abstract methods like `_subclass_isEqualNode`, which
 are called by `Node::isEqualNode` when it's time to do the subclass-specific
 part.
 
@@ -243,7 +240,7 @@ Node::_childNodes
 Node::_firstChild -- is set to NULL when _childNodes is not NULL.
 ```
 
-### Potential bugs in Domino.js 
+### Potential bugs in Domino.js
 
 It appears that HTMLCollection will not recompute the cache
 when an Element's `id` or `name` attribute changes. However,
@@ -270,6 +267,13 @@ Things that use `HTMLCollection` (hence cannot be used):
  Element::getElementsByTagName()
  Element::getElementsByTagNameNS()
  Element::getElementsByClassNames()
- 
+
  Element::children
 ```
+
+### Performance tips
+
+- Make sure your Element ids stay unique. The spec requries that you
+  return the first Element with that id, in document order, and it is
+  not very performant to compute the document order.
+

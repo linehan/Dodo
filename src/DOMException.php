@@ -5,9 +5,9 @@
  * (Mostly) implements the WebIDL-1 DOMException interface
  * https://www.w3.org/TR/WebIDL-1/#idl-DOMException*
  *****************************************************************************/
-namespace domo;
+namespace Dodo;
 
-const ERR_CODE_DOES_NOT_EXIST = -1;	/* [DOMO] Errors without Legacy code */
+const ERR_CODE_DOES_NOT_EXIST = -1;	/* [Dodo] Errors without Legacy code */
 const INDEX_SIZE_ERR = 1;
 const DOMSTRING_SIZE_ERR = 2;		/* [WEB-IDL-1] No longer present */
 const HIERARCHY_REQUEST_ERR = 3;
